@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, Cursor};
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";
@@ -22,13 +22,25 @@ impl Config {
         return c;
     }
 
+    pub fn from_text(text: &str) -> Self {
+        let mut c = Config {
+            data: HashMap::new(),
+        };
+
+        c.parse_buffer(&mut BufReader::new(Cursor::new(text.as_bytes())));
+        return c;
+    }
+
     fn parse(&mut self, path: &str) {
-        let f = File::open(path).expect("read config failed");
-        let mut reader = BufReader::new(f);
+        let mut f = File::open(path).expect("read config failed");
+        let mut c = Vec::new();
+        f.read_to_end(&mut c).expect("error while reading config");
+
+        let mut reader: BufReader<Cursor<&[u8]>> = BufReader::new(Cursor::new(&c));
         self.parse_buffer(&mut reader);
     }
 
-    pub fn parse_buffer(&mut self, reader: &mut BufReader<File>) {
+    fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) {
         let mut section = String::new();
 
         loop {
@@ -146,6 +158,49 @@ mod tests {
     #[test]
     fn test_get() {
         let mut config = Config::new("examples/testini.ini");
+
+        assert_eq!(true, config.get_bool("debug"));
+        assert_eq!(64, config.get_int("math::math.i64"));
+        assert_eq!(64.1, config.get_float("math::math.f64"));
+        assert_eq!("10.0.0.1", config.get_string("mysql::mysql.master.host"));
+
+        config.set("other::key1", "new test key");
+        assert_eq!("new test key", config.get_string("other::key1"));
+
+        config.set("other::key1", "test key");
+        assert_eq!("test key", config.get_string("other::key1"));
+    }
+
+    #[test]
+    fn test_from_text() {
+        let text: &str = r#"
+            # test config
+            debug = true
+            url = act.wiki
+
+            ; redis config
+            [redis]
+            redis.key = push1,push2
+
+            ; mysql config
+            [mysql]
+            mysql.dev.host = 127.0.0.1
+            mysql.dev.user = root
+            mysql.dev.pass = 123456
+            mysql.dev.db = test
+
+            mysql.master.host = 10.0.0.1
+            mysql.master.user = root
+            mysql.master.pass = 89dds)2$#d
+            mysql.master.db = act
+
+            ; math config
+            [math]
+            math.i64 = 64
+            math.f64 = 64.1
+        "#;
+
+        let mut config = Config::from_text(text);
 
         assert_eq!(true, config.get_bool("debug"));
         assert_eq!(64, config.get_int("math::math.i64"));
