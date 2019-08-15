@@ -49,16 +49,50 @@ impl Config {
             } else if line.starts_with('[') && line.ends_with(']') {
                 section = line[1..line.len() - 1].to_string();
             } else {
-                let option_val: Vec<String> =
-                    line.splitn(2, '=').map(|e| e.trim().to_string()).collect();
+                let mut next_section = String::new();
+                while line.ends_with(DEFAULT_MULTI_LINE_SEPARATOR) {
+                    line = line[..line.len() - 1].trim_end().to_string();
+
+                    let mut inner_line = String::new();
+                    let inner_bytes = reader.read_line(&mut inner_line).expect("read config line failed");
+                    if inner_bytes == 0 {
+                        break;
+                    }
+
+                    let inner_line = inner_line.trim().to_string();
+                    if inner_line.is_empty()
+                        || inner_line.starts_with(DEFAULT_COMMENT)
+                        || inner_line.starts_with(DEFAULT_COMMENT_SEM)
+                    {
+                        continue;
+                    }
+            
+                    if inner_line.starts_with("[") && inner_line.ends_with("]") {
+                        next_section = inner_line[1..inner_line.len() - 1].to_string();  
+                    } else {
+                        line.push_str(&inner_line);
+                    }
+                }
+
+                let option_val: Vec<String> = line
+                    .trim_end_matches(|c| char::is_whitespace(c) || char::to_string(&c) == DEFAULT_MULTI_LINE_SEPARATOR)
+                    .splitn(2, '=')
+                    .map(|e| e.trim().to_string())
+                    .collect();
+
                 if option_val.len() != 2 {
                     panic!("parse content error, line={}", line);
                 }
+
                 self.add_config(
                     section.clone(),
                     option_val[0].clone(),
                     option_val[1].clone(),
                 );
+
+                if !next_section.is_empty() {
+                    section = next_section;
+                }
             }
         }
     }
@@ -157,5 +191,11 @@ mod tests {
 
         config.set("other::key1", "test key");
         assert_eq!("test key", config.get_string("other::key1"));
+
+        assert_eq!("r.sub==p.sub&&r.obj==p.obj", config.get_string("multi1::name"));
+        assert_eq!("r.sub==p.sub&&r.obj==p.obj", config.get_string("multi2::name"));
+        assert_eq!("r.sub==p.sub&&r.obj==p.obj", config.get_string("multi3::name"));
+        assert_eq!("", config.get_string("multi4::name"));
+        assert_eq!("r.sub==p.sub&&r.obj==p.obj", config.get_string("multi5::name"));
     }
 }
