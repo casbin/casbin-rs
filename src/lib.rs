@@ -4,3 +4,4 @@ pub mod enforcer;
 pub mod enforcer_api;
 pub mod model;
 pub mod rbac;
+pub mod config;
