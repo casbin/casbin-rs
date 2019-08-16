@@ -1,4 +1,5 @@
 use crate::rbac::{DefaultRoleManager, RoleManager};
+use crate::config::{Config};
 use regex::Regex;
 use std::collections::HashMap;
 
@@ -61,6 +62,59 @@ impl Model {
         return Model {
             model: HashMap::new(),
         };
+    }
+
+    fn get_key_suffix(&self, i: u64) -> String  {
+        if i == 1 { "".to_owned() } else { i.to_string() }
+    }
+
+    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> bool {
+        let sec_name = match sec {
+            "r" => "request_definition",
+            "p" => "policy_definition",
+            "g" => "role_definition",
+            "e" => "policy_effect",
+            "m" => "matchers",
+            _ => panic!("section is not one of [r,p,g,e,m] {}", sec)
+        };
+
+        let value = cfg.get_string(&format!("{}::{}", sec_name, key));
+
+        self.add_def(sec, key, &value)
+    }
+
+    fn load_section(&mut self, cfg: &Config, sec: &str) {
+        let mut i = 1;
+
+        loop {
+            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i))) {
+                break;
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    pub fn load_model(&mut self, path: &str) {
+        let cfg = Config::new(path);
+
+        self.load_section(&cfg, "r");
+        self.load_section(&cfg, "p");
+        self.load_section(&cfg, "e");
+        self.load_section(&cfg, "m");
+
+        self.load_section(&cfg, "g");
+    }
+
+    pub fn load_model_from_text(&mut self, text: &str) {
+        let cfg = Config::from_text(text);
+
+        self.load_section(&cfg, "r");
+        self.load_section(&cfg, "p");
+        self.load_section(&cfg, "e");
+        self.load_section(&cfg, "m");
+
+        self.load_section(&cfg, "g");
     }
 
     pub fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
