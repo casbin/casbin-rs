@@ -18,8 +18,9 @@ impl Config {
         let mut c = Config {
             data: HashMap::new(),
         };
+
         c.parse(path);
-        return c;
+        c
     }
 
     fn parse(&mut self, path: &str) {
@@ -51,13 +52,14 @@ impl Config {
             } else {
                 let option_val: Vec<String> =
                     line.splitn(2, '=').map(|e| e.trim().to_string()).collect();
+
                 if option_val.len() != 2 {
                     panic!("parse content error, line={}", line);
                 }
                 self.add_config(
                     section.clone(),
-                    option_val[0].clone(),
-                    option_val[1].clone(),
+                    option_val[0].to_string(),
+                    option_val[1].to_string(),
                 );
             }
         }
@@ -69,6 +71,7 @@ impl Config {
             section = DEFAULT_SECTION.to_owned();
         }
         let section_value = self.data.entry(section).or_insert(HashMap::new());
+
         // if key not exists then insert, else update
         let key_value = section_value.get_mut(&option);
         match key_value {
@@ -81,28 +84,26 @@ impl Config {
         }
     }
 
-    pub fn get(&self, key: &str) -> String {
+    pub fn get(&self, key: &str) -> Option<&str> {
         let keys: Vec<String> = key.to_lowercase().split("::").map(String::from).collect();
         if keys.len() >= 2 {
-            let section = keys[0].clone();
-            let option = keys[1].clone();
-            return self
+            let section = &keys[0];
+            let option = &keys[1];
+            self
                 .data
-                .get(&section)
-                .unwrap()
-                .get(&option)
-                .unwrap()
-                .clone();
+                .get(section)
+                .and_then(|m| {
+                   m.get(option).map(|v| v.as_str())
+                })
         } else {
-            let section = DEFAULT_SECTION.to_owned();
-            let option = keys[0].clone();
-            return self
+            let section = DEFAULT_SECTION;
+            let option = &keys[0];
+            self
                 .data
-                .get(&section)
-                .unwrap()
-                .get(&option)
-                .unwrap()
-                .clone();
+                .get(section)
+                .and_then(|m| {
+                    m.get(option).map(|v| v.as_str())
+                })
         }
     }
 
@@ -112,30 +113,37 @@ impl Config {
         }
         let keys: Vec<String> = key.to_lowercase().split("::").map(String::from).collect();
         if keys.len() >= 2 {
-            let section = keys[0].clone();
-            let option = keys[1].clone();
-            self.add_config(section, option, value.to_owned());
+            let section = &keys[0];
+            let option = &keys[1];
+            self.add_config(section.to_owned(), option.to_owned(), value.to_owned());
         } else {
-            let section = DEFAULT_SECTION.to_owned();
-            let option = keys[0].clone();
-            self.add_config(section, option, value.to_owned());
+            let section = DEFAULT_SECTION;
+            let option = &keys[0];
+            self.add_config(section.to_owned(), option.to_owned(), value.to_owned());
         }
     }
 
-    pub fn get_bool(&self, key: &str) -> bool {
-        return self.get(key).parse::<bool>().unwrap();
+    pub fn get_bool(&self, key: &str) -> Option<bool> {
+        return self.get(key)
+            .and_then(|v| v.parse::<bool>().ok())
     }
 
-    pub fn get_string(&self, key: &str) -> String {
+    pub fn get_string(&self, key: &str) -> Option<String> {
+        return self.get_str(key).map(|v| v.to_string());
+    }
+
+    pub fn get_str(&self, key: &str) -> Option<&str> {
         return self.get(key);
     }
 
-    pub fn get_int(&self, key: &str) -> i64 {
-        return self.get(key).parse::<i64>().unwrap();
+    pub fn get_int(&self, key: &str) -> Option<i64> {
+        return self.get(key)
+            .and_then(|v| v.parse::<i64>().ok());
     }
 
-    pub fn get_float(&self, key: &str) -> f64 {
-        return self.get(key).parse::<f64>().unwrap();
+    pub fn get_float(&self, key: &str) -> Option<f64> {
+        return self.get(key)
+            .and_then(|v| v.parse::<f64>().ok());
     }
 }
 
@@ -147,15 +155,64 @@ mod tests {
     fn test_get() {
         let mut config = Config::new("examples/testini.ini");
 
-        assert_eq!(true, config.get_bool("debug"));
-        assert_eq!(64, config.get_int("math::math.i64"));
-        assert_eq!(64.1, config.get_float("math::math.f64"));
-        assert_eq!("10.0.0.1", config.get_string("mysql::mysql.master.host"));
+        assert_eq!(Some(true), config.get_bool("debug"));
+        assert_eq!(Some(64), config.get_int("math::math.i64"));
+        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+        assert_eq!(Some("10.0.0.1".to_owned()), config.get_string("mysql::mysql.master.host"));
 
         config.set("other::key1", "new test key");
-        assert_eq!("new test key", config.get_string("other::key1"));
+        assert_eq!(Some("new test key".to_owned()), config.get_string("other::key1"));
 
         config.set("other::key1", "test key");
-        assert_eq!("test key", config.get_string("other::key1"));
+        assert_eq!(Some("test key".to_owned()), config.get_string("other::key1"));
+
+        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi1::name"));
+        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi2::name"));
+        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi3::name"));
+        assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
+        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi5::name"));
+    }
+
+    #[test]
+    fn test_from_text() {
+        let text: &str = r#"
+            # test config
+            debug = true
+            url = act.wiki
+
+            ; redis config
+            [redis]
+            redis.key = push1,push2
+
+            ; mysql config
+            [mysql]
+            mysql.dev.host = 127.0.0.1
+            mysql.dev.user = root
+            mysql.dev.pass = 123456
+            mysql.dev.db = test
+
+            mysql.master.host = 10.0.0.1
+            mysql.master.user = root
+            mysql.master.pass = 89dds)2$#d
+            mysql.master.db = act
+
+            ; math config
+            [math]
+            math.i64 = 64
+            math.f64 = 64.1
+        "#;
+
+        let mut config = Config::from_text(text);
+
+        assert_eq!(Some(true), config.get_bool("debug"));
+        assert_eq!(Some(64), config.get_int("math::math.i64"));
+        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+        assert_eq!(Some("10.0.0.1".to_owned()), config.get_string("mysql::mysql.master.host"));
+
+        config.set("other::key1", "new test key");
+        assert_eq!(Some("new test key".to_owned()), config.get_string("other::key1"));
+
+        config.set("other::key1", "test key");
+        assert_eq!(Some("test key".to_owned()), config.get_string("other::key1"));
     }
 }
