@@ -83,9 +83,11 @@ impl Model {
             _ => panic!("section is not one of [r,p,g,e,m] {}", sec)
         };
 
-        let value = cfg.get_string(&format!("{}::{}", sec_name, key));
-
-        self.add_def(sec, key, &value)
+        if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
+            self.add_def(sec, key, val)
+        } else {
+            false
+        }
     }
 
     fn load_section(&mut self, cfg: &Config, sec: &str) {
@@ -175,7 +177,9 @@ pub fn load_function_map() -> FunctionMap {
     let mut fm: HashMap<String, fn(String, String) -> bool> = HashMap::new();
     fm.insert("keyMatch".to_owned(), key_match);
     fm.insert("keyMatch2".to_owned(), key_match2);
+    fm.insert("keyMatch3".to_owned(), key_match3);
     fm.insert("regexMatch".to_owned(), regex_match);
+    fm.insert("ipMatch".to_owned(), ip_match);
     return fm;
 }
 
