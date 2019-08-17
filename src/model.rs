@@ -234,6 +234,12 @@ pub fn ip_match(key1: String, key2: String) -> bool {
                 Err(_err) => panic!("invalid netmask {}", key2_split[1])
             }
         } else {
+            if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) = (ip_addr1, ip_addr2) {
+                if let Some(ip_addr2_new) = ip_addr2_new.to_ipv4() {
+                    return ip_addr2_new == ip_addr1_new;
+                }
+            }
+
             ip_addr1 == ip_addr2
         }
     } else {
