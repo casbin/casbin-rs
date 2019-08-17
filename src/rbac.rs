@@ -1,10 +1,13 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
 pub trait RoleManager {
     fn clone_box(&self) -> Box<dyn RoleManager>;
     fn clear(&mut self);
     fn add_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>);
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>);
     fn has_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) -> bool;
-    fn get_roles(&self, name: &str, domain: Vec<&str>) -> Vec<&str>;
+    fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
     fn get_users(&self, name: &str, domain: Vec<&str>) -> Vec<&str>;
     fn print_roles(&self);
 }
@@ -21,7 +24,7 @@ type MatchingFunc = fn(&str, &str) -> bool;
 
 #[derive(Clone)]
 pub struct DefaultRoleManager {
-    pub all_roles: HashMap<String, Role>,
+    pub all_roles: HashMap<String, Rc<RefCell<Role>>>,
     pub max_hierarchy_level: usize,
     pub has_pattern: bool,
     pub matching_func: Option<MatchingFunc>,
@@ -37,12 +40,11 @@ impl DefaultRoleManager {
         };
     }
 
-    fn create_role(&mut self, name: &str) -> Role {
-        return self
-            .all_roles
+    fn create_role(&mut self, name: &str) -> Rc<RefCell<Role>> {
+        self.all_roles
             .entry(name.to_owned())
-            .or_insert(Role::new(name.to_owned()))
-            .clone();
+            .or_insert(Rc::new(RefCell::new(Role::new(name.to_owned()))))
+            .clone()
     }
 
     fn has_role(&self, name: &str) -> bool {
@@ -67,13 +69,9 @@ impl RoleManager for DefaultRoleManager {
         } else if domain.len() > 1 {
             panic!("error domain length");
         }
-        let mut role1 = self.create_role(name1.as_str());
-        let role2 = self.create_role(name2.as_str());
-        role1.add_role(role2);
-        // role1 is updated and should be updated into all_roles
-        if let Some(old_role) = self.all_roles.get_mut(&role1.name) {
-            *old_role = role1.clone();
-        }
+        let role1 = self.create_role(&name1);
+        let role2 = self.create_role(&name2);
+        role1.borrow_mut().add_role(role2.clone());
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) {
@@ -88,13 +86,9 @@ impl RoleManager for DefaultRoleManager {
         if !self.has_role(&name1) || !self.has_role(&name2) {
             panic!("name12 error");
         }
-        let mut role1 = self.create_role(&name1);
+        let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.delete_role(role2);
-        // role1 is updated and should be updated into all_roles
-        if let Some(old_role) = self.all_roles.get_mut(&role1.name) {
-            *old_role = role1.clone();
-        }
+        role1.borrow_mut().add_role(role2.clone());
     }
 
     fn has_link(&mut self, name1: &str, name2: &str, _domain: Vec<&str>) -> bool {
@@ -105,11 +99,34 @@ impl RoleManager for DefaultRoleManager {
             return false;
         }
         let role1 = self.create_role(name1);
-        return role1.has_role(name2, self.max_hierarchy_level);
+        return role1.borrow().has_role(name2, self.max_hierarchy_level);
     }
 
-    fn get_roles(&self, name: &str, domain: Vec<&str>) -> Vec<&str> {
-        return vec![];
+    fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+        let mut name = name.to_owned();
+        if let Some(domain_val) = domain {
+            name = format!("{}::{}", domain_val.clone(), name);
+        }
+        if !self.has_role(&name) {
+            return vec![];
+        }
+        let role = self.create_role(&name);
+
+        if let Some(domain_val) = domain {
+            return role
+                .borrow()
+                .roles
+                .iter()
+                .map(|x| x.borrow().name[domain_val.len() + 2..].to_string())
+                .collect();
+        } else {
+            return role
+                .borrow()
+                .roles
+                .iter()
+                .map(|x| x.borrow().name.clone())
+                .collect();
+        }
     }
 
     fn get_users(&self, name: &str, domain: Vec<&str>) -> Vec<&str> {
@@ -128,7 +145,7 @@ impl RoleManager for DefaultRoleManager {
 #[derive(Clone, Debug)]
 pub struct Role {
     pub name: String,
-    pub roles: Vec<Role>,
+    pub roles: Vec<Rc<RefCell<Role>>>,
 }
 
 impl Role {
@@ -139,21 +156,21 @@ impl Role {
         };
     }
 
-    pub fn add_role(&mut self, other_role: Role) {
+    pub fn add_role(&mut self, other_role: Rc<RefCell<Role>>) {
         for role in self.roles.iter() {
-            if role.name == other_role.name {
+            if role.borrow().name == other_role.borrow().name {
                 return;
             }
         }
-        self.roles.push(other_role.clone());
+        self.roles.push(other_role);
     }
 
-    fn delete_role(&mut self, other_role: Role) {
+    fn delete_role(&mut self, other_role: Rc<RefCell<Role>>) {
         if let Some(pos) = self
             .roles
             .iter()
             .cloned()
-            .position(|x| x.name == other_role.name)
+            .position(|x| x.borrow().name == other_role.borrow().name)
         {
             self.roles.remove(pos);
         }
@@ -167,10 +184,56 @@ impl Role {
             return false;
         }
         for role in self.roles.iter() {
-            if role.has_role(name, hierarchy_level - 1) {
+            if role.borrow().has_role(name, hierarchy_level - 1) {
                 return true;
             }
         }
         return false;
+    }
+
+    fn get_roles(&self) -> Vec<String> {
+        let mut names = vec![];
+        for role in self.roles.iter() {
+            names.push(role.borrow().name.clone());
+        }
+        return names;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_role() {
+        let mut rm = DefaultRoleManager::new(3);
+        rm.add_link("u1", "g1", vec![]);
+        rm.add_link("u2", "g1", vec![]);
+        rm.add_link("u3", "g2", vec![]);
+        rm.add_link("u4", "g2", vec![]);
+        rm.add_link("u4", "g3", vec![]);
+        rm.add_link("g1", "g3", vec![]);
+
+        assert_eq!(true, rm.has_link("u1", "g1", vec![]));
+        assert_eq!(false, rm.has_link("u1", "g2", vec![]));
+        assert_eq!(true, rm.has_link("u1", "g3", vec![]));
+        assert_eq!(true, rm.has_link("u2", "g1", vec![]));
+        assert_eq!(false, rm.has_link("u2", "g2", vec![]));
+        assert_eq!(true, rm.has_link("u2", "g3", vec![]));
+        assert_eq!(false, rm.has_link("u3", "g1", vec![]));
+        assert_eq!(true, rm.has_link("u3", "g2", vec![]));
+        assert_eq!(false, rm.has_link("u3", "g3", vec![]));
+        assert_eq!(false, rm.has_link("u4", "g1", vec![]));
+        assert_eq!(true, rm.has_link("u4", "g2", vec![]));
+        assert_eq!(true, rm.has_link("u4", "g3", vec![]));
+
+        // test get_roles
+        assert_eq!(vec!["g1"], rm.get_roles("u1", None));
+        assert_eq!(vec!["g1"], rm.get_roles("u2", None));
+        assert_eq!(vec!["g2"], rm.get_roles("u3", None));
+        assert_eq!(vec!["g2", "g3"], rm.get_roles("u4", None));
+        assert_eq!(vec!["g3"], rm.get_roles("g1", None));
+        assert_eq!(vec![String::new(); 0], rm.get_roles("g2", None));
+        assert_eq!(vec![String::new(); 0], rm.get_roles("g3", None));
     }
 }
