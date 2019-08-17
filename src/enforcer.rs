@@ -420,4 +420,133 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
     }
+
+    #[test]
+    fn test_basic_model() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_model.conf");
+
+        let adapter = FileAdapter::new("examples/basic_policy.csv");
+        let e = Enforcer::new(m, adapter);
+        
+        assert!(e.enforce(vec!["alice", "data1", "read"]));
+        assert!(!e.enforce(vec!["alice", "data1", "write"]));
+        assert!(!e.enforce(vec!["alice", "data2", "read"]));
+        assert!(!e.enforce(vec!["alice", "data2", "write"]));
+        assert!(!e.enforce(vec!["bob", "data1", "read"]));
+        assert!(!e.enforce(vec!["bob", "data1", "write"]));
+        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+        assert!(e.enforce(vec!["bob", "data2", "write"]));
+    }
+
+    #[test]
+    fn test_basic_model_no_policy() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_model.conf");
+
+        let adapter = MemoryAdapter::default();
+        let e = Enforcer::new(m, adapter);
+
+        assert!(!e.enforce(vec!["alice", "data1", "read"]));
+        assert!(!e.enforce(vec!["alice", "data1", "write"]));
+        assert!(!e.enforce(vec!["alice", "data2", "read"]));
+        assert!(!e.enforce(vec!["alice", "data2", "write"]));
+        assert!(!e.enforce(vec!["bob", "data1", "read"]));
+        assert!(!e.enforce(vec!["bob", "data1", "write"]));
+        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+        assert!(!e.enforce(vec!["bob", "data2", "write"]));
+    }
+
+    #[test]
+    fn test_basic_model_with_root() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_with_root_model.conf");
+
+        let adapter = FileAdapter::new("examples/basic_policy.csv");
+        let e = Enforcer::new(m, adapter);
+        
+        assert!(e.enforce(vec!["alice", "data1", "read"]));
+        assert!(e.enforce(vec!["bob", "data2", "write"]));
+        assert!(e.enforce(vec!["root", "data1", "read"]));
+        assert!(e.enforce(vec!["root", "data1", "write"]));
+        assert!(e.enforce(vec!["root", "data2", "read"]));
+        assert!(e.enforce(vec!["root", "data2", "write"]));
+        assert!(!e.enforce(vec!["alice", "data1", "write"]));
+        assert!(!e.enforce(vec!["alice", "data2", "read"]));
+        assert!(!e.enforce(vec!["alice", "data2", "write"]));
+        assert!(!e.enforce(vec!["bob", "data1", "read"]));
+        assert!(!e.enforce(vec!["bob", "data1", "write"]));
+        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+    }
+
+    #[test]
+    fn test_basic_model_with_root_no_policy() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_with_root_model.conf");
+
+        let adapter = MemoryAdapter::default();
+        let e = Enforcer::new(m, adapter);
+
+        assert!(!e.enforce(vec!["alice", "data1", "read"]));
+        assert!(!e.enforce(vec!["bob", "data2", "write"]));
+        assert!(e.enforce(vec!["root", "data1", "read"]));
+        assert!(e.enforce(vec!["root", "data1", "write"]));
+        assert!(e.enforce(vec!["root", "data2", "read"]));
+        assert!(e.enforce(vec!["root", "data2", "write"]));
+        assert!(!e.enforce(vec!["alice", "data1", "write"]));
+        assert!(!e.enforce(vec!["alice", "data2", "read"]));
+        assert!(!e.enforce(vec!["alice", "data2", "write"]));
+        assert!(!e.enforce(vec!["bob", "data1", "read"]));
+        assert!(!e.enforce(vec!["bob", "data1", "write"]));
+        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+        
+    }
+
+    #[test]
+    fn test_basic_model_without_users() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_without_resources_model.conf");
+
+        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
+        let e = Enforcer::new(m, adapter);
+
+        assert!(e.enforce(vec!["alice", "read"]));
+        assert!(e.enforce(vec!["bob", "write"]));
+        assert!(!e.enforce(vec!["alice", "write"]));
+        assert!(!e.enforce(vec!["bob", "read"]));
+    }
+
+    //Todo: RBAC tests
+    
+
+    #[test]
+    fn test_ip_match_model() {
+        let mut m = Model::new();
+        m.load_model("examples/ipmatch_model.conf");
+
+        let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
+        let e = Enforcer::new(m, adapter);
+
+        assert!(e.enforce(vec!["192.168.2.123", "data1", "read"]));
+
+        assert!(e.enforce(vec!["10.0.0.5", "data2", "write"]));
+
+        assert!(!e.enforce(vec!["192.168.2.123", "data1", "write"]));
+        assert!(!e.enforce(vec!["192.168.2.123", "data2", "read"]));
+        assert!(!e.enforce(vec!["192.168.2.123", "data2", "write"]));
+
+        assert!(!e.enforce(vec!["192.168.0.123", "data1", "read"]));
+        assert!(!e.enforce(vec!["192.168.0.123", "data1", "write"]));
+        assert!(!e.enforce(vec!["192.168.0.123", "data2", "read"]));
+        assert!(!e.enforce(vec!["192.168.0.123", "data2", "write"]));
+
+        assert!(!e.enforce(vec!["10.0.0.5", "data1", "read"]));
+        assert!(!e.enforce(vec!["10.0.0.5", "data1", "write"]));
+        assert!(!e.enforce(vec!["10.0.0.5", "data2", "read"]));
+
+        assert!(!e.enforce(vec!["192.168.0.1", "data1", "read"]));
+        assert!(!e.enforce(vec!["192.168.0.1", "data1", "write"]));
+        assert!(!e.enforce(vec!["192.168.0.1", "data2", "read"]));
+        assert!(!e.enforce(vec!["192.168.0.1", "data2", "write"]));
+    }
 }
