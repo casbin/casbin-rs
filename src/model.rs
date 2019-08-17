@@ -1,5 +1,9 @@
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use regex::Regex;
+use ip_network::{IpNetwork, Ipv4Network, Ipv6Network, IpNetworkError};
+
+use std::net::IpAddr;
+use std::str::FromStr;
 use std::collections::HashMap;
 
 fn escape_assertion(s: String) -> String {
@@ -135,7 +139,7 @@ fn key_match2(key1: String, key2: String) -> bool {
     let mut key2 = key2.replace("/*", "/.*");
     let re = Regex::new("(.*):[^/]+(.*)").unwrap();
     loop {
-        if key2.contains("/:") {
+        if !key2.contains("/:") {
             break;
         }
         key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
@@ -143,27 +147,43 @@ fn key_match2(key1: String, key2: String) -> bool {
     return regex_match(key1, format!("^{}$", key2));
 }
 
-// fn key_match3(key1: String, key2: String) -> bool {
-//     let mut key2 = key2.replace("/*", "/.*");
-//     let re = Regex::new(r"(.*)\{[^/]+\}(.*)").unwrap();
-//     loop {
-//         if key2.contains("/{") {
-//             break;
-//         }
-//         key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
-//     }
-//     return regex_match(key1, format!("^{}$", key2));
-// }
-
-// fn key_match3_func(args: Vec<String>) -> bool {
-//     let args = args.unwrap();
-//     let name1 = args[0].clone();
-//     let name2 = args[1].clone();
-//     return key_match3(name1, name2);
-// }
+fn key_match3(key1: String, key2: String) -> bool {
+    let mut key2 = key2.replace("/*", "/.*");
+    let re = Regex::new(r"(.*)\{[^/]+\}(.*)").unwrap();
+    loop {
+        if !key2.contains("/{") {
+            break;
+        }
+        key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
+    }
+    return regex_match(key1, format!("^{}$", key2));
+}
 
 pub fn regex_match(key1: String, key2: String) -> bool {
     return Regex::new(key2.as_str()).unwrap().is_match(key1.as_str());
+}
+
+pub fn ip_match(key1: String, key2: String) -> bool {
+    let key2_split = key2.splitn(2, "/").collect::<Vec<&str>>();
+    let ip_addr2 = key2_split[0];
+
+    if let (Ok(ip_addr1), Ok(ip_addr2)) = (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>()) {
+        if key2_split.len() == 2 {
+            match key2_split[1].parse::<u8>() {
+                Ok(ip_netmask) => {
+                    match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
+                        Ok(ip_network) => ip_network.contains(ip_addr1),
+                        Err(err) => panic!("invalid ip network {}", err)
+                    }
+                }
+                Err(_err) => panic!("invalid netmask {}", key2_split[1])
+            }
+        } else {
+            ip_addr1 == ip_addr2
+        }
+    } else {
+        panic!("invalid argument {} {}", key1, key2)
+    }
 }
 
 #[cfg(test)]
@@ -171,14 +191,52 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_match() {
-        assert_eq!(
-            true,
-            key_match(
-                "/alice_data/resource1".to_owned(),
-                "/alice_data/*".to_owned()
-            )
-        );
-        assert_eq!(true, key_match("GET".to_owned(), "GET".to_owned()));
+    fn test_key_match() {
+        assert!(key_match("/foo/bar".to_owned(),"/foo/*".to_owned()));
+        assert!(!key_match("/bar/foo".to_owned(),"/foo/*".to_owned()));
+    }
+
+    #[test]
+    fn test_key_match2() {
+        assert!(key_match2("/foo/bar".to_owned(), "/foo/*".to_owned()));
+        assert!(key_match2("/foo/baz".to_owned(), "/foo/:bar".to_owned()));
+        assert!(key_match2("/foo/baz/foo".to_owned(), "/foo/:bar/foo".to_owned()));
+        assert!(!key_match2("/baz".to_owned(), "/foo".to_owned()));
+    }
+
+    #[test]
+    fn test_regex_match() {
+        assert!(regex_match("foobar".to_owned(), "^foo*".to_owned()));
+        assert!(!regex_match("barfoo".to_owned(), "^foo*".to_owned()));
+    }
+
+    #[test]
+    fn test_key_match3() {
+        assert!(key_match3("/foo/bar".to_owned(), "/foo/*".to_owned()));
+        assert!(key_match3("/foo/baz".to_owned(), "/foo/{bar}".to_owned()));
+        assert!(key_match3("/foo/baz/foo".to_owned(), "/foo/{bar}/foo".to_owned()));
+        assert!(!key_match3("/baz".to_owned(), "/foo".to_owned()));
+    }
+
+    #[test]
+    fn test_ip_match() {
+        assert!(ip_match("::1".to_owned(), "::0:1".to_owned()));
+        assert!(ip_match("192.168.1.1".to_owned(), "192.168.1.1".to_owned()));
+        assert!(ip_match("127.0.0.1".to_owned(), "::ffff:127.0.0.1".to_owned()));
+        assert!(ip_match("192.168.2.123".to_owned(), "192.168.2.0/24".to_owned()));
+        assert!(!ip_match("::1".to_owned(), "127.0.0.2".to_owned()));
+        assert!(!ip_match("192.168.2.189".to_owned(), "192.168.1.134/26".to_owned()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ip_match_panic_1() {
+        assert!(ip_match("I am alice".to_owned(), "127.0.0.1".to_owned()));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_ip_match_panic_2() {
+        assert!(ip_match("127.0.0.1".to_owned(), "I am alice".to_owned()));
     }
 }
