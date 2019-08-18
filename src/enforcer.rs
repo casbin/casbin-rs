@@ -57,7 +57,6 @@ impl<A: Adapter> Enforcer<A> {
             eft,
             rm,
         };
-
         return e;
     }
 
@@ -342,7 +341,7 @@ mod tests {
         );
     }
 
-    use crate::enforcer_api::RbacApi;
+    use crate::RbacApi;
     #[test]
     fn test_rbac_model_in_memory_indeterminate() {
         let mut m = Model::new();
@@ -514,8 +513,6 @@ mod tests {
         assert!(!e.enforce(vec!["alice", "write"]));
         assert!(!e.enforce(vec!["bob", "read"]));
     }
-
-    //Todo: RBAC tests
 
     #[test]
     fn test_ip_match_model() {

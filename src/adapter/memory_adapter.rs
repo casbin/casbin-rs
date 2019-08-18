@@ -1,4 +1,3 @@
-// policy data store in memory
 use crate::adapter::Adapter;
 use crate::model::Model;
 
@@ -23,8 +22,8 @@ impl Adapter for MemoryAdapter {
         }
     }
 
-    fn save_policy(&self, m: &mut Model) {
-        panic!("to be done");
+    fn save_policy(&self, _m: &mut Model) {
+        unimplemented!();
     }
 
     fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
@@ -37,16 +36,17 @@ impl Adapter for MemoryAdapter {
         return false;
     }
 
-    fn remove_policy(&self, _sec: String, _ptype: String, _rule: Vec<String>) {
-        panic!("to be done");
+    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
+        unimplemented!();
     }
+
     fn remove_filtered_policy(
         &self,
-        _sec: String,
-        _ptype: String,
+        _sec: &str,
+        _ptype: &str,
         _field_index: usize,
-        _field_values: Option<Vec<String>>,
-    ) {
-        panic!("to be done");
+        _field_values: Vec<&str>,
+    ) -> bool {
+        unimplemented!();
     }
 }

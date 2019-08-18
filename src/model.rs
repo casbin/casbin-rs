@@ -1,12 +1,11 @@
 use crate::config::Config;
 use crate::rbac::{DefaultRoleManager, RoleManager};
 
-use ip_network::{IpNetwork, IpNetworkError, Ipv4Network, Ipv6Network};
+use ip_network::IpNetwork;
 use regex::Regex;
 
 use std::collections::HashMap;
 use std::net::IpAddr;
-use std::str::FromStr;
 
 fn escape_assertion(s: String) -> String {
     let mut s = s;
@@ -17,6 +16,7 @@ fn escape_assertion(s: String) -> String {
 
 type AssertionMap = HashMap<String, Assertion>;
 
+#[derive(Clone)]
 pub struct Assertion {
     pub key: String,
     pub value: String,
@@ -58,6 +58,7 @@ impl Assertion {
     }
 }
 
+#[derive(Clone)]
 pub struct Model {
     pub model: HashMap<String, AssertionMap>,
 }
@@ -172,6 +173,59 @@ impl Model {
             }
         }
         return false;
+    }
+
+    pub fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+        if let Some(t1) = self.model.get_mut(sec) {
+            if let Some(t2) = t1.get_mut(ptype) {
+                for (i, r) in t2.policy.iter().enumerate() {
+                    if r == &rule {
+                        t2.policy.remove(i);
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    pub fn remove_filtered_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> bool {
+        let mut res = false;
+        let mut tmp: Vec<Vec<String>> = vec![];
+        if let Some(t1) = self.model.get_mut(sec) {
+            if let Some(t2) = t1.get_mut(ptype) {
+                for (_, rule) in t2.policy.iter().enumerate() {
+                    let mut matched = true;
+                    for (i, field_value) in field_values.iter().enumerate() {
+                        if !field_value.is_empty()
+                            && rule[field_index + i] != field_value.to_string()
+                        {
+                            matched = false;
+                            break;
+                        }
+                    }
+                    if matched {
+                        res = true;
+                    } else {
+                        tmp.push(rule.clone());
+                    }
+                }
+            }
+        }
+
+        // update new policy
+        if let Some(t1) = self.model.get_mut(sec) {
+            if let Some(t2) = t1.get_mut(ptype) {
+                t2.policy = tmp;
+            }
+        }
+        return res;
     }
 }
 
