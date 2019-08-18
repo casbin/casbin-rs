@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufReader, Cursor};
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";
@@ -23,13 +23,25 @@ impl Config {
         c
     }
 
+    pub fn from_text(text: &str) -> Self {
+        let mut c = Config {
+            data: HashMap::new(),
+        };
+
+        c.parse_buffer(&mut BufReader::new(Cursor::new(text.as_bytes())));
+        return c;
+    }
+
     fn parse(&mut self, path: &str) {
-        let f = File::open(path).expect("read config failed");
-        let mut reader = BufReader::new(f);
+        let mut f = File::open(path).expect("read config failed");
+        let mut c = Vec::new();
+        f.read_to_end(&mut c).expect("error while reading config");
+
+        let mut reader: BufReader<Cursor<&[u8]>> = BufReader::new(Cursor::new(&c));
         self.parse_buffer(&mut reader);
     }
 
-    pub fn parse_buffer(&mut self, reader: &mut BufReader<File>) {
+    fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) {
         let mut section = String::new();
 
         loop {
@@ -56,11 +68,16 @@ impl Config {
                 if option_val.len() != 2 {
                     panic!("parse content error, line={}", line);
                 }
+
                 self.add_config(
                     section.clone(),
                     option_val[0].to_string(),
                     option_val[1].to_string(),
                 );
+
+                if !next_section.is_empty() {
+                    section = next_section;
+                }
             }
         }
     }
