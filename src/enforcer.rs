@@ -40,7 +40,7 @@ pub struct Enforcer<A: Adapter> {
     pub adapter: A,
     pub fm: FunctionMap,
     pub eft: Box<dyn Effector>,
-    pub rm: Box<dyn RoleManager>
+    pub rm: Box<dyn RoleManager>,
 }
 
 impl<A: Adapter> Enforcer<A> {
@@ -428,7 +428,7 @@ mod tests {
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
-        
+
         assert!(e.enforce(vec!["alice", "data1", "read"]));
         assert!(!e.enforce(vec!["alice", "data1", "write"]));
         assert!(!e.enforce(vec!["alice", "data2", "read"]));
@@ -464,7 +464,7 @@ mod tests {
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
-        
+
         assert!(e.enforce(vec!["alice", "data1", "read"]));
         assert!(e.enforce(vec!["bob", "data2", "write"]));
         assert!(e.enforce(vec!["root", "data1", "read"]));
@@ -499,7 +499,6 @@ mod tests {
         assert!(!e.enforce(vec!["bob", "data1", "read"]));
         assert!(!e.enforce(vec!["bob", "data1", "write"]));
         assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        
     }
 
     #[test]
@@ -517,7 +516,6 @@ mod tests {
     }
 
     //Todo: RBAC tests
-    
 
     #[test]
     fn test_ip_match_model() {

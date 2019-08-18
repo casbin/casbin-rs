@@ -1,7 +1,7 @@
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::collections::HashMap;
 use crate::rbac::RoleManager;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
 type MatchingFunc = fn(&str, &str) -> bool;
 

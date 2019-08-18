@@ -1,12 +1,12 @@
+use crate::config::Config;
 use crate::rbac::{DefaultRoleManager, RoleManager};
-use crate::config::{Config};
 
+use ip_network::{IpNetwork, IpNetworkError, Ipv4Network, Ipv6Network};
 use regex::Regex;
-use ip_network::{IpNetwork, Ipv4Network, Ipv6Network, IpNetworkError};
 
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::str::FromStr;
-use std::collections::HashMap;
 
 fn escape_assertion(s: String) -> String {
     let mut s = s;
@@ -69,8 +69,12 @@ impl Model {
         };
     }
 
-    fn get_key_suffix(&self, i: u64) -> String  {
-        if i == 1 { "".to_owned() } else { i.to_string() }
+    fn get_key_suffix(&self, i: u64) -> String {
+        if i == 1 {
+            "".to_owned()
+        } else {
+            i.to_string()
+        }
     }
 
     fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> bool {
@@ -80,7 +84,7 @@ impl Model {
             "g" => "role_definition",
             "e" => "policy_effect",
             "m" => "matchers",
-            _ => panic!("section is not one of [r,p,g,e,m] {}", sec)
+            _ => panic!("section is not one of [r,p,g,e,m] {}", sec),
         };
 
         if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
@@ -229,13 +233,11 @@ pub fn ip_match(key1: String, key2: String) -> bool {
     if let (Ok(ip_addr1), Ok(ip_addr2)) = (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>()) {
         if key2_split.len() == 2 {
             match key2_split[1].parse::<u8>() {
-                Ok(ip_netmask) => {
-                    match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
-                        Ok(ip_network) => ip_network.contains(ip_addr1),
-                        Err(err) => panic!("invalid ip network {}", err)
-                    }
-                }
-                Err(_err) => panic!("invalid netmask {}", key2_split[1])
+                Ok(ip_netmask) => match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
+                    Ok(ip_network) => ip_network.contains(ip_addr1),
+                    Err(err) => panic!("invalid ip network {}", err),
+                },
+                Err(_err) => panic!("invalid netmask {}", key2_split[1]),
             }
         } else {
             if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) = (ip_addr1, ip_addr2) {
@@ -257,15 +259,18 @@ mod tests {
 
     #[test]
     fn test_key_match() {
-        assert!(key_match("/foo/bar".to_owned(),"/foo/*".to_owned()));
-        assert!(!key_match("/bar/foo".to_owned(),"/foo/*".to_owned()));
+        assert!(key_match("/foo/bar".to_owned(), "/foo/*".to_owned()));
+        assert!(!key_match("/bar/foo".to_owned(), "/foo/*".to_owned()));
     }
 
     #[test]
     fn test_key_match2() {
         assert!(key_match2("/foo/bar".to_owned(), "/foo/*".to_owned()));
         assert!(key_match2("/foo/baz".to_owned(), "/foo/:bar".to_owned()));
-        assert!(key_match2("/foo/baz/foo".to_owned(), "/foo/:bar/foo".to_owned()));
+        assert!(key_match2(
+            "/foo/baz/foo".to_owned(),
+            "/foo/:bar/foo".to_owned()
+        ));
         assert!(!key_match2("/baz".to_owned(), "/foo".to_owned()));
     }
 
@@ -279,7 +284,10 @@ mod tests {
     fn test_key_match3() {
         assert!(key_match3("/foo/bar".to_owned(), "/foo/*".to_owned()));
         assert!(key_match3("/foo/baz".to_owned(), "/foo/{bar}".to_owned()));
-        assert!(key_match3("/foo/baz/foo".to_owned(), "/foo/{bar}/foo".to_owned()));
+        assert!(key_match3(
+            "/foo/baz/foo".to_owned(),
+            "/foo/{bar}/foo".to_owned()
+        ));
         assert!(!key_match3("/baz".to_owned(), "/foo".to_owned()));
     }
 
@@ -287,10 +295,19 @@ mod tests {
     fn test_ip_match() {
         assert!(ip_match("::1".to_owned(), "::0:1".to_owned()));
         assert!(ip_match("192.168.1.1".to_owned(), "192.168.1.1".to_owned()));
-        assert!(ip_match("127.0.0.1".to_owned(), "::ffff:127.0.0.1".to_owned()));
-        assert!(ip_match("192.168.2.123".to_owned(), "192.168.2.0/24".to_owned()));
+        assert!(ip_match(
+            "127.0.0.1".to_owned(),
+            "::ffff:127.0.0.1".to_owned()
+        ));
+        assert!(ip_match(
+            "192.168.2.123".to_owned(),
+            "192.168.2.0/24".to_owned()
+        ));
         assert!(!ip_match("::1".to_owned(), "127.0.0.2".to_owned()));
-        assert!(!ip_match("192.168.2.189".to_owned(), "192.168.1.134/26".to_owned()));
+        assert!(!ip_match(
+            "192.168.2.189".to_owned(),
+            "192.168.1.134/26".to_owned()
+        ));
     }
 
     #[test]
