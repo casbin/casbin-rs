@@ -30,7 +30,7 @@ impl Clone for Box<dyn MatchFnClone> {
 pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();
-        return rm.has_link(name1.as_str(), name2.as_str(), vec![]);
+        return rm.has_link(name1.as_str(), name2.as_str(), None);
     };
     return Box::new(cb);
 }
