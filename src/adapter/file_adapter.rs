@@ -62,19 +62,24 @@ impl Adapter for FileAdapter {
     }
 
     fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
-        panic!("add_policy method not implemented yet");
+        // this api shouldn't implement, just for convinent
+        return true;
     }
-    fn remove_policy(&self, _sec: String, _ptype: String, _rule: Vec<String>) {
-        panic!("remove_policy method not implemented yet");
+
+    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
+        // this api shouldn't implement, just for convinent
+        return true;
     }
+
     fn remove_filtered_policy(
         &self,
-        _sec: String,
-        _ptype: String,
+        _sec: &str,
+        _ptype: &str,
         _field_index: usize,
-        _field_values: Option<Vec<String>>,
-    ) {
-        panic!("remove_filtered_policy method not implemented yet");
+        _field_values: Vec<&str>,
+    ) -> bool {
+        // this api shouldn't implement, just for convinent
+        return true;
     }
 }
 

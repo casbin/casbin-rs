@@ -12,10 +12,13 @@ rust:
 matrix:
   allow_failures:
     - rust: nightly
+before_script:
+- rustup component add rustfmt
 script:
 - cargo clean
 - cargo build
 - cargo test
+- cargo fmt --all -- --check
 
 after_success: |
   if [[ "$TRAVIS_RUST_VERSION" == stable ]]; then

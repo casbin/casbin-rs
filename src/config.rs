@@ -67,7 +67,9 @@ impl Config {
                     line = line[..line.len() - 1].trim_end().to_string();
 
                     let mut inner_line = String::new();
-                    let inner_bytes = reader.read_line(&mut inner_line).expect("read config line failed");
+                    let inner_bytes = reader
+                        .read_line(&mut inner_line)
+                        .expect("read config line failed");
                     if inner_bytes == 0 {
                         break;
                     }
@@ -88,7 +90,10 @@ impl Config {
                 }
 
                 let option_val: Vec<&str> = line
-                    .trim_end_matches(|c| char::is_whitespace(c) || char::to_string(&c) == DEFAULT_MULTI_LINE_SEPARATOR)
+                    .trim_end_matches(|c| {
+                        char::is_whitespace(c)
+                            || char::to_string(&c) == DEFAULT_MULTI_LINE_SEPARATOR
+                    })
                     .splitn(2, '=')
                     .map(|e| e.trim())
                     .collect();
@@ -134,21 +139,15 @@ impl Config {
         if keys.len() >= 2 {
             let section = &keys[0];
             let option = &keys[1];
-            self
-                .data
+            self.data
                 .get(section)
-                .and_then(|m| {
-                   m.get(option).map(|v| v.as_str())
-                })
+                .and_then(|m| m.get(option).map(|v| v.as_str()))
         } else {
             let section = DEFAULT_SECTION;
             let option = &keys[0];
-            self
-                .data
+            self.data
                 .get(section)
-                .and_then(|m| {
-                    m.get(option).map(|v| v.as_str())
-                })
+                .and_then(|m| m.get(option).map(|v| v.as_str()))
         }
     }
 
@@ -169,8 +168,7 @@ impl Config {
     }
 
     pub fn get_bool(&self, key: &str) -> Option<bool> {
-        return self.get(key)
-            .and_then(|v| v.parse::<bool>().ok())
+        return self.get(key).and_then(|v| v.parse::<bool>().ok());
     }
 
     pub fn get_string(&self, key: &str) -> Option<String> {
@@ -182,13 +180,11 @@ impl Config {
     }
 
     pub fn get_int(&self, key: &str) -> Option<i64> {
-        return self.get(key)
-            .and_then(|v| v.parse::<i64>().ok());
+        return self.get(key).and_then(|v| v.parse::<i64>().ok());
     }
 
     pub fn get_float(&self, key: &str) -> Option<f64> {
-        return self.get(key)
-            .and_then(|v| v.parse::<f64>().ok());
+        return self.get(key).and_then(|v| v.parse::<f64>().ok());
     }
 }
 
@@ -203,19 +199,40 @@ mod tests {
         assert_eq!(Some(true), config.get_bool("debug"));
         assert_eq!(Some(64), config.get_int("math::math.i64"));
         assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-        assert_eq!(Some("10.0.0.1".to_owned()), config.get_string("mysql::mysql.master.host"));
+        assert_eq!(
+            Some("10.0.0.1".to_owned()),
+            config.get_string("mysql::mysql.master.host")
+        );
 
         config.set("other::key1", "new test key");
-        assert_eq!(Some("new test key".to_owned()), config.get_string("other::key1"));
+        assert_eq!(
+            Some("new test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
         config.set("other::key1", "test key");
-        assert_eq!(Some("test key".to_owned()), config.get_string("other::key1"));
+        assert_eq!(
+            Some("test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
-        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi1::name"));
-        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi2::name"));
-        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi3::name"));
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi1::name")
+        );
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi2::name")
+        );
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi3::name")
+        );
         assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
-        assert_eq!(Some("r.sub==p.sub&&r.obj==p.obj".to_owned()), config.get_string("multi5::name"));
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi5::name")
+        );
     }
 
     #[test]
@@ -252,12 +269,21 @@ mod tests {
         assert_eq!(Some(true), config.get_bool("debug"));
         assert_eq!(Some(64), config.get_int("math::math.i64"));
         assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-        assert_eq!(Some("10.0.0.1".to_owned()), config.get_string("mysql::mysql.master.host"));
+        assert_eq!(
+            Some("10.0.0.1".to_owned()),
+            config.get_string("mysql::mysql.master.host")
+        );
 
         config.set("other::key1", "new test key");
-        assert_eq!(Some("new test key".to_owned()), config.get_string("other::key1"));
+        assert_eq!(
+            Some("new test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
         config.set("other::key1", "test key");
-        assert_eq!(Some("test key".to_owned()), config.get_string("other::key1"));
+        assert_eq!(
+            Some("test key".to_owned()),
+            config.get_string("other::key1")
+        );
     }
 }
