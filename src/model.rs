@@ -11,7 +11,7 @@ fn escape_assertion(s: String) -> String {
     let mut s = s;
     // TODO: should replace . using regex
     s = s.replacen(".", "_", 100);
-    return s;
+    s
 }
 
 type AssertionMap = HashMap<String, Assertion>;
@@ -26,16 +26,18 @@ pub struct Assertion {
 }
 
 impl Assertion {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        return Assertion {
+        Assertion {
             key: String::new(),
             value: String::new(),
             tokens: vec![],
             policy: vec![],
             rm: Box::new(DefaultRoleManager::new(0)),
-        };
+        }
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) {
         let count = self.value.chars().filter(|&c| c == '_').count();
         for (_k, rule) in self.policy.iter().enumerate() {
@@ -64,10 +66,11 @@ pub struct Model {
 }
 
 impl Model {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        return Model {
+        Model {
             model: HashMap::new(),
-        };
+        }
     }
 
     fn get_key_suffix(&self, i: u64) -> String {
@@ -139,10 +142,11 @@ impl Model {
         }
 
         if sec == "r" || sec == "p" {
-            ast.tokens = ast.value.split(", ").map(String::from).collect();
-            for i in 0..ast.tokens.len() {
-                ast.tokens[i] = format!("{}_{}", key.clone(), ast.tokens[i]);
-            }
+            ast.tokens = ast
+                .value
+                .split(", ")
+                .map(|x| format!("{}_{}", key, x))
+                .collect();
         } else {
             ast.value = escape_assertion(ast.value);
         }
@@ -155,9 +159,10 @@ impl Model {
             self.model.insert(sec.to_owned(), new_ast_map);
         }
 
-        return true;
+        true
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) {
         let asts = self.model.get_mut("g").unwrap();
         for (_key, ast) in asts.iter_mut() {
@@ -172,7 +177,7 @@ impl Model {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
@@ -186,7 +191,7 @@ impl Model {
                 }
             }
         }
-        return false;
+        false
     }
 
     pub fn remove_filtered_policy(
@@ -203,9 +208,7 @@ impl Model {
                 for (_, rule) in t2.policy.iter().enumerate() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
-                        if !field_value.is_empty()
-                            && rule[field_index + i] != field_value.to_string()
-                        {
+                        if !field_value.is_empty() && rule[field_index + i] != *field_value {
                             matched = false;
                             break;
                         }
@@ -225,7 +228,7 @@ impl Model {
                 t2.policy = tmp;
             }
         }
-        return res;
+        res
     }
 }
 
@@ -238,17 +241,17 @@ pub fn load_function_map() -> FunctionMap {
     fm.insert("keyMatch3".to_owned(), key_match3);
     fm.insert("regexMatch".to_owned(), regex_match);
     fm.insert("ipMatch".to_owned(), ip_match);
-    return fm;
+    fm
 }
 
 pub fn key_match(key1: String, key2: String) -> bool {
-    if let Some(i) = key2.find("*") {
+    if let Some(i) = key2.find('*') {
         if key1.len() > i {
-            return &key1[..i] == &key2[..i];
+            return key1[..i] == key2[..i];
         }
-        return &key1[..] == &key2[..i];
+        key1[..] == key2[..i]
     } else {
-        return key1 == key2;
+        key1 == key2
     }
 }
 
@@ -261,7 +264,7 @@ fn key_match2(key1: String, key2: String) -> bool {
         }
         key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
     }
-    return regex_match(key1, format!("^{}$", key2));
+    regex_match(key1, format!("^{}$", key2))
 }
 
 fn key_match3(key1: String, key2: String) -> bool {
@@ -273,15 +276,15 @@ fn key_match3(key1: String, key2: String) -> bool {
         }
         key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
     }
-    return regex_match(key1, format!("^{}$", key2));
+    regex_match(key1, format!("^{}$", key2))
 }
 
 pub fn regex_match(key1: String, key2: String) -> bool {
-    return Regex::new(key2.as_str()).unwrap().is_match(key1.as_str());
+    Regex::new(key2.as_str()).unwrap().is_match(key1.as_str())
 }
 
 pub fn ip_match(key1: String, key2: String) -> bool {
-    let key2_split = key2.splitn(2, "/").collect::<Vec<&str>>();
+    let key2_split = key2.splitn(2, '/').collect::<Vec<&str>>();
     let ip_addr2 = key2_split[0];
 
     if let (Ok(ip_addr1), Ok(ip_addr2)) = (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>()) {

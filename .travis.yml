@@ -14,10 +14,12 @@ matrix:
     - rust: nightly
 before_script:
 - rustup component add rustfmt
+- rustup component add clippy
 script:
 - cargo clean
 - cargo build
 - cargo test
+- cargo clippy -- -D warnings
 - cargo fmt --all -- --check
 
 after_success: |

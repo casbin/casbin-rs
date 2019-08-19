@@ -18,19 +18,19 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
     fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> bool {
         let mut perm = permission;
         perm.insert(0, user);
-        return self.add_policy(perm);
+        self.add_policy(perm)
     }
 
     fn add_role_for_user(&mut self, user: &str, role: &str) -> bool {
-        return self.add_grouping_policy(vec![user, role]);
+        self.add_grouping_policy(vec![user, role])
     }
 
     fn delete_role_for_user(&mut self, user: &str, role: &str) -> bool {
-        return self.remove_grouping_policy(vec![user, role]);
+        self.remove_grouping_policy(vec![user, role])
     }
 
     fn delete_roles_for_user(&mut self, user: &str) -> bool {
-        return self.remove_filtered_grouping_policy(0, vec![user]);
+        self.remove_filtered_grouping_policy(0, vec![user])
     }
 
     fn get_roles_for_user(&mut self, name: &str) -> Vec<String> {
@@ -41,19 +41,18 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
             }
         }
 
-        return roles;
+        roles
     }
 
     fn get_users_for_role(&self, name: &str) -> Vec<String> {
-        return self
-            .model
+        self.model
             .model
             .get("g")
             .unwrap()
             .get("g")
             .unwrap()
             .rm
-            .get_users(name, None);
+            .get_users(name, None)
     }
 
     fn has_role_for_user(&mut self, name: &str, role: &str) -> bool {
@@ -65,17 +64,17 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
                 break;
             }
         }
-        return has_role;
+        has_role
     }
 
     fn delete_user(&mut self, name: &str) -> bool {
-        return self.remove_filtered_grouping_policy(0, vec![name]);
+        self.remove_filtered_grouping_policy(0, vec![name])
     }
 
     fn delete_role(&mut self, name: &str) -> bool {
         let res1 = self.remove_filtered_grouping_policy(1, vec![name]);
         let res2 = self.remove_filtered_policy(0, vec![name]);
-        return res1 || res2;
+        res1 || res2
     }
 }
 

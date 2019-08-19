@@ -14,26 +14,29 @@ pub struct DefaultEffector {}
 
 // TODO: can we remove results? seems to be useless
 impl Effector for DefaultEffector {
-    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>, results: Vec<f64>) -> bool {
-        let mut result = false;
+    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>, _results: Vec<f64>) -> bool {
         if expr == "some(where (p_eft == allow))" {
-            result = false;
+            let mut result = false;
             for eft in effects {
                 if eft == EffectKind::Allow {
                     result = true;
                     break;
                 }
             }
+
+            result
         } else if expr == "!some(where (p_eft == deny))" {
-            result = true;
+            let mut result = true;
             for eft in effects {
                 if eft == EffectKind::Deny {
                     result = false;
                     break;
                 }
             }
+
+            result
         } else if expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
-            result = false;
+            let mut result = false;
             for eft in effects {
                 if eft == EffectKind::Allow {
                     result = true;
@@ -42,8 +45,10 @@ impl Effector for DefaultEffector {
                     break;
                 }
             }
+
+            result
         } else if expr == "priority(p_eft) || deny" {
-            result = false;
+            let mut result = false;
             for eft in effects {
                 if eft != EffectKind::Indeterminate {
                     if eft == EffectKind::Allow {
@@ -54,11 +59,10 @@ impl Effector for DefaultEffector {
                     break;
                 }
             }
+
+            result
         } else {
             panic!("unsupported effect");
-            // result = false;
         }
-
-        return result;
     }
 }
