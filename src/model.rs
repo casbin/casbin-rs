@@ -164,9 +164,10 @@ impl Model {
 
     #[allow(clippy::borrowed_box)]
     pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) {
-        let asts = self.model.get_mut("g").unwrap();
-        for (_key, ast) in asts.iter_mut() {
-            ast.build_role_links(rm);
+        if let Some(asts) = self.model.get_mut("g") {
+            for (_key, ast) in asts.iter_mut() {
+                ast.build_role_links(rm);
+            }
         }
     }
 
@@ -192,6 +193,19 @@ impl Model {
             }
         }
         false
+    }
+
+    pub fn clear_policy(&mut self) {
+        if let Some(model_p) = self.model.get_mut("p") {
+            for (_key, ast) in model_p.iter_mut() {
+                ast.policy = vec![];
+            }
+        }
+        if let Some(model_g) = self.model.get_mut("g") {
+            for (_key, ast) in model_g.iter_mut() {
+                ast.policy = vec![];
+            }
+        }
     }
 
     pub fn remove_filtered_policy(
