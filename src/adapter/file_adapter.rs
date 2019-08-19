@@ -13,9 +13,9 @@ type LoadPolicyFileHandler = fn(String, &mut Model);
 
 impl FileAdapter {
     pub fn new(path: &str) -> Self {
-        return FileAdapter {
+        FileAdapter {
             file_path: path.to_owned(),
-        };
+        }
     }
 
     pub fn load_policy_file(&self, m: &mut Model, handler: LoadPolicyFileHandler) {
@@ -58,17 +58,17 @@ impl Adapter for FileAdapter {
                 tmp += s1.as_str();
             }
         }
-        return self.save_policy_file(tmp);
+        self.save_policy_file(tmp)
     }
 
     fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
         // this api shouldn't implement, just for convinent
-        return true;
+        true
     }
 
     fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
         // this api shouldn't implement, just for convinent
-        return true;
+        true
     }
 
     fn remove_filtered_policy(
@@ -79,7 +79,7 @@ impl Adapter for FileAdapter {
         _field_values: Vec<&str>,
     ) -> bool {
         // this api shouldn't implement, just for convinent
-        return true;
+        true
     }
 }
 
@@ -87,10 +87,7 @@ fn load_policy_line(line: String, m: &mut Model) {
     if line == "" || line.chars().nth(0).unwrap() == '#' {
         return;
     }
-    let mut tokens: Vec<String> = line.split(',').map(String::from).collect();
-    for i in 0..tokens.len() {
-        tokens[i] = tokens[i].trim().to_string();
-    }
+    let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
     let key = tokens[0].clone();
     let sec = key.chars().nth(0).unwrap().to_string();
 

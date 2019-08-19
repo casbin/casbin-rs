@@ -82,7 +82,7 @@ impl Config {
                         continue;
                     }
 
-                    if inner_line.starts_with("[") && inner_line.ends_with("]") {
+                    if inner_line.starts_with('[') && inner_line.ends_with(']') {
                         next_section = inner_line[1..inner_line.len() - 1].to_string();
                     } else {
                         line.push_str(&inner_line);
@@ -120,7 +120,7 @@ impl Config {
         if section.is_empty() {
             section = DEFAULT_SECTION.to_owned();
         }
-        let section_value = self.data.entry(section).or_insert(HashMap::new());
+        let section_value = self.data.entry(section).or_insert_with(HashMap::new);
 
         // if key not exists then insert, else update
         let key_value = section_value.get_mut(&option);
@@ -168,23 +168,23 @@ impl Config {
     }
 
     pub fn get_bool(&self, key: &str) -> Option<bool> {
-        return self.get(key).and_then(|v| v.parse::<bool>().ok());
+        self.get(key).and_then(|v| v.parse::<bool>().ok())
     }
 
     pub fn get_string(&self, key: &str) -> Option<String> {
-        return self.get_str(key).map(|v| v.to_string());
+        self.get_str(key).map(|v| v.to_string())
     }
 
     pub fn get_str(&self, key: &str) -> Option<&str> {
-        return self.get(key);
+        self.get(key)
     }
 
     pub fn get_int(&self, key: &str) -> Option<i64> {
-        return self.get(key).and_then(|v| v.parse::<i64>().ok());
+        self.get(key).and_then(|v| v.parse::<i64>().ok())
     }
 
     pub fn get_float(&self, key: &str) -> Option<f64> {
-        return self.get(key).and_then(|v| v.parse::<f64>().ok());
+        self.get(key).and_then(|v| v.parse::<f64>().ok())
     }
 }
 

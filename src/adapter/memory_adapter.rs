@@ -33,7 +33,7 @@ impl Adapter for MemoryAdapter {
         if self.policy.insert(line) {
             return true;
         }
-        return false;
+        false
     }
 
     fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {

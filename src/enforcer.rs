@@ -30,9 +30,9 @@ impl Clone for Box<dyn MatchFnClone> {
 pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();
-        return rm.has_link(name1.as_str(), name2.as_str(), None);
+        rm.has_link(name1.as_str(), name2.as_str(), None)
     };
-    return Box::new(cb);
+    Box::new(cb)
 }
 
 pub struct Enforcer<A: Adapter> {
@@ -49,15 +49,16 @@ impl<A: Adapter> Enforcer<A> {
         let fm = load_function_map();
         let eft = Box::new(DefaultEffector::default());
         let rm = Box::new(DefaultRoleManager::new(10));
+
         a.load_policy(&mut m);
-        let e = Self {
+
+        Self {
             model: m,
             adapter: a,
             fm,
             eft,
             rm,
-        };
-        return e;
+        }
     }
 
     pub fn enforce(&self, rvals: Vec<&str>) -> bool {
@@ -237,7 +238,7 @@ impl<A: Adapter> Enforcer<A> {
             .unwrap()
             .value
             .clone();
-        return self.eft.merge_effects(ee, policy_effects, vec![]);
+        self.eft.merge_effects(ee, policy_effects, vec![])
     }
 
     pub fn build_role_links(&mut self) {

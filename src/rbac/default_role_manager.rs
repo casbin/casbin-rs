@@ -15,18 +15,18 @@ pub struct DefaultRoleManager {
 
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
-        return DefaultRoleManager {
+        DefaultRoleManager {
             all_roles: HashMap::new(),
             max_hierarchy_level,
             has_pattern: false,
             matching_func: None,
-        };
+        }
     }
 
     fn create_role(&mut self, name: &str) -> Rc<RefCell<Role>> {
         self.all_roles
             .entry(name.to_owned())
-            .or_insert(Rc::new(RefCell::new(Role::new(name.to_owned()))))
+            .or_insert_with(|| Rc::new(RefCell::new(Role::new(name.to_owned()))))
             .clone()
     }
 
@@ -34,7 +34,7 @@ impl DefaultRoleManager {
         if let Some(_role) = self.all_roles.get(name) {
             return true;
         }
-        return false;
+        false
     }
 }
 
@@ -87,8 +87,9 @@ impl RoleManager for DefaultRoleManager {
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return false;
         }
-        let role1 = self.create_role(&name1);
-        return role1.borrow().has_role(&name2, self.max_hierarchy_level);
+        self.create_role(&name1)
+            .borrow()
+            .has_role(&name2, self.max_hierarchy_level)
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
@@ -102,14 +103,13 @@ impl RoleManager for DefaultRoleManager {
         let role = self.create_role(&name);
 
         if let Some(domain_val) = domain {
-            return role
-                .borrow()
+            role.borrow()
                 .get_roles()
                 .iter()
                 .map(|x| x[domain_val.len() + 2..].to_string())
-                .collect();
+                .collect()
         } else {
-            return role.borrow().get_roles();
+            role.borrow().get_roles()
         }
     }
 
@@ -134,7 +134,7 @@ impl RoleManager for DefaultRoleManager {
                 .map(|x| x[domain_val.len() + 2..].to_string())
                 .collect();
         }
-        return names;
+        names
     }
 
     fn print_roles(&self) {
@@ -154,10 +154,10 @@ pub struct Role {
 
 impl Role {
     fn new(name: String) -> Self {
-        return Role {
+        Role {
             name,
             roles: vec![],
-        };
+        }
     }
 
     fn add_role(&mut self, other_role: Rc<RefCell<Role>>) {
@@ -183,7 +183,7 @@ impl Role {
         if self.name == name {
             return true;
         }
-        if hierarchy_level <= 0 {
+        if hierarchy_level == 0 {
             return false;
         }
         for role in self.roles.iter() {
@@ -191,7 +191,7 @@ impl Role {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     fn get_roles(&self) -> Vec<String> {
@@ -199,7 +199,7 @@ impl Role {
         for role in self.roles.iter() {
             names.push(role.borrow().name.clone());
         }
-        return names;
+        names
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
@@ -208,7 +208,7 @@ impl Role {
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 
