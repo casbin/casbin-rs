@@ -1,6 +1,11 @@
 pub mod file_adapter;
 pub mod memory_adapter;
 
+#[cfg(feature = "postgres")]
+pub mod postgres_adapter;
+#[cfg(feature = "postgres")]
+pub use postgres_adapter::PostgresAdapter;
+
 pub use file_adapter::FileAdapter;
 pub use memory_adapter::MemoryAdapter;
 

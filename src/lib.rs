@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate diesel;
+
 pub mod adapter;
 pub mod config;
 pub mod effector;
