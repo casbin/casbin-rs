@@ -392,7 +392,7 @@ mod tests {
         let mut m = Model::new();
         m.load_model("examples/rbac_model.conf");
 
-        let mut conn_opts = ConnOptions::default();
+        let conn_opts = ConnOptions::default();
         let file_adapter = FileAdapter::new("examples/rbac_policy.csv");
 
         let mut e = Enforcer::new(m, file_adapter);
