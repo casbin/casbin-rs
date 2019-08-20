@@ -37,19 +37,6 @@ impl<'a> PostgresAdapter {
             .and_then(|conn| {
                 sql_query(format!(
                     r#"
-                    SELECT 'CREATE DATABASE {}'
-                        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{}')
-                    "#,
-                    conn_opts.get_db(),
-                    conn_opts.get_db()
-                ))
-                .execute(&conn)
-                .map(|_| conn)
-                .map_err(DieselError::Error)
-            })
-            .and_then(|conn| {
-                sql_query(format!(
-                    r#"
                             CREATE TABLE IF NOT EXISTS {} (
                                 id SERIAL PRIMARY KEY,
                                 ptype VARCHAR,
@@ -392,7 +379,8 @@ mod tests {
         let mut m = Model::new();
         m.load_model("examples/rbac_model.conf");
 
-        let conn_opts = ConnOptions::default();
+        let mut conn_opts = ConnOptions::default();
+        conn_opts.set_auth("casbin_rs", "casbin_rs");
         let file_adapter = FileAdapter::new("examples/rbac_policy.csv");
 
         let mut e = Enforcer::new(m, file_adapter);

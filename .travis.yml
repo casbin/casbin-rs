@@ -17,6 +17,9 @@ matrix:
 before_script:
 - rustup component add rustfmt
 - rustup component add clippy
+- psql -c "CREATE DATABASE casbin;" -U postgres
+- psql -c "CREATE USER casbin_rs WITH PASSWORD 'casbin_rs';" -U postgres
+
 script:
 - cargo clean
 - cargo build
