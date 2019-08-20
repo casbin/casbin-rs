@@ -14,8 +14,7 @@ mod schema;
 
 use models::*;
 
-pub struct PostgresAdapter<'a> {
-    conn_opts: ConnOptions<'a>,
+pub struct PostgresAdapter {
     pool: Pool<ConnectionManager<PgConnection>>,
 }
 
@@ -24,8 +23,8 @@ pub enum DieselError {
     Error(Error),
 }
 
-impl<'a> PostgresAdapter<'a> {
-    pub fn new(conn_opts: ConnOptions<'a>) -> Result<Self, DieselError> {
+impl<'a> PostgresAdapter {
+    pub fn new(conn_opts: ConnOptions) -> Result<Self, DieselError> {
         let manager = ConnectionManager::<PgConnection>::new(conn_opts.get_url());
 
         let pool = Pool::builder()
@@ -53,7 +52,7 @@ impl<'a> PostgresAdapter<'a> {
                 .execute(&conn)
                 .map_err(DieselError::Error)
             })
-            .map(|_x| Self { conn_opts, pool })
+            .map(|_x| Self { pool })
     }
 
     pub fn save_policy_line(&self, ptype: &'a str, rule: Vec<&'a str>) -> NewCasbinRule<'a> {
@@ -118,7 +117,7 @@ impl<'a> PostgresAdapter<'a> {
     }
 }
 
-impl<'a> Adapter for PostgresAdapter<'a> {
+impl Adapter for PostgresAdapter {
     fn load_policy(&self, m: &mut Model) {
         use schema::casbin_rules::dsl::casbin_rules;
 
