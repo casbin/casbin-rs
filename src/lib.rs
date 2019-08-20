@@ -1,3 +1,4 @@
+#[cfg(feature = "postgres")]
 #[macro_use]
 extern crate diesel;
 

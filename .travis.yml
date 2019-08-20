@@ -5,6 +5,8 @@ addons:
     apt:
         packages:
             - libssl-dev
+services:
+    - postgresql
 cache: cargo
 rust:
   - stable
