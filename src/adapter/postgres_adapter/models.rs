@@ -26,13 +26,13 @@ pub struct NewCasbinRule<'a> {
 
 #[derive(Clone, Debug)]
 pub struct ConnOptions<'a> {
-    pub hostname: &'a str,
-    pub port: u16,
-    pub username: Option<&'a str>,
-    pub password: Option<&'a str>,
-    pub database: &'a str,
-    pub table: &'a str,
-    pub pool_size: u8,
+    hostname: &'a str,
+    port: u16,
+    username: Option<&'a str>,
+    password: Option<&'a str>,
+    database: &'a str,
+    table: &'a str,
+    pool_size: u8,
 }
 
 impl<'a> Default for ConnOptions<'a> {
@@ -86,10 +86,10 @@ impl<'a> ConnOptions<'a> {
         }
     }
 
-    pub fn set_table(&mut self, table: &'a str) -> &mut Self {
-        self.table = table;
-        self
-    }
+    // fn set_table(&mut self, table: &'a str) -> &mut Self {
+    //     self.table = table;
+    //     self
+    // }
 
     pub fn get_table(&self) -> String {
         self.table.to_owned()
@@ -98,5 +98,9 @@ impl<'a> ConnOptions<'a> {
     pub fn set_pool(&mut self, pool_size: u8) -> &mut Self {
         self.pool_size = pool_size;
         self
+    }
+
+    pub fn get_db(&self) -> String {
+        self.database.to_string()
     }
 }

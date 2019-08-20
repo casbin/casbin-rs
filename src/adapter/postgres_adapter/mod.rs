@@ -6,7 +6,8 @@ use diesel::{
     pg::PgConnection,
     r2d2::{ConnectionManager, Pool, PoolError},
     result::Error,
-    sql_query, BoolExpressionMethods, ExpressionMethods, QueryDsl, RunQueryDsl,
+    sql_query, BoolExpressionMethods, ExpressionMethods, PgExpressionMethods, QueryDsl,
+    RunQueryDsl,
 };
 
 mod models;
@@ -36,17 +37,30 @@ impl<'a> PostgresAdapter {
             .and_then(|conn| {
                 sql_query(format!(
                     r#"
-                    CREATE TABLE IF NOT EXISTS {} (
-                        id SERIAL PRIMARY KEY,
-                        ptype VARCHAR,
-                        v0 VARCHAR,
-                        v1 VARCHAR,
-                        v2 VARCHAR,
-                        v3 VARCHAR,
-                        v4 VARCHAR,
-                        v5 VARCHAR
-                    )
-                "#,
+                    SELECT 'CREATE DATABASE {}'
+                        WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{}')
+                    "#,
+                    conn_opts.get_db(),
+                    conn_opts.get_db()
+                ))
+                .execute(&conn)
+                .map(|_| conn)
+                .map_err(DieselError::Error)
+            })
+            .and_then(|conn| {
+                sql_query(format!(
+                    r#"
+                            CREATE TABLE IF NOT EXISTS {} (
+                                id SERIAL PRIMARY KEY,
+                                ptype VARCHAR,
+                                v0 VARCHAR,
+                                v1 VARCHAR,
+                                v2 VARCHAR,
+                                v3 VARCHAR,
+                                v4 VARCHAR,
+                                v5 VARCHAR
+                            );
+                        "#,
                     conn_opts.get_table()
                 ))
                 .execute(&conn)
@@ -95,7 +109,7 @@ impl<'a> PostgresAdapter {
 
     pub fn load_policy_line(&self, casbin_rule: &CasbinRule) -> Option<Vec<String>> {
         if let Some(ref sec) = casbin_rule.ptype {
-            if let Some(_) = sec.chars().nth(0) {
+            if sec.chars().nth(0).is_some() {
                 return Some(
                     vec![
                         &casbin_rule.v0,
@@ -121,7 +135,9 @@ impl Adapter for PostgresAdapter {
     fn load_policy(&self, m: &mut Model) {
         use schema::casbin_rules::dsl::casbin_rules;
 
-        self.pool
+        // Todo: add error handling to Adapter trait
+        let _ = self
+            .pool
             .get()
             .map_err(DieselError::PoolError)
             .and_then(|conn| {
@@ -152,7 +168,9 @@ impl Adapter for PostgresAdapter {
     fn save_policy(&self, m: &mut Model) {
         use schema::casbin_rules::dsl::casbin_rules;
 
-        self.pool
+        // Todo: add error handling to Adapter trait
+        let _ = self
+            .pool
             .get()
             .map_err(DieselError::PoolError)
             .and_then(|conn| {
@@ -170,7 +188,7 @@ impl Adapter for PostgresAdapter {
                                 rule.iter().map(|x| x.as_str()).collect::<Vec<&str>>(),
                             );
 
-                            diesel::insert_into(casbin_rules)
+                            let _ = diesel::insert_into(casbin_rules)
                                 .values(&new_rule)
                                 .execute(&conn)
                                 .map_err(DieselError::Error);
@@ -186,7 +204,7 @@ impl Adapter for PostgresAdapter {
                                 rule.iter().map(|x| x.as_str()).collect::<Vec<&str>>(),
                             );
 
-                            diesel::insert_into(casbin_rules)
+                            let _ = diesel::insert_into(casbin_rules)
                                 .values(&new_rule)
                                 .execute(&conn)
                                 .map_err(DieselError::Error);
@@ -215,7 +233,7 @@ impl Adapter for PostgresAdapter {
             .is_ok()
     }
 
-    fn remove_policy(&self, sec: &str, pt: &str, rule: Vec<&str>) -> bool {
+    fn remove_policy(&self, _sec: &str, pt: &str, rule: Vec<&str>) -> bool {
         use schema::casbin_rules::dsl::*;
 
         self.pool
@@ -225,17 +243,20 @@ impl Adapter for PostgresAdapter {
                 diesel::delete(
                     casbin_rules.filter(
                         ptype.eq(pt).and(
-                            v0.eq(rule.get(0)).and(
-                                v1.eq(rule.get(1)).and(v2.eq(rule.get(2))).and(
-                                    v3.eq(rule.get(3))
-                                        .and(v4.eq(rule.get(4)))
-                                        .and(v5.eq(rule.get(5))),
-                                ),
+                            v0.is_not_distinct_from(rule.get(0)).and(
+                                v1.is_not_distinct_from(rule.get(1))
+                                    .and(v2.is_not_distinct_from(rule.get(2)))
+                                    .and(
+                                        v3.is_not_distinct_from(rule.get(3))
+                                            .and(v4.is_not_distinct_from(rule.get(4)))
+                                            .and(v5.is_not_distinct_from(rule.get(5))),
+                                    ),
                             ),
                         ),
                     ),
                 )
                 .execute(&conn)
+                .and_then(|n| if n == 1 { Ok(()) } else { Err(Error::NotFound) })
                 .map_err(DieselError::Error)
             })
             .is_ok()
@@ -243,14 +264,14 @@ impl Adapter for PostgresAdapter {
 
     fn remove_filtered_policy(
         &self,
-        sec: &str,
+        _sec: &str,
         pt: &str,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> bool {
         use schema::casbin_rules::dsl::*;
 
-        if field_index >= 0 && field_index <= 4 && field_values.len() > 0 {
+        if field_index <= 5 && !field_values.is_empty() && field_values.len() <= 6 - field_index {
             self.pool
                 .get()
                 .map_err(DieselError::PoolError)
@@ -259,13 +280,21 @@ impl Adapter for PostgresAdapter {
                         diesel::delete(
                             casbin_rules.filter(
                                 ptype.eq(pt).and(
-                                    v0.eq(field_values.get(0)).and(
-                                        v1.eq(field_values.get(1))
-                                            .and(v2.eq(field_values.get(2)))
+                                    v0.is_not_distinct_from(field_values.get(0)).and(
+                                        v1.is_not_distinct_from(field_values.get(1))
+                                            .and(v2.is_not_distinct_from(field_values.get(2)))
                                             .and(
-                                                v3.eq(field_values.get(3))
-                                                    .and(v4.eq(field_values.get(4)))
-                                                    .and(v5.eq(field_values.get(5))),
+                                                v3.is_not_distinct_from(field_values.get(3))
+                                                    .and(
+                                                        v4.is_not_distinct_from(
+                                                            field_values.get(4),
+                                                        ),
+                                                    )
+                                                    .and(
+                                                        v5.is_not_distinct_from(
+                                                            field_values.get(5),
+                                                        ),
+                                                    ),
                                             ),
                                     ),
                                 ),
@@ -277,12 +306,12 @@ impl Adapter for PostgresAdapter {
                         diesel::delete(
                             casbin_rules.filter(
                                 ptype.eq(pt).and(
-                                    v1.eq(field_values.get(0))
-                                        .and(v2.eq(field_values.get(1)))
+                                    v1.is_not_distinct_from(field_values.get(0))
+                                        .and(v2.is_not_distinct_from(field_values.get(1)))
                                         .and(
-                                            v3.eq(field_values.get(2))
-                                                .and(v4.eq(field_values.get(3)))
-                                                .and(v5.eq(field_values.get(4))),
+                                            v3.is_not_distinct_from(field_values.get(2))
+                                                .and(v4.is_not_distinct_from(field_values.get(3)))
+                                                .and(v5.is_not_distinct_from(field_values.get(4))),
                                         ),
                                 ),
                             ),
@@ -293,9 +322,9 @@ impl Adapter for PostgresAdapter {
                         diesel::delete(
                             casbin_rules.filter(
                                 ptype.eq(pt).and(
-                                    v3.eq(field_values.get(2))
-                                        .and(v4.eq(field_values.get(3)))
-                                        .and(v5.eq(field_values.get(4))),
+                                    v2.is_not_distinct_from(field_values.get(0))
+                                        .and(v3.is_not_distinct_from(field_values.get(1)))
+                                        .and(v4.is_not_distinct_from(field_values.get(2))),
                                 ),
                             ),
                         )
@@ -305,18 +334,42 @@ impl Adapter for PostgresAdapter {
                         diesel::delete(
                             casbin_rules.filter(
                                 ptype.eq(pt).and(
-                                    v4.eq(field_values.get(3)).and(v5.eq(field_values.get(4))),
+                                    v3.is_not_distinct_from(field_values.get(0))
+                                        .and(v4.is_not_distinct_from(field_values.get(1)))
+                                        .and(v5.is_not_distinct_from(field_values.get(2))),
                                 ),
+                            ),
+                        )
+                        .execute(&conn)
+                        .map_err(DieselError::Error)
+                    } else if field_index == 4 {
+                        diesel::delete(
+                            casbin_rules.filter(
+                                ptype
+                                    .eq(pt)
+                                    .and(v4.is_not_distinct_from(field_values.get(0)))
+                                    .and(v5.is_not_distinct_from(field_values.get(1))),
                             ),
                         )
                         .execute(&conn)
                         .map_err(DieselError::Error)
                     } else {
                         diesel::delete(
-                            casbin_rules.filter(ptype.eq(pt).and(v5.eq(field_values.get(4)))),
+                            casbin_rules.filter(
+                                ptype
+                                    .eq(pt)
+                                    .and(v5.is_not_distinct_from(field_values.get(0))),
+                            ),
                         )
                         .execute(&conn)
                         .map_err(DieselError::Error)
+                    }
+                })
+                .and_then(|n| {
+                    if n == 1 {
+                        Ok(())
+                    } else {
+                        Err(DieselError::Error(Error::NotFound))
                     }
                 })
                 .is_ok()
@@ -328,7 +381,67 @@ impl Adapter for PostgresAdapter {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
-    fn test_create_table() {}
+    fn test_adapter() {
+        use crate::adapter::FileAdapter;
+        use crate::enforcer::Enforcer;
+        use crate::model::Model;
+
+        let mut m = Model::new();
+        m.load_model("examples/rbac_model.conf");
+
+        let mut conn_opts = ConnOptions::default();
+        let file_adapter = FileAdapter::new("examples/rbac_policy.csv");
+
+        let mut e = Enforcer::new(m, file_adapter);
+        let adapter = PostgresAdapter::new(conn_opts);
+        assert!(adapter.is_ok());
+
+        if let Ok(mut adapter) = adapter {
+            adapter.save_policy(&mut e.model);
+
+            assert!(adapter.remove_policy("", "p", vec!["alice", "data1", "read"]));
+            assert!(adapter.remove_policy("", "p", vec!["bob", "data2", "write"]));
+            assert!(adapter.remove_policy("", "p", vec!["data2_admin", "data2", "read"]));
+            assert!(adapter.remove_policy("", "p", vec!["data2_admin", "data2", "write"]));
+            assert!(adapter.remove_policy("", "g", vec!["alice", "data2_admin"]));
+
+            assert!(adapter.add_policy("", "p", vec!["alice", "data1", "read"]));
+            assert!(adapter.add_policy("", "p", vec!["bob", "data2", "write"]));
+            assert!(adapter.add_policy("", "p", vec!["data2_admin", "data2", "read"]));
+            assert!(adapter.add_policy("", "p", vec!["data2_admin", "data2", "write"]));
+            assert!(adapter.add_policy("", "g", vec!["alice", "data2_admin"]));
+
+            assert!(adapter.remove_policy("", "p", vec!["alice", "data1", "read"]));
+            assert!(adapter.remove_policy("", "p", vec!["bob", "data2", "write"]));
+            assert!(adapter.remove_policy("", "p", vec!["data2_admin", "data2", "read"]));
+            assert!(adapter.remove_policy("", "p", vec!["data2_admin", "data2", "write"]));
+            assert!(adapter.remove_policy("", "g", vec!["alice", "data2_admin"]));
+
+            assert!(!adapter.remove_policy("", "g", vec!["alice", "data2_admin", "not_exists"]));
+
+            assert!(adapter.add_policy("", "g", vec!["alice", "data2_admin"]));
+            assert!(!adapter.remove_filtered_policy(
+                "",
+                "g",
+                0,
+                vec!["alice", "data2_admin", "not_exists"]
+            ));
+            assert!(adapter.remove_filtered_policy("", "g", 0, vec!["alice", "data2_admin"]));
+
+            assert!(adapter.add_policy(
+                "",
+                "g",
+                vec!["alice", "data2_admin", "domain1", "domain2"]
+            ));
+            assert!(adapter.remove_filtered_policy(
+                "",
+                "g",
+                1,
+                vec!["data2_admin", "domain1", "domain2"]
+            ));
+        }
+    }
 }
