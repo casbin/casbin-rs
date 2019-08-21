@@ -41,24 +41,29 @@ pub struct Enforcer<A: Adapter> {
     pub fm: FunctionMap,
     pub eft: Box<dyn Effector>,
     pub rm: Box<dyn RoleManager>,
+    pub auto_save: bool,
+    auto_build_role_links: bool,
 }
 
 impl<A: Adapter> Enforcer<A> {
     pub fn new(m: Model, a: A) -> Self {
-        let mut m = m;
+        let m = m;
         let fm = load_function_map();
         let eft = Box::new(DefaultEffector::default());
         let rm = Box::new(DefaultRoleManager::new(10));
 
-        a.load_policy(&mut m);
-
-        Self {
+        let mut e = Self {
             model: m,
             adapter: a,
             fm,
             eft,
             rm,
-        }
+            auto_save: true,
+            auto_build_role_links: true,
+        };
+        // TODO: check filtered adapter, match over a implementor?
+        e.load_policy();
+        e
     }
 
     pub fn enforce(&self, rvals: Vec<&str>) -> bool {
@@ -244,6 +249,27 @@ impl<A: Adapter> Enforcer<A> {
     pub fn build_role_links(&mut self) {
         self.rm.clear();
         self.model.build_role_links(&mut self.rm);
+    }
+
+    pub fn load_policy(&mut self) {
+        self.model.clear_policy();
+        self.adapter.load_policy(&mut self.model);
+
+        if self.auto_build_role_links {
+            self.build_role_links();
+        }
+    }
+
+    pub fn clear_policy(&mut self) {
+        self.model.clear_policy();
+    }
+
+    pub fn enable_auto_save(&mut self, auto_save: bool) {
+        self.auto_save = auto_save;
+    }
+
+    pub fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
+        self.auto_build_role_links = auto_build_role_links;
     }
 }
 
@@ -544,5 +570,90 @@ mod tests {
         assert!(!e.enforce(vec!["192.168.0.1", "data1", "write"]));
         assert!(!e.enforce(vec!["192.168.0.1", "data2", "read"]));
         assert!(!e.enforce(vec!["192.168.0.1", "data2", "write"]));
+    }
+
+    use crate::MgmtApi;
+    #[test]
+    fn test_enable_auto_save() {
+        let mut m = Model::new();
+        m.load_model("examples/basic_model.conf");
+
+        let adapter = FileAdapter::new("examples/basic_policy.csv");
+        let mut e = Enforcer::new(m, adapter);
+        e.enable_auto_save(false);
+        e.remove_policy(vec!["alice", "data1", "read"]);
+        e.load_policy();
+
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+
+        e.enable_auto_save(true);
+        e.remove_policy(vec!["alice", "data1", "read"]);
+        e.load_policy();
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+    }
+
+    #[test]
+    fn test_role_links() {
+        let mut m = Model::new();
+        m.load_model("examples/rbac_model.conf");
+
+        let adapter = MemoryAdapter::default();
+        let mut e = Enforcer::new(m, adapter);
+        e.enable_auto_build_role_links(false);
+        e.build_role_links();
+        assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]));
+    }
+
+    #[test]
+    fn test_get_and_set_model() {
+        let mut m1 = Model::new();
+        m1.load_model("examples/basic_model.conf");
+        let adapter1 = FileAdapter::new("examples/basic_policy.csv");
+        let mut e = Enforcer::new(m1, adapter1);
+
+        assert_eq!(false, e.enforce(vec!["root", "data1", "read"]));
+
+        let mut m2 = Model::new();
+        m2.load_model("examples/basic_with_root_model.conf");
+        let adapter2 = FileAdapter::new("examples/basic_policy.csv");
+        let e2 = Enforcer::new(m2, adapter2);
+
+        e.model = e2.model;
+        assert_eq!(true, e.enforce(vec!["root", "data1", "read"]));
+    }
+
+    #[test]
+    fn test_get_and_set_adapter_in_mem() {
+        let mut m1 = Model::new();
+        m1.load_model("examples/basic_model.conf");
+        let adapter1 = FileAdapter::new("examples/basic_policy.csv");
+        let mut e = Enforcer::new(m1, adapter1);
+
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
+
+        let mut m2 = Model::new();
+        m2.load_model("examples/basic_model.conf");
+        let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
+        let e2 = Enforcer::new(m2, adapter2);
+
+        e.adapter = e2.adapter;
+        e.load_policy();
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]));
     }
 }

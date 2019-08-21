@@ -92,7 +92,6 @@ mod tests {
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
-        e.build_role_links();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));

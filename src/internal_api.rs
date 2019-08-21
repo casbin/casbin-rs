@@ -19,8 +19,10 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
         if !rule_added {
             return false;
         }
-        // TODO: check autosave in enforcer
-        self.adapter.add_policy(sec, ptype, rule.clone())
+        if self.auto_save {
+            return self.adapter.add_policy(sec, ptype, rule.clone());
+        }
+        rule_added
     }
 
     fn remove_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
@@ -28,8 +30,10 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
         if !rule_removed {
             return false;
         }
-        // TODO: check autosave in enforcer
-        self.adapter.remove_policy(sec, ptype, rule.clone())
+        if self.auto_save {
+            self.adapter.remove_policy(sec, ptype, rule.clone());
+        }
+        rule_removed
     }
 
     fn remove_filtered_policy_internal(
@@ -45,8 +49,14 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
         if !rule_removed {
             return false;
         }
-        // TODO: check autosave in enforcer
-        self.adapter
-            .remove_filtered_policy(sec, ptype, field_index, field_values.clone())
+        if self.auto_save {
+            return self.adapter.remove_filtered_policy(
+                sec,
+                ptype,
+                field_index,
+                field_values.clone(),
+            );
+        }
+        rule_removed
     }
 }
