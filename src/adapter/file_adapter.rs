@@ -1,9 +1,12 @@
 use crate::adapter::Adapter;
+use crate::errors::CasbinError;
 use crate::model::Model;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+
+use crate::Result;
 
 pub struct FileAdapter {
     pub file_path: String,
@@ -18,28 +21,31 @@ impl FileAdapter {
         }
     }
 
-    pub fn load_policy_file(&self, m: &mut Model, handler: LoadPolicyFileHandler) {
-        let f = File::open(self.file_path.clone()).expect("read error");
+    pub fn load_policy_file(&self, m: &mut Model, handler: LoadPolicyFileHandler) -> Result<()> {
+        let f = File::open(self.file_path.clone())?;
         let f = BufReader::new(f);
         for line in f.lines() {
-            handler(line.unwrap(), m);
+            handler(line?, m);
         }
+        Ok(())
     }
 
-    pub fn save_policy_file(&self, text: String) {
-        let mut file = File::create(self.file_path.clone()).expect("read error");
-        file.write_all(text.as_bytes()).unwrap();
+    pub fn save_policy_file(&self, text: String) -> Result<()> {
+        let mut file = File::create(self.file_path.clone())?;
+        file.write_all(text.as_bytes())?;
+        Ok(())
     }
 }
 
 impl Adapter for FileAdapter {
-    fn load_policy(&self, m: &mut Model) {
-        self.load_policy_file(m, load_policy_line);
+    fn load_policy(&self, m: &mut Model) -> Result<()> {
+        self.load_policy_file(m, load_policy_line)?;
+        Ok(())
     }
 
-    fn save_policy(&self, m: &mut Model) {
+    fn save_policy(&self, m: &mut Model) -> Result<()> {
         if self.file_path == "" {
-            panic!("file not found");
+            return Err(CasbinError::new("save policy failed, file path is empty").into());
         }
 
         let mut tmp = String::new();
@@ -58,17 +64,18 @@ impl Adapter for FileAdapter {
                 tmp += s1.as_str();
             }
         }
-        self.save_policy_file(tmp)
+        self.save_policy_file(tmp)?;
+        Ok(())
     }
 
-    fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
+    fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        true
+        Ok(true)
     }
 
-    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> bool {
+    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        true
+        Ok(true)
     }
 
     fn remove_filtered_policy(
@@ -77,9 +84,9 @@ impl Adapter for FileAdapter {
         _ptype: &str,
         _field_index: usize,
         _field_values: Vec<&str>,
-    ) -> bool {
+    ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        true
+        Ok(true)
     }
 }
 

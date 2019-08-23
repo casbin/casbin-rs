@@ -3,6 +3,7 @@ use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::model::Model;
 use crate::model::{load_function_map, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
+use crate::Result;
 
 use rhai::{Engine, FnRegister, Scope};
 
@@ -62,7 +63,7 @@ impl<A: Adapter> Enforcer<A> {
             auto_build_role_links: true,
         };
         // TODO: check filtered adapter, match over a implementor?
-        e.load_policy();
+        e.load_policy().unwrap();
         e
     }
 
@@ -251,13 +252,14 @@ impl<A: Adapter> Enforcer<A> {
         self.model.build_role_links(&mut self.rm);
     }
 
-    pub fn load_policy(&mut self) {
+    pub fn load_policy(&mut self) -> Result<()> {
         self.model.clear_policy();
-        self.adapter.load_policy(&mut self.model);
+        self.adapter.load_policy(&mut self.model)?;
 
         if self.auto_build_role_links {
             self.build_role_links();
         }
+        Ok(())
     }
 
     pub fn clear_policy(&mut self) {
@@ -384,7 +386,8 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
-        e.add_permission_for_user("alice", vec!["data1", "invalid"]);
+        e.add_permission_for_user("alice", vec!["data1", "invalid"])
+            .unwrap();
         assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]));
     }
 
@@ -403,11 +406,15 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
-        e.add_permission_for_user("alice", vec!["data1", "read"]);
-        e.add_permission_for_user("bob", vec!["data2", "write"]);
-        e.add_permission_for_user("data2_admin", vec!["data2", "read"]);
-        e.add_permission_for_user("data2_admin", vec!["data2", "write"]);
-        e.add_role_for_user("alice", "data2_admin");
+        e.add_permission_for_user("alice", vec!["data1", "read"])
+            .unwrap();
+        e.add_permission_for_user("bob", vec!["data2", "write"])
+            .unwrap();
+        e.add_permission_for_user("data2_admin", vec!["data2", "read"])
+            .unwrap();
+        e.add_permission_for_user("data2_admin", vec!["data2", "write"])
+            .unwrap();
+        e.add_role_for_user("alice", "data2_admin").unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
@@ -434,8 +441,10 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
-        e.add_permission_for_user("alice", vec!["data1", "read"]);
-        e.add_permission_for_user("bob", vec!["data2", "write"]);
+        e.add_permission_for_user("alice", vec!["data1", "read"])
+            .unwrap();
+        e.add_permission_for_user("bob", vec!["data2", "write"])
+            .unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
@@ -581,8 +590,8 @@ mod tests {
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m, adapter);
         e.enable_auto_save(false);
-        e.remove_policy(vec!["alice", "data1", "read"]);
-        e.load_policy();
+        e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
+        e.load_policy().unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
@@ -594,8 +603,8 @@ mod tests {
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
 
         e.enable_auto_save(true);
-        e.remove_policy(vec!["alice", "data1", "read"]);
-        e.load_policy();
+        e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
+        e.load_policy().unwrap();
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
         assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
@@ -652,7 +661,7 @@ mod tests {
         let e2 = Enforcer::new(m2, adapter2);
 
         e.adapter = e2.adapter;
-        e.load_policy();
+        e.load_policy().unwrap();
         assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]));
     }

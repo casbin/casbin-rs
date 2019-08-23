@@ -1,35 +1,36 @@
 use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
 use crate::MgmtApi;
+use crate::Result;
 
 pub trait RbacApi {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> bool;
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> bool;
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> bool;
-    fn delete_roles_for_user(&mut self, user: &str) -> bool;
+    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
+    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
+    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
+    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool>;
     fn get_roles_for_user(&mut self, name: &str) -> Vec<String>;
     fn get_users_for_role(&self, name: &str) -> Vec<String>;
     fn has_role_for_user(&mut self, name: &str, role: &str) -> bool;
-    fn delete_user(&mut self, name: &str) -> bool;
-    fn delete_role(&mut self, name: &str) -> bool;
+    fn delete_user(&mut self, name: &str) -> Result<bool>;
+    fn delete_role(&mut self, name: &str) -> Result<bool>;
 }
 
 impl<A: Adapter> RbacApi for Enforcer<A> {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> bool {
+    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
         let mut perm = permission;
         perm.insert(0, user);
         self.add_policy(perm)
     }
 
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> bool {
+    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
         self.add_grouping_policy(vec![user, role])
     }
 
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> bool {
+    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
         self.remove_grouping_policy(vec![user, role])
     }
 
-    fn delete_roles_for_user(&mut self, user: &str) -> bool {
+    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool> {
         self.remove_filtered_grouping_policy(0, vec![user])
     }
 
@@ -45,14 +46,20 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
     }
 
     fn get_users_for_role(&self, name: &str) -> Vec<String> {
-        self.model
-            .model
-            .get("g")
-            .unwrap()
-            .get("g")
-            .unwrap()
-            .rm
-            .get_users(name, None)
+        if let Some(t1) = self.model.model.get("g") {
+            if let Some(t2) = t1.get("g") {
+                return t2.rm.get_users(name, None);
+            }
+        }
+        return vec![];
+        // self.model
+        //     .model
+        //     .get("g")
+        //     .unwrap()
+        //     .get("g")
+        //     .unwrap()
+        //     .rm
+        //     .get_users(name, None)
     }
 
     fn has_role_for_user(&mut self, name: &str, role: &str) -> bool {
@@ -67,14 +74,14 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         has_role
     }
 
-    fn delete_user(&mut self, name: &str) -> bool {
+    fn delete_user(&mut self, name: &str) -> Result<bool> {
         self.remove_filtered_grouping_policy(0, vec![name])
     }
 
-    fn delete_role(&mut self, name: &str) -> bool {
-        let res1 = self.remove_filtered_grouping_policy(1, vec![name]);
-        let res2 = self.remove_filtered_policy(0, vec![name]);
-        res1 || res2
+    fn delete_role(&mut self, name: &str) -> Result<bool> {
+        let res1 = self.remove_filtered_grouping_policy(1, vec![name])?;
+        let res2 = self.remove_filtered_policy(0, vec![name])?;
+        Ok(res1 || res2)
     }
 }
 
@@ -101,7 +108,7 @@ mod tests {
         assert_eq!(false, e.has_role_for_user("alice", "data1_admin"));
         assert_eq!(true, e.has_role_for_user("alice", "data2_admin"));
 
-        e.add_role_for_user("alice", "data1_admin");
+        e.add_role_for_user("alice", "data1_admin").unwrap();
         assert_eq!(
             vec!["data2_admin", "data1_admin"],
             e.get_roles_for_user("alice")
@@ -109,23 +116,23 @@ mod tests {
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.delete_role_for_user("alice", "data1_admin");
+        e.delete_role_for_user("alice", "data1_admin").unwrap();
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.delete_roles_for_user("alice");
+        e.delete_roles_for_user("alice").unwrap();
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.add_role_for_user("alice", "data1_admin");
-        e.delete_user("alice");
+        e.add_role_for_user("alice", "data1_admin").unwrap();
+        e.delete_user("alice").unwrap();
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.add_role_for_user("alice", "data2_admin");
+        e.add_role_for_user("alice", "data2_admin").unwrap();
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
         assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
@@ -135,7 +142,7 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
 
-        e.delete_role("data2_admin");
+        e.delete_role("data2_admin").unwrap();
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
         assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
