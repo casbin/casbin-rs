@@ -31,10 +31,7 @@ impl DefaultRoleManager {
     }
 
     fn has_role(&self, name: &str) -> bool {
-        if let Some(_role) = self.all_roles.get(name) {
-            return true;
-        }
-        false
+        self.all_roles.contains_key(name)
     }
 }
 
@@ -54,7 +51,7 @@ impl RoleManager for DefaultRoleManager {
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().add_role(Rc::clone(&role2));
+        role1.borrow_mut().add_role(role2);
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) {
@@ -71,7 +68,7 @@ impl RoleManager for DefaultRoleManager {
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().delete_role(Rc::clone(&role2));
+        role1.borrow_mut().delete_role(role2);
     }
 
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
@@ -161,10 +158,12 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Rc<RefCell<Role>>) {
-        for role in self.roles.iter() {
-            if role.borrow().name == other_role.borrow().name {
-                return;
-            }
+        if self
+            .roles
+            .iter()
+            .any(|role| role.borrow().name == other_role.borrow().name)
+        {
+            return;
         }
         self.roles.push(other_role);
     }
@@ -195,11 +194,10 @@ impl Role {
     }
 
     fn get_roles(&self) -> Vec<String> {
-        let mut names = vec![];
-        for role in self.roles.iter() {
-            names.push(role.borrow().name.clone());
-        }
-        names
+        self.roles
+            .iter()
+            .map(|role| role.borrow().name.clone())
+            .collect()
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
