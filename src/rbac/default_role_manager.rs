@@ -99,14 +99,13 @@ impl RoleManager for DefaultRoleManager {
         let role = self.create_role(&name);
 
         if let Some(domain_val) = domain {
-            return role
-                .borrow()
+            role.borrow()
                 .get_roles()
                 .iter()
                 .map(|x| x[domain_val.len() + 2..].to_string())
-                .collect();
+                .collect()
         } else {
-            return role.borrow().get_roles();
+            role.borrow().get_roles()
         }
     }
 
@@ -128,7 +127,11 @@ impl RoleManager for DefaultRoleManager {
         if let Some(domain_val) = domain {
             return names
                 .iter()
-                .map(|x| x[domain_val.len() + 2..].to_string())
+                .map(|x| {
+                    let domain_prefix = format!("{}::", domain_val);
+                    let domain_end_pos = x.find(&domain_prefix).unwrap();
+                    x[domain_end_pos..].to_string()
+                })
                 .collect();
         }
         names

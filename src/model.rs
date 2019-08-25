@@ -185,10 +185,73 @@ impl Model {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
                 t2.policy.push(rule.into_iter().map(String::from).collect());
+                t2.policy.dedup(); // avoid re-add, policy rules should be unique
                 return true;
             }
         }
         false
+    }
+
+    pub fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>> {
+        if let Some(t1) = self.model.get(sec) {
+            if let Some(t2) = t1.get(ptype) {
+                return t2.policy.clone();
+            }
+        }
+        vec![]
+    }
+
+    pub fn get_filtered_policy(
+        &self,
+        sec: &str,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Vec<Vec<String>> {
+        let mut res = vec![];
+        if let Some(t1) = self.model.get(sec) {
+            if let Some(t2) = t1.get(ptype) {
+                for rule in t2.policy.iter() {
+                    let mut matched = true;
+                    for (i, field_value) in field_values.iter().enumerate() {
+                        if field_value != &"" && &rule[field_index + i] != field_value {
+                            matched = false;
+                            break;
+                        }
+                    }
+                    if matched {
+                        res.push(rule.iter().map(String::from).collect());
+                    }
+                }
+            }
+        }
+        res
+    }
+
+    pub fn has_policy(&self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+        let policy = self.get_policy(sec, ptype);
+        for r in policy {
+            if r == rule {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn get_values_for_field_in_policy(
+        &self,
+        sec: &str,
+        ptype: &str,
+        field_index: usize,
+    ) -> Vec<String> {
+        let mut values = vec![];
+        let policy = self.get_policy(sec, ptype);
+        for rule in policy {
+            values.push(rule[field_index].clone());
+        }
+        values.sort_unstable();
+        values.dedup(); // sort and then dedup will remove all duplicates
+        values
     }
 
     pub fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {

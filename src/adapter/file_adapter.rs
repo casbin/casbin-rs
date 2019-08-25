@@ -101,6 +101,7 @@ fn load_policy_line(line: String, m: &mut Model) {
     if let Some(t1) = m.model.get_mut(&sec) {
         if let Some(t2) = t1.get_mut(&key) {
             t2.policy.push(tokens[1..].to_vec());
+            t2.policy.dedup();
         }
     }
 }

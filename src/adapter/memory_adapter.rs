@@ -18,6 +18,7 @@ impl Adapter for MemoryAdapter {
             if let Some(t1) = m.model.get_mut(&sec) {
                 if let Some(t2) = t1.get_mut(&ptype) {
                     t2.policy.push(rule);
+                    t2.policy.dedup();
                 }
             }
         }
