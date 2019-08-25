@@ -42,17 +42,17 @@ impl Assertion {
         let count = self.value.chars().filter(|&c| c == '_').count();
         for (_k, rule) in self.policy.iter().enumerate() {
             if count < 2 {
-                panic!("the number of \"_\" in role definition should be at least 2")
+                panic!("the number of \"_\" in role definition should be at least 2");
             }
             if rule.len() < count {
-                panic!("grouping policy elements do not meet role definition")
+                panic!("grouping policy elements do not meet role definition");
             }
             if count == 2 {
-                rm.add_link(&rule[0], &rule[1], vec![]);
+                rm.add_link(&rule[0], &rule[1], None);
             } else if count == 3 {
-                rm.add_link(&rule[0], &rule[1], vec![&rule[2]]);
-            } else if count == 4 {
-                rm.add_link(&rule[0], &rule[1], vec![&rule[2], &rule[3]]);
+                rm.add_link(&rule[0], &rule[1], Some(&rule[2]));
+            } else if count >= 4 {
+                panic!("domain can at most 1 string");
             }
         }
         self.rm = rm.clone();
