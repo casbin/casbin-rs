@@ -59,7 +59,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
 
     fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
         let rule_added = self.add_policy_internal("g", ptype, params)?;
-        self.build_role_links();
+        self.build_role_links()?;
         Ok(rule_added)
     }
 
@@ -69,7 +69,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
 
     fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
         let rule_removed = self.remove_policy_internal("g", ptype, params)?;
-        self.build_role_links();
+        self.build_role_links()?;
         Ok(rule_removed)
     }
 
@@ -89,7 +89,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
     ) -> Result<bool> {
         let rule_removed =
             self.remove_filtered_policy_internal("g", ptype, field_index, field_values)?;
-        self.build_role_links();
+        self.build_role_links()?;
         Ok(rule_removed)
     }
 

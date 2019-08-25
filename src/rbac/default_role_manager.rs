@@ -99,13 +99,15 @@ impl RoleManager for DefaultRoleManager {
         let role = self.create_role(&name);
 
         if let Some(domain_val) = domain {
-            return role.borrow()
+            return role
+                .borrow()
                 .get_roles()
                 .iter()
                 .map(|x| x[domain_val.len() + 2..].to_string())
                 .collect();
+        } else {
+            return role.borrow().get_roles();
         }
-        return role.borrow().get_roles();
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {

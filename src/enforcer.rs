@@ -247,9 +247,10 @@ impl<A: Adapter> Enforcer<A> {
         self.eft.merge_effects(ee, policy_effects, vec![])
     }
 
-    pub fn build_role_links(&mut self) {
+    pub fn build_role_links(&mut self) -> Result<()> {
         self.rm.clear();
-        self.model.build_role_links(&mut self.rm);
+        self.model.build_role_links(&mut self.rm)?;
+        Ok(())
     }
 
     pub fn load_policy(&mut self) -> Result<()> {
@@ -257,7 +258,7 @@ impl<A: Adapter> Enforcer<A> {
         self.adapter.load_policy(&mut self.model)?;
 
         if self.auto_build_role_links {
-            self.build_role_links();
+            self.build_role_links()?;
         }
         Ok(())
     }
@@ -623,7 +624,7 @@ mod tests {
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
         e.enable_auto_build_role_links(false);
-        e.build_role_links();
+        e.build_role_links().unwrap();
         assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]));
     }
 

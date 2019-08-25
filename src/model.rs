@@ -1,5 +1,7 @@
 use crate::config::Config;
+use crate::errors::CasbinError;
 use crate::rbac::{DefaultRoleManager, RoleManager};
+use crate::Result;
 
 use ip_network::IpNetwork;
 use regex::Regex;
@@ -38,25 +40,32 @@ impl Assertion {
     }
 
     #[allow(clippy::borrowed_box)]
-    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) {
+    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) -> Result<()> {
         let count = self.value.chars().filter(|&c| c == '_').count();
         for (_k, rule) in self.policy.iter().enumerate() {
             if count < 2 {
-                panic!("the number of \"_\" in role definition should be at least 2");
+                return Err(CasbinError::new(
+                    "the number of \"_\" in role definition should be at least 2",
+                )
+                .into());
             }
             if rule.len() < count {
-                panic!("grouping policy elements do not meet role definition");
+                return Err(CasbinError::new(
+                    "grouping policy elements do not meet role definition",
+                )
+                .into());
             }
             if count == 2 {
                 rm.add_link(&rule[0], &rule[1], None);
             } else if count == 3 {
                 rm.add_link(&rule[0], &rule[1], Some(&rule[2]));
             } else if count >= 4 {
-                panic!("domain can at most 1 string");
+                return Err(CasbinError::new("domain can at most contains 1 string").into());
             }
         }
         self.rm = rm.clone();
         // self.rm.print_roles();
+        Ok(())
     }
 }
 
@@ -163,12 +172,13 @@ impl Model {
     }
 
     #[allow(clippy::borrowed_box)]
-    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) {
+    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) -> Result<()> {
         if let Some(asts) = self.model.get_mut("g") {
             for (_key, ast) in asts.iter_mut() {
-                ast.build_role_links(rm);
+                ast.build_role_links(rm)?;
             }
         }
+        Ok(())
     }
 
     pub fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
