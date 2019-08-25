@@ -10,3 +10,5 @@ edition = "2018"
 regex = "1"
 rhai = "0.7"
 ip_network = "0.3.4"
+
+objekt-clonable = "0.2.2"

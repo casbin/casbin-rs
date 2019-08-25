@@ -1,5 +1,8 @@
-pub trait RoleManager {
-    fn clone_box(&self) -> Box<dyn RoleManager>;
+use objekt_clonable::*;
+
+#[clonable]
+pub trait RoleManager: Clone {
+    //fn clone_box(&self) -> Box<dyn RoleManager>;
     fn clear(&mut self);
     fn add_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>);
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>);
@@ -9,8 +12,8 @@ pub trait RoleManager {
     fn print_roles(&self);
 }
 
-impl Clone for Box<dyn RoleManager> {
-    fn clone(&self) -> Self {
-        (*self).clone_box()
-    }
-}
+// impl Clone for Box<dyn RoleManager> {
+//     fn clone(&self) -> Self {
+//         (*self).clone_box()
+//     }
+// }

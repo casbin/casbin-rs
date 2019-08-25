@@ -28,6 +28,8 @@ impl Clone for Box<dyn MatchFnClone> {
 
 // TODO: investigate how to pass variadic parameters to rhai functions
 // rbac_with_domains_model.conf takes 3 parameters
+// @DevinR528 the only way to do this cleanly would be an enum with 3 variants
+// then match on which variant and process accordingly.
 pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();

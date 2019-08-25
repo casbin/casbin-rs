@@ -39,9 +39,9 @@ impl DefaultRoleManager {
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn clone_box(&self) -> Box<dyn RoleManager> {
-        Box::new(self.clone())
-    }
+    // fn clone_box(&self) -> Box<dyn RoleManager> {
+    //     Box::new(self.clone())
+    // }
 
     fn add_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) {
         let mut name1 = name1.to_owned();
