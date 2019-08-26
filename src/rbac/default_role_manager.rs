@@ -1,4 +1,6 @@
+use crate::errors::CasbinError;
 use crate::rbac::RoleManager;
+use crate::Result;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -31,10 +33,7 @@ impl DefaultRoleManager {
     }
 
     fn has_role(&self, name: &str) -> bool {
-        if let Some(_role) = self.all_roles.get(name) {
-            return true;
-        }
-        false
+        self.all_roles.contains_key(name)
     }
 }
 
@@ -43,35 +42,32 @@ impl RoleManager for DefaultRoleManager {
         Box::new(self.clone())
     }
 
-    fn add_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) {
+    fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
-        if domain.len() == 1 {
-            name1 = format!("{}::{}", domain[0], name1);
-            name2 = format!("{}::{}", domain[0], name2);
-        } else if domain.len() > 1 {
-            panic!("error domain length");
+        if let Some(domain_val) = domain {
+            name1 = format!("{}::{}", domain_val, name1);
+            name2 = format!("{}::{}", domain_val, name2);
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().add_role(Rc::clone(&role2));
+        role1.borrow_mut().add_role(role2);
     }
 
-    fn delete_link(&mut self, name1: &str, name2: &str, domain: Vec<&str>) {
+    fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
-        if domain.len() == 1 {
-            name1 = format!("{}::{}", domain[0], name1);
-            name2 = format!("{}::{}", domain[0], name2);
-        } else if domain.len() > 1 {
-            panic!("error domain length");
+        if let Some(domain_val) = domain {
+            name1 = format!("{}::{}", domain_val, name1);
+            name2 = format!("{}::{}", domain_val, name2);
         }
         if !self.has_role(&name1) || !self.has_role(&name2) {
-            panic!("name12 error");
+            return Err(CasbinError::new("name1 or name2 doesn't exists").into());
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().delete_role(Rc::clone(&role2));
+        role1.borrow_mut().delete_role(role2);
+        Ok(())
     }
 
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
@@ -131,7 +127,11 @@ impl RoleManager for DefaultRoleManager {
         if let Some(domain_val) = domain {
             return names
                 .iter()
-                .map(|x| x[domain_val.len() + 2..].to_string())
+                .map(|x| {
+                    let domain_prefix = format!("{}::", domain_val);
+                    let domain_end_pos = x.find(&domain_prefix).unwrap();
+                    x[domain_end_pos..].to_string()
+                })
                 .collect();
         }
         names
@@ -161,10 +161,12 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Rc<RefCell<Role>>) {
-        for role in self.roles.iter() {
-            if role.borrow().name == other_role.borrow().name {
-                return;
-            }
+        if self
+            .roles
+            .iter()
+            .any(|role| role.borrow().name == other_role.borrow().name)
+        {
+            return;
         }
         self.roles.push(other_role);
     }
@@ -195,11 +197,10 @@ impl Role {
     }
 
     fn get_roles(&self) -> Vec<String> {
-        let mut names = vec![];
-        for role in self.roles.iter() {
-            names.push(role.borrow().name.clone());
-        }
-        names
+        self.roles
+            .iter()
+            .map(|role| role.borrow().name.clone())
+            .collect()
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
@@ -219,12 +220,12 @@ mod tests {
     #[test]
     fn test_role() {
         let mut rm = DefaultRoleManager::new(3);
-        rm.add_link("u1", "g1", vec![]);
-        rm.add_link("u2", "g1", vec![]);
-        rm.add_link("u3", "g2", vec![]);
-        rm.add_link("u4", "g2", vec![]);
-        rm.add_link("u4", "g3", vec![]);
-        rm.add_link("g1", "g3", vec![]);
+        rm.add_link("u1", "g1", None);
+        rm.add_link("u2", "g1", None);
+        rm.add_link("u3", "g2", None);
+        rm.add_link("u4", "g2", None);
+        rm.add_link("u4", "g3", None);
+        rm.add_link("g1", "g3", None);
 
         assert_eq!(true, rm.has_link("u1", "g1", None));
         assert_eq!(false, rm.has_link("u1", "g2", None));
@@ -249,8 +250,8 @@ mod tests {
         assert_eq!(vec![String::new(); 0], rm.get_roles("g3", None));
 
         // test delete_link
-        rm.delete_link("g1", "g3", vec![]);
-        rm.delete_link("u4", "g2", vec![]);
+        rm.delete_link("g1", "g3", None).unwrap();
+        rm.delete_link("u4", "g2", None).unwrap();
         assert_eq!(true, rm.has_link("u1", "g1", None));
         assert_eq!(false, rm.has_link("u1", "g2", None));
         assert_eq!(false, rm.has_link("u1", "g3", None));
@@ -275,12 +276,12 @@ mod tests {
     #[test]
     fn test_clear() {
         let mut rm = DefaultRoleManager::new(3);
-        rm.add_link("u1", "g1", vec![]);
-        rm.add_link("u2", "g1", vec![]);
-        rm.add_link("u3", "g2", vec![]);
-        rm.add_link("u4", "g2", vec![]);
-        rm.add_link("u4", "g3", vec![]);
-        rm.add_link("g1", "g3", vec![]);
+        rm.add_link("u1", "g1", None);
+        rm.add_link("u2", "g1", None);
+        rm.add_link("u3", "g2", None);
+        rm.add_link("u4", "g2", None);
+        rm.add_link("u4", "g3", None);
+        rm.add_link("g1", "g3", None);
 
         rm.clear();
         assert_eq!(false, rm.has_link("u1", "g1", None));
@@ -300,12 +301,12 @@ mod tests {
     #[test]
     fn test_domain_role() {
         let mut rm = DefaultRoleManager::new(3);
-        rm.add_link("u1", "g1", vec!["domain1"]);
-        rm.add_link("u2", "g1", vec!["domain1"]);
-        rm.add_link("u3", "admin", vec!["domain2"]);
-        rm.add_link("u4", "admin", vec!["domain2"]);
-        rm.add_link("u4", "admin", vec!["domain1"]);
-        rm.add_link("g1", "admin", vec!["domain1"]);
+        rm.add_link("u1", "g1", Some("domain1"));
+        rm.add_link("u2", "g1", Some("domain1"));
+        rm.add_link("u3", "admin", Some("domain2"));
+        rm.add_link("u4", "admin", Some("domain2"));
+        rm.add_link("u4", "admin", Some("domain1"));
+        rm.add_link("g1", "admin", Some("domain1"));
 
         assert_eq!(true, rm.has_link("u1", "g1", Some("domain1")));
         assert_eq!(false, rm.has_link("u1", "g1", Some("domain2")));
@@ -327,8 +328,8 @@ mod tests {
         assert_eq!(true, rm.has_link("u4", "admin", Some("domain1")));
         assert_eq!(true, rm.has_link("u4", "admin", Some("domain2")));
 
-        rm.delete_link("g1", "admin", vec!["domain1"]);
-        rm.delete_link("u4", "admin", vec!["domain2"]);
+        rm.delete_link("g1", "admin", Some("domain1")).unwrap();
+        rm.delete_link("u4", "admin", Some("domain2")).unwrap();
 
         assert_eq!(true, rm.has_link("u1", "g1", Some("domain1")));
         assert_eq!(false, rm.has_link("u1", "g1", Some("domain2")));
