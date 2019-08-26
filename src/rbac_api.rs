@@ -395,24 +395,21 @@ mod tests {
         );
     }
 
-    // TODO: because the g function doesn't accept a domain parameter
-    // so this test failed, should fix this when we figured out how to
-    // pass variadic parameters to `generate_g_function`
-    // #[test]
-    // fn test_implicit_permission_api_with_domain() {
-    //     let mut m = Model::new();
-    //     m.load_model("examples/rbac_with_domains_model.conf");
+    #[test]
+    fn test_implicit_permission_api_with_domain() {
+        let mut m = Model::new();
+        m.load_model("examples/rbac_with_domains_model.conf");
 
-    //     let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
-    //     let mut e = Enforcer::new(m, adapter);
+        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
+        let mut e = Enforcer::new(m, adapter);
 
-    //     assert_eq!(
-    //         vec![
-    //             vec!["role:reader", "domain1", "data1", "read"],
-    //             vec!["role:writer", "domain1", "data1", "write"],
-    //             vec!["alice", "domain1", "data2", "read"],
-    //         ],
-    //         e.get_implicit_permissions_for_user("alice", Some("domain1"))
-    //     );
-    // }
+        assert_eq!(
+            vec![
+                vec!["alice", "domain1", "data2", "read"],
+                vec!["role:reader", "domain1", "data1", "read"],
+                vec!["role:writer", "domain1", "data1", "write"],
+            ],
+            e.get_implicit_permissions_for_user("alice", Some("domain1"))
+        );
+    }
 }

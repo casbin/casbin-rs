@@ -7,31 +7,56 @@ use crate::Result;
 
 use rhai::{Engine, FnRegister, Scope};
 
-pub trait MatchFnClone: Fn(String, String) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone>;
+pub trait MatchFnClone2: Fn(String, String) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone2>;
 }
 
-impl<T> MatchFnClone for T
+impl<T> MatchFnClone2 for T
 where
     T: 'static + Fn(String, String) -> bool + Clone,
 {
-    fn clone_box(&self) -> Box<dyn MatchFnClone> {
+    fn clone_box(&self) -> Box<dyn MatchFnClone2> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn MatchFnClone> {
+impl Clone for Box<dyn MatchFnClone2> {
     fn clone(&self) -> Self {
         (**self).clone_box()
     }
 }
 
-// TODO: investigate how to pass variadic parameters to rhai functions
-// rbac_with_domains_model.conf takes 3 parameters
-pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
+pub trait MatchFnClone3: Fn(String, String, String) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone3>;
+}
+
+impl<T> MatchFnClone3 for T
+where
+    T: 'static + Fn(String, String, String) -> bool + Clone,
+{
+    fn clone_box(&self) -> Box<dyn MatchFnClone3> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn MatchFnClone3> {
+    fn clone(&self) -> Self {
+        (**self).clone_box()
+    }
+}
+
+pub fn generate_gg2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();
         rm.has_link(name1.as_str(), name2.as_str(), None)
+    };
+    Box::new(cb)
+}
+
+pub fn generate_gg3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3> {
+    let cb = move |name1: String, name2: String, domain: String| -> bool {
+        let mut rm = rm.clone();
+        rm.has_link(name1.as_str(), name2.as_str(), Some(domain.as_str()))
     };
     Box::new(cb)
 }
@@ -93,9 +118,15 @@ impl<A: Adapter> Enforcer<A> {
         }
         if let Some(g_result) = self.model.model.get("g") {
             for (key, ast) in g_result.iter() {
-                let rm0 = ast.rm.clone();
-                let f1 = generate_g_function(rm0);
-                engine.register_fn(key.as_str(), f1.clone());
+                if key == "g" {
+                    let g2 = generate_gg2_function(ast.rm.clone());
+                    engine.register_fn("gg2", g2.clone());
+                    let g3 = generate_gg3_function(ast.rm.clone());
+                    engine.register_fn("gg3", g3.clone());
+                } else {
+                    let g2 = generate_gg2_function(ast.rm.clone());
+                    engine.register_fn("g2", g2.clone());
+                }
             }
         }
         let expstring = self
@@ -455,100 +486,6 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
         assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
-
-        let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
-
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model_with_root() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-    }
-
-    #[test]
-    fn test_basic_model_with_root_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
-
-        let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
-
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-    }
-
-    #[test]
-    fn test_basic_model_without_users() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_without_resources_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "read"]));
-        assert!(e.enforce(vec!["bob", "write"]));
-        assert!(!e.enforce(vec!["alice", "write"]));
-        assert!(!e.enforce(vec!["bob", "read"]));
     }
 
     #[test]
