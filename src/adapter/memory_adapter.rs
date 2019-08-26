@@ -40,7 +40,7 @@ impl Adapter for MemoryAdapter {
     }
 
     fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
-        unimplemented!();
+        Ok(true)
     }
 
     fn remove_filtered_policy(
@@ -50,6 +50,6 @@ impl Adapter for MemoryAdapter {
         _field_index: usize,
         _field_values: Vec<&str>,
     ) -> Result<bool> {
-        unimplemented!();
+        Ok(true)
     }
 }

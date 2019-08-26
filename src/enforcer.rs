@@ -45,7 +45,7 @@ impl Clone for Box<dyn MatchFnClone3> {
     }
 }
 
-pub fn generate_g2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> {
+pub fn generate_gg2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();
         rm.has_link(name1.as_str(), name2.as_str(), None)
@@ -53,7 +53,7 @@ pub fn generate_g2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> 
     Box::new(cb)
 }
 
-pub fn generate_g3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3> {
+pub fn generate_gg3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3> {
     let cb = move |name1: String, name2: String, domain: String| -> bool {
         let mut rm = rm.clone();
         rm.has_link(name1.as_str(), name2.as_str(), Some(domain.as_str()))
@@ -117,11 +117,16 @@ impl<A: Adapter> Enforcer<A> {
             engine.register_fn(key.as_str(), func.clone());
         }
         if let Some(g_result) = self.model.model.get("g") {
-            for (_key, ast) in g_result.iter() {
-                let g2 = generate_g2_function(ast.rm.clone());
-                engine.register_fn("g2", g2.clone());
-                let g3 = generate_g3_function(ast.rm.clone());
-                engine.register_fn("g3", g3.clone());
+            for (key, ast) in g_result.iter() {
+                if key == "g" {
+                    let g2 = generate_gg2_function(ast.rm.clone());
+                    engine.register_fn("gg2", g2.clone());
+                    let g3 = generate_gg3_function(ast.rm.clone());
+                    engine.register_fn("gg3", g3.clone());
+                } else {
+                    let g2 = generate_gg2_function(ast.rm.clone());
+                    engine.register_fn("g2", g2.clone());
+                }
             }
         }
         let expstring = self
@@ -481,100 +486,6 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
         assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
-
-        let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
-
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
-    }
-
-    #[test]
-    fn test_basic_model_with_root() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-    }
-
-    #[test]
-    fn test_basic_model_with_root_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
-
-        let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
-
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-    }
-
-    #[test]
-    fn test_basic_model_without_users() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_without_resources_model.conf");
-
-        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let e = Enforcer::new(m, adapter);
-
-        assert!(e.enforce(vec!["alice", "read"]));
-        assert!(e.enforce(vec!["bob", "write"]));
-        assert!(!e.enforce(vec!["alice", "write"]));
-        assert!(!e.enforce(vec!["bob", "read"]));
     }
 
     #[test]
