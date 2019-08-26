@@ -16,6 +16,22 @@ fn escape_assertion(s: String) -> String {
     s
 }
 
+fn escape_g_function(s: String) -> String {
+    // if passing 2 arguments to g then generate g2
+    // if passing 3 arguments to g then generate g3
+    let re1 = Regex::new(r"g\((\w+,\s*\w+)\)").unwrap();
+    let re2 = Regex::new(r"g\((\w+,\s*\w+,\s*\w+)\)").unwrap();
+
+    let mut after = s.to_string();
+    if re1.is_match(&after) {
+        after = re1.replace_all(&after, "g2($1)").to_string();
+    }
+    if re2.is_match(&after) {
+        after = re2.replace_all(&after, "g3($1)").to_string();
+    }
+    after
+}
+
 type AssertionMap = HashMap<String, Assertion>;
 
 #[derive(Clone)]
@@ -158,6 +174,7 @@ impl Model {
                 .collect();
         } else {
             ast.value = escape_assertion(ast.value);
+            ast.value = escape_g_function(ast.value);
         }
 
         if let Some(new_model) = self.model.get_mut(sec) {
@@ -464,5 +481,13 @@ mod tests {
     #[should_panic]
     fn test_ip_match_panic_2() {
         assert!(ip_match("127.0.0.1".to_owned(), "I am alice".to_owned()));
+    }
+
+    #[test]
+    fn test_escape_g_function() {
+        let s = "g(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
+        let exp = "g2(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
+
+        assert_eq!(exp, escape_g_function(s.to_owned()));
     }
 }

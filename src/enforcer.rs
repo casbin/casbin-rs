@@ -7,31 +7,56 @@ use crate::Result;
 
 use rhai::{Engine, FnRegister, Scope};
 
-pub trait MatchFnClone: Fn(String, String) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone>;
+pub trait MatchFnClone2: Fn(String, String) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone2>;
 }
 
-impl<T> MatchFnClone for T
+impl<T> MatchFnClone2 for T
 where
     T: 'static + Fn(String, String) -> bool + Clone,
 {
-    fn clone_box(&self) -> Box<dyn MatchFnClone> {
+    fn clone_box(&self) -> Box<dyn MatchFnClone2> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn MatchFnClone> {
+impl Clone for Box<dyn MatchFnClone2> {
     fn clone(&self) -> Self {
         (**self).clone_box()
     }
 }
 
-// TODO: investigate how to pass variadic parameters to rhai functions
-// rbac_with_domains_model.conf takes 3 parameters
-pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
+pub trait MatchFnClone3: Fn(String, String, String) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone3>;
+}
+
+impl<T> MatchFnClone3 for T
+where
+    T: 'static + Fn(String, String, String) -> bool + Clone,
+{
+    fn clone_box(&self) -> Box<dyn MatchFnClone3> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn MatchFnClone3> {
+    fn clone(&self) -> Self {
+        (**self).clone_box()
+    }
+}
+
+pub fn generate_g2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> {
     let cb = move |name1: String, name2: String| -> bool {
         let mut rm = rm.clone();
         rm.has_link(name1.as_str(), name2.as_str(), None)
+    };
+    Box::new(cb)
+}
+
+pub fn generate_g3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3> {
+    let cb = move |name1: String, name2: String, domain: String| -> bool {
+        let mut rm = rm.clone();
+        rm.has_link(name1.as_str(), name2.as_str(), Some(domain.as_str()))
     };
     Box::new(cb)
 }
@@ -92,10 +117,11 @@ impl<A: Adapter> Enforcer<A> {
             engine.register_fn(key.as_str(), func.clone());
         }
         if let Some(g_result) = self.model.model.get("g") {
-            for (key, ast) in g_result.iter() {
-                let rm0 = ast.rm.clone();
-                let f1 = generate_g_function(rm0);
-                engine.register_fn(key.as_str(), f1.clone());
+            for (_key, ast) in g_result.iter() {
+                let g2 = generate_g2_function(ast.rm.clone());
+                engine.register_fn("g2", g2.clone());
+                let g3 = generate_g3_function(ast.rm.clone());
+                engine.register_fn("g3", g3.clone());
             }
         }
         let expstring = self
