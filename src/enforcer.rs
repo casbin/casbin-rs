@@ -5,7 +5,7 @@ use crate::model::{load_function_map, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
-use rhai::{Engine, FnRegister, Scope};
+use rhai::{Engine, RegisterFn, Scope};
 
 pub trait MatchFnClone2: Fn(String, String) -> bool {
     fn clone_box(&self) -> Box<dyn MatchFnClone2>;
