@@ -22,7 +22,7 @@ fn escape_g_function(s: String) -> String {
     let re1 = Regex::new(r"g\((\w+,\s*\w+)\)").unwrap();
     let re2 = Regex::new(r"g\((\w+,\s*\w+,\s*\w+)\)").unwrap();
 
-    let mut after = s.to_string();
+    let mut after = s;
     if re1.is_match(&after) {
         after = re1.replace_all(&after, "gg2($1)").to_string();
     }

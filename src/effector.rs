@@ -1,4 +1,4 @@
-pub trait Effector {
+pub trait Effector: Send + Sync {
     fn merge_effects(&self, expr: String, effects: Vec<EffectKind>, results: Vec<f64>) -> bool;
 }
 

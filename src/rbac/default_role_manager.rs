@@ -1,15 +1,14 @@
 use crate::errors::CasbinError;
 use crate::rbac::RoleManager;
 use crate::Result;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
+use std::sync::{Arc, RwLock};
 
 type MatchingFunc = fn(&str, &str) -> bool;
 
 #[derive(Clone)]
 pub struct DefaultRoleManager {
-    pub all_roles: HashMap<String, Rc<RefCell<Role>>>,
+    pub all_roles: Arc<RwLock<HashMap<String, Arc<RwLock<Role>>>>>,
     pub max_hierarchy_level: usize,
     pub has_pattern: bool,
     pub matching_func: Option<MatchingFunc>,
@@ -18,22 +17,24 @@ pub struct DefaultRoleManager {
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
-            all_roles: HashMap::new(),
+            all_roles: Arc::new(RwLock::new(HashMap::new())),
             max_hierarchy_level,
             has_pattern: false,
             matching_func: None,
         }
     }
 
-    fn create_role(&mut self, name: &str) -> Rc<RefCell<Role>> {
+    fn create_role(&mut self, name: &str) -> Arc<RwLock<Role>> {
         self.all_roles
+            .write()
+            .unwrap()
             .entry(name.to_owned())
-            .or_insert_with(|| Rc::new(RefCell::new(Role::new(name.to_owned()))))
+            .or_insert_with(|| Arc::new(RwLock::new(Role::new(name.to_owned()))))
             .clone()
     }
 
     fn has_role(&self, name: &str) -> bool {
-        self.all_roles.contains_key(name)
+        self.all_roles.read().unwrap().contains_key(name)
     }
 }
 
@@ -51,7 +52,7 @@ impl RoleManager for DefaultRoleManager {
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().add_role(role2);
+        role1.write().unwrap().add_role(role2);
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
@@ -66,7 +67,7 @@ impl RoleManager for DefaultRoleManager {
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.borrow_mut().delete_role(role2);
+        role1.write().unwrap().delete_role(role2);
         Ok(())
     }
 
@@ -84,7 +85,8 @@ impl RoleManager for DefaultRoleManager {
             return false;
         }
         self.create_role(&name1)
-            .borrow()
+            .write()
+            .unwrap()
             .has_role(&name2, self.max_hierarchy_level)
     }
 
@@ -99,13 +101,14 @@ impl RoleManager for DefaultRoleManager {
         let role = self.create_role(&name);
 
         if let Some(domain_val) = domain {
-            role.borrow()
+            role.read()
+                .unwrap()
                 .get_roles()
                 .iter()
                 .map(|x| x[domain_val.len() + 2..].to_string())
                 .collect()
         } else {
-            role.borrow().get_roles()
+            role.read().unwrap().get_roles()
         }
     }
 
@@ -119,9 +122,9 @@ impl RoleManager for DefaultRoleManager {
         }
 
         let mut names: Vec<String> = vec![];
-        for (_key, role) in self.all_roles.iter() {
-            if role.borrow().has_direct_role(&name) {
-                names.push(role.borrow().name.clone());
+        for (_key, role) in self.all_roles.read().unwrap().iter() {
+            if role.read().unwrap().has_direct_role(&name) {
+                names.push(role.read().unwrap().name.clone());
             }
         }
         if let Some(domain_val) = domain {
@@ -142,14 +145,14 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn clear(&mut self) {
-        self.all_roles = HashMap::new();
+        self.all_roles = Arc::new(RwLock::new(HashMap::new()));
     }
 }
 
 #[derive(Clone, Debug)]
 pub struct Role {
     name: String,
-    roles: Vec<Rc<RefCell<Role>>>,
+    roles: Vec<Arc<RwLock<Role>>>,
 }
 
 impl Role {
@@ -160,22 +163,22 @@ impl Role {
         }
     }
 
-    fn add_role(&mut self, other_role: Rc<RefCell<Role>>) {
+    fn add_role(&mut self, other_role: Arc<RwLock<Role>>) {
         if self
             .roles
             .iter()
-            .any(|role| role.borrow().name == other_role.borrow().name)
+            .any(|role| *(role.read().unwrap()).name == other_role.read().unwrap().name)
         {
             return;
         }
         self.roles.push(other_role);
     }
 
-    fn delete_role(&mut self, other_role: Rc<RefCell<Role>>) {
+    fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
         if let Some(pos) = self
             .roles
             .iter()
-            .position(|x| x.borrow().name == other_role.borrow().name)
+            .position(|x| x.read().unwrap().name == other_role.read().unwrap().name)
         {
             self.roles.remove(pos);
         }
@@ -189,7 +192,7 @@ impl Role {
             return false;
         }
         for role in self.roles.iter() {
-            if role.borrow().has_role(name, hierarchy_level - 1) {
+            if role.read().unwrap().has_role(name, hierarchy_level - 1) {
                 return true;
             }
         }
@@ -199,13 +202,13 @@ impl Role {
     fn get_roles(&self) -> Vec<String> {
         self.roles
             .iter()
-            .map(|role| role.borrow().name.clone())
+            .map(|role| role.read().unwrap().name.clone())
             .collect()
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
         for role in self.roles.iter() {
-            if role.borrow().name == name {
+            if role.read().unwrap().name == name {
                 return true;
             }
         }
