@@ -1,6 +1,6 @@
 use crate::Result;
 
-pub trait RoleManager {
+pub trait RoleManager: Send + Sync {
     fn clone_box(&self) -> Box<dyn RoleManager>;
     fn clear(&mut self);
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>);
