@@ -249,8 +249,7 @@ mod tests {
 
     #[test]
     fn test_modify_grouping_policy_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -296,8 +295,7 @@ mod tests {
 
     #[test]
     fn test_modify_policy_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -337,8 +335,7 @@ mod tests {
 
     #[test]
     fn test_get_policy_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -445,8 +442,7 @@ mod tests {
 
     #[test]
     fn test_get_list() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter);

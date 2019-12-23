@@ -194,8 +194,7 @@ mod tests {
 
     #[test]
     fn test_role_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -258,8 +257,7 @@ mod tests {
 
     #[test]
     fn test_role_api_threads() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Arc::new(RwLock::new(Enforcer::new(m, adapter)));
@@ -435,8 +433,7 @@ mod tests {
 
     #[test]
     fn test_permission_api() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_without_resources_model.conf");
+        let m = Model::new_from_file("examples/basic_without_resources_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -491,8 +488,7 @@ mod tests {
 
     #[test]
     fn test_implicit_role_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -518,8 +514,7 @@ mod tests {
 
     #[test]
     fn test_implicit_permission_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -551,8 +546,7 @@ mod tests {
 
     #[test]
     fn test_implicit_user_api() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -577,8 +571,7 @@ mod tests {
 
     #[test]
     fn test_implicit_permission_api_with_domain() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_domains_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
         let mut e = Enforcer::new(m, adapter);

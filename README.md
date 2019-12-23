@@ -19,33 +19,34 @@ production-ready | production-ready | experimental | WIP
 
 ## Installation
 
-Require this package in the `composer.json` of your project. This will download the package:
+Add this package to `Cargo.toml` of your project. (When this package gets stable we will publish to crates.io, now please use the git source and latest commit id)
 
-```
-composer require casbin/casbin
+```toml
+[dependencies]
+casbin-rs = {git = "https://github.com/casbin/casbin-rs.git", rev = "ff40845d206188099b3c13367937e943a1800ee9"}
 ```
 
 ## Get started
 
 1. New a Casbin enforcer with a model file and a policy file:
 
-```php
-require_once './vendor/autoload.php';
+```rust
+use casbin::{Enforcer, Model, FileAdapter};
 
-use Casbin\Enforcer;
-
-$e = new Enforcer("path/to/model.conf", "path/to/policy.csv");
+let model = Model::new_from_file("path/to/model.conf");
+let adapter = FileAdapter::new("path/to/policy.csv");
+let e = Enforcer::new(model, adapter);
 ```
 
 2. Add an enforcement hook into your code right before the access happens:
 
-```php
+```rust
 $sub = "alice"; // the user that wants to access a resource.
 $obj = "data1"; // the resource that is going to be accessed.
 $act = "read"; // the operation that the user performs on the resource.
 
-if ($e->enforce($sub, $obj, $act) === true) {
-    // permit alice to read data1
+if e.enforce(vec![$sub, $obj, $act]) {
+   // permit alice to read data1
 } else {
     // deny the request, show an error
 }
@@ -147,8 +148,8 @@ https://casbin.org/docs/en/tutorials
 
 casbin-rs provides two sets of APIs to manage permissions:
 
-- [Management API](https://github.com/casbin/casbin-rs/blob/master/src/ManagementApi.php): the primitive API that provides full support for casbin-rs policy management. See [here](https://github.com/casbin/casbin-rs/blob/master/tests/Unit/ManagementApiTest.php) for examples.
-- [RBAC API](https://github.com/casbin/casbin-rs/blob/master/src/RbacApi.php): a more friendly API for RBAC. This API is a subset of Management API. The RBAC users could use this API to simplify the code. See [here](https://github.com/casbin/casbin-rs/blob/master/tests/Unit/RbacApiTest.php) for examples.
+- [Management API](https://github.com/casbin/casbin-rs/blob/master/src/management_api.rs): the primitive API that provides full support for casbin-rs policy management. See [here](https://github.com/casbin/casbin-rs/blob/master/src/management_api.rs) for examples.
+- [RBAC API](https://github.com/casbin/casbin-rs/blob/master/src/rbac_api.rs): a more friendly API for RBAC. This API is a subset of Management API. The RBAC users could use this API to simplify the code. See [here](https://github.com/casbin/casbin-rs/blob/master/src/rbac_api.rs) for examples.
 
 We also provide a web-based UI for model management and policy management:
 

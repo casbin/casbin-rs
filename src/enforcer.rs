@@ -490,8 +490,7 @@ mod tests {
 
     #[test]
     fn test_ip_match_model() {
-        let mut m = Model::new();
-        m.load_model("examples/ipmatch_model.conf");
+        let m = Model::new_from_file("examples/ipmatch_model.conf");
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -522,8 +521,7 @@ mod tests {
     use crate::MgmtApi;
     #[test]
     fn test_enable_auto_save() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
+        let m = Model::new_from_file("examples/basic_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -555,8 +553,7 @@ mod tests {
 
     #[test]
     fn test_role_links() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
@@ -567,15 +564,13 @@ mod tests {
 
     #[test]
     fn test_get_and_set_model() {
-        let mut m1 = Model::new();
-        m1.load_model("examples/basic_model.conf");
+        let m1 = Model::new_from_file("examples/basic_model.conf");
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1);
 
         assert_eq!(false, e.enforce(vec!["root", "data1", "read"]));
 
-        let mut m2 = Model::new();
-        m2.load_model("examples/basic_with_root_model.conf");
+        let m2 = Model::new_from_file("examples/basic_with_root_model.conf");
         let adapter2 = FileAdapter::new("examples/basic_policy.csv");
         let e2 = Enforcer::new(m2, adapter2);
 
@@ -585,16 +580,14 @@ mod tests {
 
     #[test]
     fn test_get_and_set_adapter_in_mem() {
-        let mut m1 = Model::new();
-        m1.load_model("examples/basic_model.conf");
+        let m1 = Model::new_from_file("examples/basic_model.conf");
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1);
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
 
-        let mut m2 = Model::new();
-        m2.load_model("examples/basic_model.conf");
+        let m2 = Model::new_from_file("examples/basic_model.conf");
         let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
         let e2 = Enforcer::new(m2, adapter2);
 
