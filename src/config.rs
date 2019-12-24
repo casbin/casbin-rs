@@ -9,7 +9,7 @@ const DEFAULT_COMMENT: &str = "#";
 const DEFAULT_COMMENT_SEM: &str = ";";
 const DEFAULT_MULTI_LINE_SEPARATOR: &str = "\\";
 
-pub struct Config {
+pub(crate) struct Config {
     pub data: HashMap<String, HashMap<String, String>>,
 }
 
@@ -23,7 +23,7 @@ impl Config {
         c
     }
 
-    pub fn from_text(text: &str) -> Self {
+    pub(crate) fn from_text(text: &str) -> Self {
         let mut c = Config {
             data: HashMap::new(),
         };
@@ -115,7 +115,7 @@ impl Config {
         }
     }
 
-    pub fn add_config(&mut self, section: String, option: String, value: String) {
+    pub(crate) fn add_config(&mut self, section: String, option: String, value: String) {
         let mut section = section;
         if section.is_empty() {
             section = DEFAULT_SECTION.to_owned();
@@ -151,7 +151,8 @@ impl Config {
         }
     }
 
-    pub fn set(&mut self, key: &str, value: &str) {
+    #[cfg(test)]
+    pub(crate) fn set(&mut self, key: &str, value: &str) {
         if key.is_empty() {
             panic!("key can't be empty");
         }
@@ -167,23 +168,27 @@ impl Config {
         }
     }
 
-    pub fn get_bool(&self, key: &str) -> Option<bool> {
+    #[cfg(test)]
+    pub(crate) fn get_bool(&self, key: &str) -> Option<bool> {
         self.get(key).and_then(|v| v.parse::<bool>().ok())
     }
 
-    pub fn get_string(&self, key: &str) -> Option<String> {
+    #[cfg(test)]
+    pub(crate) fn get_string(&self, key: &str) -> Option<String> {
         self.get_str(key).map(|v| v.to_string())
     }
 
-    pub fn get_str(&self, key: &str) -> Option<&str> {
+    pub(crate) fn get_str(&self, key: &str) -> Option<&str> {
         self.get(key)
     }
 
-    pub fn get_int(&self, key: &str) -> Option<i64> {
+    #[cfg(test)]
+    pub(crate) fn get_int(&self, key: &str) -> Option<i64> {
         self.get(key).and_then(|v| v.parse::<i64>().ok())
     }
 
-    pub fn get_float(&self, key: &str) -> Option<f64> {
+    #[cfg(test)]
+    pub(crate) fn get_float(&self, key: &str) -> Option<f64> {
         self.get(key).and_then(|v| v.parse::<f64>().ok())
     }
 }

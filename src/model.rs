@@ -85,17 +85,20 @@ impl Assertion {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Model {
     pub model: HashMap<String, AssertionMap>,
 }
 
 impl Model {
-    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        Model {
-            model: HashMap::new(),
-        }
+        Model::default()
+    }
+
+    pub fn new_from_file(path: &str) -> Self {
+        let mut model = Model::new();
+        model.load_model(path);
+        model
     }
 
     fn get_key_suffix(&self, i: u64) -> String {
@@ -495,8 +498,7 @@ mod tests {
     use crate::enforcer::Enforcer;
     #[test]
     fn test_basic_model() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
+        let m = Model::new_from_file("examples/basic_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -513,8 +515,7 @@ mod tests {
 
     #[test]
     fn test_basic_model_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_model.conf");
+        let m = Model::new_from_file("examples/basic_model.conf");
 
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter);
@@ -531,8 +532,7 @@ mod tests {
 
     #[test]
     fn test_basic_model_with_root() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
+        let m = Model::new_from_file("examples/basic_with_root_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -553,8 +553,7 @@ mod tests {
 
     #[test]
     fn test_basic_model_with_root_no_policy() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_with_root_model.conf");
+        let m = Model::new_from_file("examples/basic_with_root_model.conf");
 
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter);
@@ -575,8 +574,7 @@ mod tests {
 
     #[test]
     fn test_basic_model_without_users() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_without_users_model.conf");
+        let m = Model::new_from_file("examples/basic_without_users_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_without_users_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -589,8 +587,7 @@ mod tests {
 
     #[test]
     fn test_basic_model_without_resources() {
-        let mut m = Model::new();
-        m.load_model("examples/basic_without_resources_model.conf");
+        let m = Model::new_from_file("examples/basic_without_resources_model.conf");
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -603,8 +600,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -621,8 +617,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_resource_roles() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_resource_roles_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_resource_roles_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -639,8 +634,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_domains() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_domains_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -658,8 +652,7 @@ mod tests {
     use crate::MgmtApi;
     #[test]
     fn test_rbac_model_with_domains_at_runtime() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_domains_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
@@ -713,8 +706,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_domains_at_runtime_mock_adapter() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_domains_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -739,8 +731,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_deny() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_deny_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_deny_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -757,8 +748,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_not_deny() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_with_not_deny_model.conf");
+        let m = Model::new_from_file("examples/rbac_with_not_deny_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -768,8 +758,7 @@ mod tests {
 
     #[test]
     fn test_rbac_model_with_custom_data() {
-        let mut m = Model::new();
-        m.load_model("examples/rbac_model.conf");
+        let m = Model::new_from_file("examples/rbac_model.conf");
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
