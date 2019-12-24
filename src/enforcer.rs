@@ -61,6 +61,7 @@ pub fn generate_gg3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3>
     Box::new(cb)
 }
 
+/// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer<A: Adapter> {
     pub model: Model,
     pub adapter: A,
@@ -72,6 +73,7 @@ pub struct Enforcer<A: Adapter> {
 }
 
 impl<A: Adapter> Enforcer<A> {
+    /// Enforcer::new creates an enforcer via file or DB.
     pub fn new(m: Model, a: A) -> Self {
         let m = m;
         let fm = load_function_map();
@@ -92,6 +94,18 @@ impl<A: Adapter> Enforcer<A> {
         e
     }
 
+    /// Enforce decides whether a "subject" can access a "object" with the operation "action",
+    /// input parameters are usually: (sub, obj, act).
+    ///
+    /// # Examples
+    /// ```
+    /// use casbin::{Enforcer, Model, FileAdapter};
+    ///
+    /// let m = Model::new_from_file("examples/basic_model.conf");
+    /// let adapter = FileAdapter::new("examples/basic_policy.csv");
+    /// let e = Enforcer::new(m, adapter);
+    /// assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
+    /// ```
     pub fn enforce(&self, rvals: Vec<&str>) -> bool {
         let mut engine = Engine::new();
         let mut scope: Scope = Vec::new();
