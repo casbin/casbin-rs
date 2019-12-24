@@ -19,11 +19,11 @@ production-ready | production-ready | experimental | WIP
 
 ## Installation
 
-Add this package to `Cargo.toml` of your project. (When this package gets stable we will publish to crates.io, now please use the git source and latest commit id)
+Add this package to `Cargo.toml` of your project. (Check https://crates.io/crates/casbin for right version)
 
 ```toml
 [dependencies]
-casbin-rs = {git = "https://github.com/casbin/casbin-rs.git", rev = "ff40845d206188099b3c13367937e943a1800ee9"}
+casbin = "0.1"
 ```
 
 ## Get started
@@ -41,11 +41,11 @@ let e = Enforcer::new(model, adapter);
 2. Add an enforcement hook into your code right before the access happens:
 
 ```rust
-$sub = "alice"; // the user that wants to access a resource.
-$obj = "data1"; // the resource that is going to be accessed.
-$act = "read"; // the operation that the user performs on the resource.
+sub = "alice"; // the user that wants to access a resource.
+obj = "data1"; // the resource that is going to be accessed.
+act = "read"; // the operation that the user performs on the resource.
 
-if e.enforce(vec![$sub, $obj, $act]) {
+if e.enforce(vec![sub, obj, act]) {
    // permit alice to read data1
 } else {
     // deny the request, show an error
