@@ -3,6 +3,8 @@ name = "casbin"
 version = "0.1.0"
 authors = ["Joey <joey.xf@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "An authorization library that supports access control models like ACL, RBAC, ABAC."
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
