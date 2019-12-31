@@ -1,7 +1,7 @@
 use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
+use crate::errors::RuntimeError;
 use crate::InternalApi;
-use crate::Result;
 
 pub trait MgmtApi {
     fn get_policy(&self) -> Vec<Vec<String>>;
@@ -15,12 +15,13 @@ pub trait MgmtApi {
     ) -> Vec<Vec<String>>;
     fn has_policy(&self, params: Vec<&str>) -> bool;
     fn has_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool;
-    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
+    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError>;
+    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError>;
+    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool, RuntimeError>;
+    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>)
+        -> Result<bool, RuntimeError>;
+    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError>;
+    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError>;
     fn get_grouping_policy(&self) -> Vec<Vec<String>>;
     fn get_named_grouping_policy(&self, ptype: &str) -> Vec<Vec<String>>;
     fn get_filtered_grouping_policy(
@@ -36,30 +37,38 @@ pub trait MgmtApi {
     ) -> Vec<Vec<String>>;
     fn has_grouping_policy(&self, params: Vec<&str>) -> bool;
     fn has_grouping_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool;
-    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
+    fn add_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool, RuntimeError>;
+    fn remove_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool, RuntimeError>;
     fn remove_filtered_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool>;
+    ) -> Result<bool, RuntimeError>;
     fn remove_filtered_grouping_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool>;
+    ) -> Result<bool, RuntimeError>;
     fn remove_filtered_named_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool>;
+    ) -> Result<bool, RuntimeError>;
     fn remove_filtered_named_grouping_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool>;
+    ) -> Result<bool, RuntimeError>;
     fn get_all_subjects(&self) -> Vec<String>;
     fn get_all_named_subjects(&self, ptype: &str) -> Vec<String>;
     fn get_all_objects(&self) -> Vec<String>;
@@ -71,37 +80,49 @@ pub trait MgmtApi {
 }
 
 impl<A: Adapter> MgmtApi for Enforcer<A> {
-    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError> {
         self.add_named_policy("p", params)
     }
 
-    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError> {
         self.remove_named_policy("p", params)
     }
 
-    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool, RuntimeError> {
         self.add_policy_internal("p", ptype, params)
     }
 
-    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+    fn remove_named_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         self.remove_policy_internal("p", ptype, params)
     }
 
-    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError> {
         self.add_named_grouping_policy("g", params)
     }
 
-    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+    fn add_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         let rule_added = self.add_policy_internal("g", ptype, params)?;
         self.build_role_links()?;
         Ok(rule_added)
     }
 
-    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool, RuntimeError> {
         self.remove_named_grouping_policy("g", params)
     }
 
-    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+    fn remove_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         let rule_removed = self.remove_policy_internal("g", ptype, params)?;
         self.build_role_links()?;
         Ok(rule_removed)
@@ -111,7 +132,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool> {
+    ) -> Result<bool, RuntimeError> {
         self.remove_filtered_named_grouping_policy("g", field_index, field_values)
     }
 
@@ -120,7 +141,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool> {
+    ) -> Result<bool, RuntimeError> {
         let rule_removed =
             self.remove_filtered_policy_internal("g", ptype, field_index, field_values)?;
         self.build_role_links()?;
@@ -131,7 +152,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool> {
+    ) -> Result<bool, RuntimeError> {
         self.remove_filtered_named_policy("p", field_index, field_values)
     }
 
@@ -140,7 +161,7 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
-    ) -> Result<bool> {
+    ) -> Result<bool, RuntimeError> {
         self.remove_filtered_policy_internal("p", ptype, field_index, field_values)
     }
 

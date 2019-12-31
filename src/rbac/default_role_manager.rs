@@ -1,6 +1,5 @@
-use crate::errors::CasbinError;
+use crate::errors::RuntimeError;
 use crate::rbac::RoleManager;
-use crate::Result;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -55,7 +54,12 @@ impl RoleManager for DefaultRoleManager {
         role1.write().unwrap().add_role(role2);
     }
 
-    fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
+    fn delete_link(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: Option<&str>,
+    ) -> Result<(), RuntimeError> {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
         if let Some(domain_val) = domain {
@@ -63,7 +67,7 @@ impl RoleManager for DefaultRoleManager {
             name2 = format!("{}::{}", domain_val, name2);
         }
         if !self.has_role(&name1) || !self.has_role(&name2) {
-            return Err(CasbinError::new("name1 or name2 doesn't exists").into());
+            return Err(RuntimeError::RoleNotExists);
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);

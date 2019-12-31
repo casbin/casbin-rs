@@ -1,22 +1,30 @@
 use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
+use crate::errors::RuntimeError;
 use crate::MgmtApi;
-use crate::Result;
 use std::collections::HashMap;
 
 pub trait RbacApi {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
-    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool>;
+    fn add_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool, RuntimeError>;
+    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool, RuntimeError>;
+    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool, RuntimeError>;
+    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool, RuntimeError>;
     fn get_roles_for_user(&mut self, name: &str) -> Vec<String>;
     fn get_users_for_role(&self, name: &str) -> Vec<String>;
     fn has_role_for_user(&mut self, name: &str, role: &str) -> bool;
-    fn delete_user(&mut self, name: &str) -> Result<bool>;
-    fn delete_role(&mut self, name: &str) -> Result<bool>;
-    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool>;
-    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
-    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool>;
+    fn delete_user(&mut self, name: &str) -> Result<bool, RuntimeError>;
+    fn delete_role(&mut self, name: &str) -> Result<bool, RuntimeError>;
+    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool, RuntimeError>;
+    fn delete_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool, RuntimeError>;
+    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool, RuntimeError>;
     fn get_permissions_for_user(&self, user: &str) -> Vec<Vec<String>>;
     fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool;
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
@@ -30,21 +38,25 @@ pub trait RbacApi {
 }
 
 impl<A: Adapter> RbacApi for Enforcer<A> {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+    fn add_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         let mut perm = permission;
         perm.insert(0, user);
         self.add_policy(perm)
     }
 
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
+    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool, RuntimeError> {
         self.add_grouping_policy(vec![user, role])
     }
 
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
+    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool, RuntimeError> {
         self.remove_grouping_policy(vec![user, role])
     }
 
-    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool> {
+    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool, RuntimeError> {
         self.remove_filtered_grouping_policy(0, vec![user])
     }
 
@@ -80,27 +92,31 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         has_role
     }
 
-    fn delete_user(&mut self, name: &str) -> Result<bool> {
+    fn delete_user(&mut self, name: &str) -> Result<bool, RuntimeError> {
         self.remove_filtered_grouping_policy(0, vec![name])
     }
 
-    fn delete_role(&mut self, name: &str) -> Result<bool> {
+    fn delete_role(&mut self, name: &str) -> Result<bool, RuntimeError> {
         let res1 = self.remove_filtered_grouping_policy(1, vec![name])?;
         let res2 = self.remove_filtered_policy(0, vec![name])?;
         Ok(res1 || res2)
     }
 
-    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
+    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool, RuntimeError> {
         self.remove_filtered_policy(1, permission)
     }
 
-    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+    fn delete_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         let mut permission = permission;
         permission.insert(0, user);
         self.remove_policy(permission)
     }
 
-    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
+    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool, RuntimeError> {
         self.remove_filtered_policy(0, vec![user])
     }
 

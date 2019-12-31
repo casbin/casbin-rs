@@ -1,9 +1,9 @@
 use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
+use crate::errors::RuntimeError;
 use crate::model::Model;
 use crate::model::{load_function_map, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
-use crate::Result;
 
 use rhai::{Engine, RegisterFn, Scope};
 
@@ -292,13 +292,13 @@ impl<A: Adapter> Enforcer<A> {
         self.eft.merge_effects(ee, policy_effects, vec![])
     }
 
-    pub fn build_role_links(&mut self) -> Result<()> {
+    pub fn build_role_links(&mut self) -> Result<(), RuntimeError> {
         self.rm.clear();
         self.model.build_role_links(&mut self.rm)?;
         Ok(())
     }
 
-    pub fn load_policy(&mut self) -> Result<()> {
+    pub fn load_policy(&mut self) -> Result<(), RuntimeError> {
         self.model.clear_policy();
         self.adapter.load_policy(&mut self.model)?;
 

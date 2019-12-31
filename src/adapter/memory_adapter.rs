@@ -1,6 +1,6 @@
 use crate::adapter::Adapter;
+use crate::errors::RuntimeError;
 use crate::model::Model;
-use crate::Result;
 
 use std::collections::HashSet;
 
@@ -10,7 +10,7 @@ pub struct MemoryAdapter {
 }
 
 impl Adapter for MemoryAdapter {
-    fn load_policy(&self, m: &mut Model) -> Result<()> {
+    fn load_policy(&self, m: &mut Model) -> Result<(), RuntimeError> {
         for line in self.policy.iter() {
             let sec = line[0].clone();
             let ptype = line[1].clone();
@@ -25,11 +25,16 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    fn save_policy(&self, _m: &mut Model) -> Result<()> {
+    fn save_policy(&self, _m: &mut Model) -> Result<(), RuntimeError> {
         unimplemented!();
     }
 
-    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    fn add_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         let mut line: Vec<String> = rule.into_iter().map(String::from).collect();
         line.insert(0, ptype.to_owned());
         line.insert(0, sec.to_owned());
@@ -39,7 +44,12 @@ impl Adapter for MemoryAdapter {
         Ok(false)
     }
 
-    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    fn remove_policy(
+        &self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<&str>,
+    ) -> Result<bool, RuntimeError> {
         Ok(true)
     }
 
@@ -49,7 +59,7 @@ impl Adapter for MemoryAdapter {
         _ptype: &str,
         _field_index: usize,
         _field_values: Vec<&str>,
-    ) -> Result<bool> {
+    ) -> Result<bool, RuntimeError> {
         Ok(true)
     }
 }
