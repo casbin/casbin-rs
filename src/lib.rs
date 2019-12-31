@@ -16,4 +16,4 @@ pub use management_api::MgmtApi;
 pub use model::Model;
 pub use rbac_api::RbacApi;
 
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
