@@ -1,10 +1,11 @@
 use crate::adapter::Adapter;
-use crate::errors::CasbinError;
+use crate::error::Error;
 use crate::model::Model;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::{Error as IoError, ErrorKind};
 
 use crate::Result;
 
@@ -44,8 +45,12 @@ impl Adapter for FileAdapter {
     }
 
     fn save_policy(&self, m: &mut Model) -> Result<()> {
-        if self.file_path == "" {
-            return Err(CasbinError::new("save policy failed, file path is empty").into());
+        if self.file_path.is_empty() {
+            return Err(Error::IoError(IoError::new(
+                ErrorKind::Other,
+                "save policy failed, file path is empty",
+            ))
+            .into());
         }
 
         let mut tmp = String::new();
@@ -91,7 +96,7 @@ impl Adapter for FileAdapter {
 }
 
 fn load_policy_line(line: String, m: &mut Model) {
-    if line == "" || line.chars().nth(0).unwrap() == '#' {
+    if line.is_empty() || line.starts_with('#') {
         return;
     }
     let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();

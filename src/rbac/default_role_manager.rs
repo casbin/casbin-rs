@@ -1,4 +1,4 @@
-use crate::errors::CasbinError;
+use crate::error::{Error, RbacError};
 use crate::rbac::RoleManager;
 use crate::Result;
 use std::collections::HashMap;
@@ -63,7 +63,9 @@ impl RoleManager for DefaultRoleManager {
             name2 = format!("{}::{}", domain_val, name2);
         }
         if !self.has_role(&name1) || !self.has_role(&name2) {
-            return Err(CasbinError::new("name1 or name2 doesn't exists").into());
+            return Err(
+                Error::RbacError(RbacError::NotFound(format!("{} OR {}", name1, name2))).into(),
+            );
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);

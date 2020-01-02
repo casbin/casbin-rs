@@ -1,11 +1,14 @@
 use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
+use crate::error::{Error, ModelError};
 use crate::model::Model;
 use crate::model::{load_function_map, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
 use rhai::{Engine, RegisterFn, Scope};
+
+// use std::collections::HashMap;
 
 pub trait MatchFnClone2: Fn(String, String) -> bool {
     fn clone_box(&self) -> Box<dyn MatchFnClone2>;
@@ -101,30 +104,62 @@ impl<A: Adapter> Enforcer<A> {
     /// ```
     /// use casbin::{Enforcer, Model, FileAdapter};
     ///
-    /// let m = Model::new_from_file("examples/basic_model.conf");
+    /// let m = Model::from_file("examples/basic_model.conf").unwrap();
     /// let adapter = FileAdapter::new("examples/basic_policy.csv");
     /// let e = Enforcer::new(m, adapter);
-    /// assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
+    /// assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
     /// ```
-    pub fn enforce(&self, rvals: Vec<&str>) -> bool {
+    pub fn enforce(&self, rvals: Vec<&str>) -> Result<bool> {
         let mut engine = Engine::new();
         let mut scope: Scope = Vec::new();
-        for (i, token) in self
+        let r = self
             .model
             .model
             .get("r")
-            .unwrap()
+            .ok_or(Error::ModelError(
+                ModelError::R("Missing request definition in conf file".to_owned()).into(),
+            ))?
             .get("r")
-            .unwrap()
-            .tokens
-            .iter()
-            .enumerate()
-        {
-            // let r_sub = "alice"; or let r_obj = "resource1"; or let r_sub = "GET";
+            .ok_or(Error::ModelError(
+                ModelError::R("Missing request secion in conf file".to_owned()).into(),
+            ))?;
+        let p = self
+            .model
+            .model
+            .get("p")
+            .ok_or(Error::ModelError(
+                ModelError::P("Missing policy definition in conf file".to_owned()).into(),
+            ))?
+            .get("p")
+            .ok_or(Error::ModelError(
+                ModelError::P("Missing policy section in conf file".to_owned()).into(),
+            ))?;
+        let m = self
+            .model
+            .model
+            .get("m")
+            .ok_or(Error::ModelError(
+                ModelError::M("Missing matcher definition in conf file".to_owned()).into(),
+            ))?
+            .get("m")
+            .ok_or(Error::ModelError(
+                ModelError::M("Missing matcher section in conf file".to_owned()).into(),
+            ))?;
+        let e = self
+            .model
+            .model
+            .get("e")
+            .ok_or(Error::ModelError(
+                ModelError::E("Missing effector definition in conf file".to_owned()).into(),
+            ))?
+            .get("e")
+            .ok_or(Error::ModelError(
+                ModelError::E("Missing effector section in conf file".to_owned()).into(),
+            ))?;
+
+        for (i, token) in r.tokens.iter().enumerate() {
             let scope_exp = format!("let {} = \"{}\";", token.clone(), rvals[i]);
-            engine
-                .eval_with_scope::<()>(&mut scope, scope_exp.as_str())
-                .expect("set rtoken scope failed");
+            engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
         }
 
         for (key, func) in self.fm.iter() {
@@ -143,100 +178,30 @@ impl<A: Adapter> Enforcer<A> {
                 }
             }
         }
-        let expstring = self
-            .model
-            .model
-            .get("m")
-            .unwrap()
-            .get("m")
-            .unwrap()
-            .value
-            .clone();
+        let expstring = m.value.clone();
         let mut policy_effects: Vec<EffectKind> = vec![];
-        let policy_len = self
-            .model
-            .model
-            .get("p")
-            .unwrap()
-            .get("p")
-            .unwrap()
-            .policy
-            .len();
+        let policy_len = p.policy.len();
         if policy_len != 0 {
             policy_effects = vec![EffectKind::Allow; policy_len];
-            if self
-                .model
-                .model
-                .get("r")
-                .unwrap()
-                .get("r")
-                .unwrap()
-                .tokens
-                .len()
-                != rvals.len()
-            {
-                return false;
+            if r.tokens.len() != rvals.len() {
+                return Ok(false);
             }
-            for (i, pvals) in self
-                .model
-                .model
-                .get("p")
-                .unwrap()
-                .get("p")
-                .unwrap()
-                .policy
-                .iter()
-                .enumerate()
-            {
-                if self
-                    .model
-                    .model
-                    .get("p")
-                    .unwrap()
-                    .get("p")
-                    .unwrap()
-                    .tokens
-                    .len()
-                    != pvals.len()
-                {
-                    return false;
+            for (i, pvals) in p.policy.iter().enumerate() {
+                if p.tokens.len() != pvals.len() {
+                    return Ok(false);
                 }
-                for (pi, ptoken) in self
-                    .model
-                    .model
-                    .get("p")
-                    .unwrap()
-                    .get("p")
-                    .unwrap()
-                    .tokens
-                    .iter()
-                    .enumerate()
-                {
+                for (pi, ptoken) in p.tokens.iter().enumerate() {
                     // let p_sub = "alice"; or let p_obj = "resource1"; or let p_sub = "GET";
                     let scope_exp = format!("let {} = \"{}\";", ptoken.clone(), pvals[pi]);
-                    engine
-                        .eval_with_scope::<()>(&mut scope, scope_exp.as_str())
-                        .expect("set ptoken scope failed");
+                    engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
                 }
 
-                let eval_result = engine
-                    .eval_with_scope::<bool>(&mut scope, expstring.as_str())
-                    .expect("eval expression failed");
+                let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring.as_str())?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
                     continue;
                 }
-                if let Some(j) = self
-                    .model
-                    .model
-                    .get("p")
-                    .unwrap()
-                    .get("p")
-                    .unwrap()
-                    .tokens
-                    .iter()
-                    .position(|x| x == &String::from("p_eft"))
-                {
+                if let Some(j) = p.tokens.iter().position(|x| x == &String::from("p_eft")) {
                     let eft = &pvals[j];
                     if eft == "allow" {
                         policy_effects[i] = EffectKind::Allow;
@@ -255,24 +220,11 @@ impl<A: Adapter> Enforcer<A> {
                 }
             }
         } else {
-            for token in self
-                .model
-                .model
-                .get("p")
-                .unwrap()
-                .get("p")
-                .unwrap()
-                .tokens
-                .iter()
-            {
+            for token in p.tokens.iter() {
                 let scope_exp = format!("let {} = \"{}\";", token.clone(), "");
-                engine
-                    .eval_with_scope::<()>(&mut scope, scope_exp.as_str())
-                    .expect("set ptoken in else scope failed");
+                engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
             }
-            let eval_result = engine
-                .eval_with_scope::<bool>(&mut scope, expstring.as_str())
-                .expect("eval expression failed");
+            let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring.as_str())?;
             if eval_result {
                 policy_effects.push(EffectKind::Allow);
             } else {
@@ -280,16 +232,9 @@ impl<A: Adapter> Enforcer<A> {
             }
         }
 
-        let ee = self
-            .model
-            .model
-            .get("e")
-            .unwrap()
-            .get("e")
-            .unwrap()
-            .value
-            .clone();
-        self.eft.merge_effects(ee, policy_effects, vec![])
+        let ee = e.value.clone();
+
+        Ok(self.eft.merge_effects(ee, policy_effects, vec![]))
     }
 
     pub fn build_role_links(&mut self) -> Result<()> {
@@ -328,7 +273,7 @@ mod tests {
 
     #[test]
     fn test_key_match_model_in_memory() {
-        let mut m = Model::new();
+        let mut m = Model::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub, obj, act");
         m.add_def("e", "e", "some(where (p.eft == allow))");
@@ -343,62 +288,102 @@ mod tests {
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
+                .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
+                .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource2", "GET"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["alice", "/bob_data/resource1", "GET"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["alice", "/bob_data/resource1", "POST"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["alice", "/bob_data/resource2", "GET"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["alice", "/bob_data/resource2", "POST"])
+                .unwrap()
         );
 
         assert_eq!(
             false,
             e.enforce(vec!["bob", "/alice_data/resource1", "GET"])
+                .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(vec!["bob", "/alice_data/resource1", "POST"])
+                .unwrap()
         );
-        assert_eq!(true, e.enforce(vec!["bob", "/alice_data/resource2", "GET"]));
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "/alice_data/resource2", "GET"])
+                .unwrap()
+        );
         assert_eq!(
             false,
             e.enforce(vec!["bob", "/alice_data/resource2", "POST"])
+                .unwrap()
         );
-        assert_eq!(false, e.enforce(vec!["bob", "/bob_data/resource1", "GET"]));
-        assert_eq!(true, e.enforce(vec!["bob", "/bob_data/resource1", "POST"]));
-        assert_eq!(false, e.enforce(vec!["bob", "/bob_data/resource2", "GET"]));
-        assert_eq!(true, e.enforce(vec!["bob", "/bob_data/resource2", "POST"]));
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "/bob_data/resource1", "GET"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "/bob_data/resource1", "POST"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "/bob_data/resource2", "GET"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "/bob_data/resource2", "POST"])
+                .unwrap()
+        );
 
-        assert_eq!(true, e.enforce(vec!["cathy", "/cathy_data", "GET"]));
-        assert_eq!(true, e.enforce(vec!["cathy", "/cathy_data", "POST"]));
-        assert_eq!(false, e.enforce(vec!["cathy", "/cathy_data", "DELETE"]));
+        assert_eq!(
+            true,
+            e.enforce(vec!["cathy", "/cathy_data", "GET"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["cathy", "/cathy_data", "POST"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["cathy", "/cathy_data", "DELETE"]).unwrap()
+        );
     }
 
     #[test]
     fn test_key_match_model_in_memory_deny() {
-        let mut m = Model::new();
+        let mut m = Model::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub, obj, act");
         m.add_def("e", "e", "!some(where (p.eft == deny))");
@@ -413,13 +398,14 @@ mod tests {
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
+                .unwrap()
         );
     }
 
     use crate::RbacApi;
     #[test]
     fn test_rbac_model_in_memory_indeterminate() {
-        let mut m = Model::new();
+        let mut m = Model::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub, obj, act");
         m.add_def("g", "g", "_, _");
@@ -434,12 +420,12 @@ mod tests {
         let mut e = Enforcer::new(m, adapter);
         e.add_permission_for_user("alice", vec!["data1", "invalid"])
             .unwrap();
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model_in_memory() {
-        let mut m = Model::new();
+        let mut m = Model::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub, obj, act");
         m.add_def("g", "g", "_, _");
@@ -462,19 +448,19 @@ mod tests {
             .unwrap();
         e.add_role_for_user("alice", "data2_admin").unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_not_used_rbac_model_in_memory() {
-        let mut m = Model::new();
+        let mut m = Model::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub, obj, act");
         m.add_def("g", "g", "_, _");
@@ -492,50 +478,50 @@ mod tests {
         e.add_permission_for_user("bob", vec!["data2", "write"])
             .unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_ip_match_model() {
-        let m = Model::new_from_file("examples/ipmatch_model.conf");
+        let m = Model::from_file("examples/ipmatch_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert!(e.enforce(vec!["192.168.2.123", "data1", "read"]));
+        assert!(e.enforce(vec!["192.168.2.123", "data1", "read"]).unwrap());
 
-        assert!(e.enforce(vec!["10.0.0.5", "data2", "write"]));
+        assert!(e.enforce(vec!["10.0.0.5", "data2", "write"]).unwrap());
 
-        assert!(!e.enforce(vec!["192.168.2.123", "data1", "write"]));
-        assert!(!e.enforce(vec!["192.168.2.123", "data2", "read"]));
-        assert!(!e.enforce(vec!["192.168.2.123", "data2", "write"]));
+        assert!(!e.enforce(vec!["192.168.2.123", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.2.123", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.2.123", "data2", "write"]).unwrap());
 
-        assert!(!e.enforce(vec!["192.168.0.123", "data1", "read"]));
-        assert!(!e.enforce(vec!["192.168.0.123", "data1", "write"]));
-        assert!(!e.enforce(vec!["192.168.0.123", "data2", "read"]));
-        assert!(!e.enforce(vec!["192.168.0.123", "data2", "write"]));
+        assert!(!e.enforce(vec!["192.168.0.123", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.123", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.123", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.123", "data2", "write"]).unwrap());
 
-        assert!(!e.enforce(vec!["10.0.0.5", "data1", "read"]));
-        assert!(!e.enforce(vec!["10.0.0.5", "data1", "write"]));
-        assert!(!e.enforce(vec!["10.0.0.5", "data2", "read"]));
+        assert!(!e.enforce(vec!["10.0.0.5", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["10.0.0.5", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["10.0.0.5", "data2", "read"]).unwrap());
 
-        assert!(!e.enforce(vec!["192.168.0.1", "data1", "read"]));
-        assert!(!e.enforce(vec!["192.168.0.1", "data1", "write"]));
-        assert!(!e.enforce(vec!["192.168.0.1", "data2", "read"]));
-        assert!(!e.enforce(vec!["192.168.0.1", "data2", "write"]));
+        assert!(!e.enforce(vec!["192.168.0.1", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.1", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.1", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["192.168.0.1", "data2", "write"]).unwrap());
     }
 
     use crate::MgmtApi;
     #[test]
     fn test_enable_auto_save() {
-        let m = Model::new_from_file("examples/basic_model.conf");
+        let m = Model::from_file("examples/basic_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -543,71 +529,71 @@ mod tests {
         e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
         e.load_policy().unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
         e.enable_auto_save(true);
         e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
         e.load_policy().unwrap();
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_role_links() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
-        assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]));
+        assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]).unwrap());
     }
 
     #[test]
     fn test_get_and_set_model() {
-        let m1 = Model::new_from_file("examples/basic_model.conf");
+        let m1 = Model::from_file("examples/basic_model.conf").unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1);
 
-        assert_eq!(false, e.enforce(vec!["root", "data1", "read"]));
+        assert_eq!(false, e.enforce(vec!["root", "data1", "read"]).unwrap());
 
-        let m2 = Model::new_from_file("examples/basic_with_root_model.conf");
+        let m2 = Model::from_file("examples/basic_with_root_model.conf").unwrap();
         let adapter2 = FileAdapter::new("examples/basic_policy.csv");
         let e2 = Enforcer::new(m2, adapter2);
 
         e.model = e2.model;
-        assert_eq!(true, e.enforce(vec!["root", "data1", "read"]));
+        assert_eq!(true, e.enforce(vec!["root", "data1", "read"]).unwrap());
     }
 
     #[test]
     fn test_get_and_set_adapter_in_mem() {
-        let m1 = Model::new_from_file("examples/basic_model.conf");
+        let m1 = Model::from_file("examples/basic_model.conf").unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1);
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
 
-        let m2 = Model::new_from_file("examples/basic_model.conf");
+        let m2 = Model::from_file("examples/basic_model.conf").unwrap();
         let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
         let e2 = Enforcer::new(m2, adapter2);
 
         e.adapter = e2.adapter;
         e.load_policy().unwrap();
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]).unwrap());
     }
 }
