@@ -8,7 +8,7 @@ mod model;
 mod rbac;
 mod rbac_api;
 
-pub mod errors;
+pub mod error;
 pub use adapter::{Adapter, FileAdapter};
 pub use enforcer::Enforcer;
 pub use internal_api::InternalApi;

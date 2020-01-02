@@ -177,8 +177,10 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         for user in users.iter() {
             let mut req = permission.clone();
             req.insert(0, user);
-            if self.enforce(req) {
-                res.push(user.to_owned());
+            if let Ok(r) = self.enforce(req) {
+                if r {
+                    res.push(user.to_owned());
+                }
             }
         }
         res
@@ -194,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_role_api() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -232,24 +234,24 @@ mod tests {
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
         e.add_role_for_user("alice", "data2_admin").unwrap();
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
         e.delete_role("data2_admin").unwrap();
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     use std::sync::{Arc, RwLock};
@@ -257,7 +259,7 @@ mod tests {
 
     #[test]
     fn test_role_api_threads() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Arc::new(RwLock::new(Enforcer::new(m, adapter)));
@@ -365,83 +367,131 @@ mod tests {
             .unwrap();
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["alice", "data1", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data1", "read"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["alice", "data1", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data1", "write"])
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["alice", "data2", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data2", "read"])
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["alice", "data2", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data2", "write"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data1", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data1", "read"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data1", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data1", "write"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data2", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data2", "read"])
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["bob", "data2", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data2", "write"])
+                .unwrap()
         );
 
         e.write().unwrap().delete_role("data2_admin").unwrap();
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["alice", "data1", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data1", "read"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["alice", "data1", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data1", "write"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["alice", "data2", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data2", "read"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["alice", "data2", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["alice", "data2", "write"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data1", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data1", "read"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data1", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data1", "write"])
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.read().unwrap().enforce(vec!["bob", "data2", "read"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data2", "read"])
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.read().unwrap().enforce(vec!["bob", "data2", "write"])
+            e.read()
+                .unwrap()
+                .enforce(vec!["bob", "data2", "write"])
+                .unwrap()
         );
     }
 
     #[test]
     fn test_permission_api() {
-        let m = Model::new_from_file("examples/basic_without_resources_model.conf");
+        let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
         let mut e = Enforcer::new(m, adapter);
 
-        assert_eq!(true, e.enforce(vec!["alice", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
         assert_eq!(
             vec![vec!["alice", "read"]],
@@ -459,36 +509,36 @@ mod tests {
 
         e.delete_permission(vec!["read"]).unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
         e.add_permission_for_user("bob", vec!["read"]).unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "write"]));
-        assert_eq!(true, e.enforce(vec!["bob", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
         e.delete_permission_for_user("bob", vec!["read"]).unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
         e.delete_permissions_for_user("bob").unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "write"]).unwrap());
     }
 
     #[test]
     fn test_implicit_role_api() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -514,7 +564,7 @@ mod tests {
 
     #[test]
     fn test_implicit_permission_api() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -546,7 +596,7 @@ mod tests {
 
     #[test]
     fn test_implicit_user_api() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let e = Enforcer::new(m, adapter);
@@ -571,7 +621,7 @@ mod tests {
 
     #[test]
     fn test_implicit_permission_api_with_domain() {
-        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
+        let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
         let mut e = Enforcer::new(m, adapter);

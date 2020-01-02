@@ -1,8 +1,13 @@
+use crate::error::Error;
+use crate::Result;
+
 use std::collections::HashMap;
 
+use std::convert::AsRef;
 use std::fs::File;
 use std::io::prelude::*;
-use std::io::{BufReader, Cursor};
+use std::io::{BufReader, Cursor, Error as IoError, ErrorKind};
+use std::path::Path;
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";
@@ -10,48 +15,46 @@ const DEFAULT_COMMENT_SEM: &str = ";";
 const DEFAULT_MULTI_LINE_SEPARATOR: &str = "\\";
 
 pub(crate) struct Config {
-    pub data: HashMap<String, HashMap<String, String>>,
+    data: HashMap<String, HashMap<String, String>>,
 }
 
 impl Config {
-    pub fn new(path: &str) -> Self {
+    pub(crate) fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
 
-        c.parse(path);
-        c
+        c.parse(p)?;
+        Ok(c)
     }
 
-    pub(crate) fn from_text(text: &str) -> Self {
+    pub(crate) fn from_str<S: AsRef<str>>(s: S) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
 
-        c.parse_buffer(&mut BufReader::new(Cursor::new(text.as_bytes())));
-        c
+        c.parse_buffer(&mut BufReader::new(Cursor::new(s.as_ref().as_bytes())))?;
+        Ok(c)
     }
 
-    fn parse(&mut self, path: &str) {
-        let mut f = File::open(path).expect("read config failed");
+    fn parse<P: AsRef<Path>>(&mut self, p: P) -> Result<()> {
+        let mut f = File::open(p)?;
         let mut c = Vec::new();
-        f.read_to_end(&mut c).expect("error while reading config");
+        f.read_to_end(&mut c)?;
 
         let mut reader: BufReader<Cursor<&[u8]>> = BufReader::new(Cursor::new(&c));
-        self.parse_buffer(&mut reader);
+        self.parse_buffer(&mut reader)
     }
 
-    fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) {
+    fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) -> Result<()> {
         let mut section = String::new();
 
         loop {
             let mut line = String::new();
-            let bytes = reader
-                .read_line(&mut line)
-                .expect("read config line failed");
+            let bytes = reader.read_line(&mut line)?;
             if bytes == 0 {
                 // EOF reached
-                break;
+                break Ok(());
             }
             line = line.trim().to_string();
             if line.is_empty()
@@ -67,9 +70,7 @@ impl Config {
                     line = line[..line.len() - 1].trim_end().to_string();
 
                     let mut inner_line = String::new();
-                    let inner_bytes = reader
-                        .read_line(&mut inner_line)
-                        .expect("read config line failed");
+                    let inner_bytes = reader.read_line(&mut inner_line)?;
                     if inner_bytes == 0 {
                         break;
                     }
@@ -99,7 +100,11 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    panic!("parse content error, line={}", line);
+                    return Err(Error::IoError(IoError::new(
+                        ErrorKind::Other,
+                        format!("parse content error, line={}", line),
+                    ))
+                    .into());
                 }
 
                 self.add_config(
@@ -199,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let mut config = Config::new("examples/testini.ini");
+        let mut config = Config::from_file("examples/testini.ini").unwrap();
 
         assert_eq!(Some(true), config.get_bool("debug"));
         assert_eq!(Some(64), config.get_int("math::math.i64"));
@@ -269,7 +274,7 @@ mod tests {
             math.f64 = 64.1
         "#;
 
-        let mut config = Config::from_text(text);
+        let mut config = Config::from_str(text).unwrap();
 
         assert_eq!(Some(true), config.get_bool("debug"));
         assert_eq!(Some(64), config.get_int("math::math.i64"));

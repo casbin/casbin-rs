@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::errors::CasbinError;
+use crate::error::{Error, ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
@@ -32,7 +32,7 @@ fn escape_g_function(s: String) -> String {
     after
 }
 
-type AssertionMap = HashMap<String, Assertion>;
+pub(crate) type AssertionMap = HashMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {
@@ -58,25 +58,25 @@ impl Assertion {
     #[allow(clippy::borrowed_box)]
     pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) -> Result<()> {
         let count = self.value.chars().filter(|&c| c == '_').count();
-        for (_k, rule) in self.policy.iter().enumerate() {
+        for rule in &self.policy {
             if count < 2 {
-                return Err(CasbinError::new(
-                    "the number of \"_\" in role definition should be at least 2",
-                )
+                return Err(Error::ModelError(ModelError::P(
+                    r#"the number of "_" in role definition should be at least 2"#.to_owned(),
+                ))
                 .into());
             }
             if rule.len() < count {
-                return Err(CasbinError::new(
-                    "grouping policy elements do not meet role definition",
-                )
-                .into());
+                return Err(Error::PolicyError(PolicyError::UnmatchPolicyDefinition).into());
             }
             if count == 2 {
                 rm.add_link(&rule[0], &rule[1], None);
             } else if count == 3 {
                 rm.add_link(&rule[0], &rule[1], Some(&rule[2]));
             } else if count >= 4 {
-                return Err(CasbinError::new("domain can at most contains 1 string").into());
+                return Err(Error::ModelError(ModelError::P(
+                    "Multiple domains are not supported".to_owned(),
+                ))
+                .into());
             }
         }
         self.rm = rm.clone();
@@ -87,20 +87,10 @@ impl Assertion {
 
 #[derive(Clone, Default)]
 pub struct Model {
-    pub model: HashMap<String, AssertionMap>,
+    pub(crate) model: HashMap<String, AssertionMap>,
 }
 
 impl Model {
-    pub fn new() -> Self {
-        Model::default()
-    }
-
-    pub fn new_from_file(path: &str) -> Self {
-        let mut model = Model::new();
-        model.load_model(path);
-        model
-    }
-
     fn get_key_suffix(&self, i: u64) -> String {
         if i == 1 {
             "".to_owned()
@@ -109,55 +99,65 @@ impl Model {
         }
     }
 
-    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> bool {
+    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
         let sec_name = match sec {
             "r" => "request_definition",
             "p" => "policy_definition",
             "g" => "role_definition",
             "e" => "policy_effect",
             "m" => "matchers",
-            _ => panic!("section is not one of [r,p,g,e,m] {}", sec),
+            _ => {
+                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
+            }
         };
 
         if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
-            self.add_def(sec, key, val)
+            Ok(self.add_def(sec, key, val))
         } else {
-            false
+            Ok(false)
         }
     }
 
-    fn load_section(&mut self, cfg: &Config, sec: &str) {
+    fn load_section(&mut self, cfg: &Config, sec: &str) -> Result<()> {
         let mut i = 1;
 
         loop {
-            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i))) {
-                break;
+            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+                break Ok(());
             } else {
                 i += 1;
             }
         }
     }
 
-    pub fn load_model(&mut self, path: &str) {
-        let cfg = Config::new(path);
+    pub fn from_file(path: &str) -> Result<Self> {
+        let cfg = Config::from_file(path)?;
 
-        self.load_section(&cfg, "r");
-        self.load_section(&cfg, "p");
-        self.load_section(&cfg, "e");
-        self.load_section(&cfg, "m");
+        let mut model = Model::default();
 
-        self.load_section(&cfg, "g");
+        model.load_section(&cfg, "r")?;
+        model.load_section(&cfg, "p")?;
+        model.load_section(&cfg, "e")?;
+        model.load_section(&cfg, "m")?;
+
+        model.load_section(&cfg, "g")?;
+
+        Ok(model)
     }
 
-    pub fn load_model_from_text(&mut self, text: &str) {
-        let cfg = Config::from_text(text);
+    pub fn from_str(&mut self, s: &str) -> Result<Self> {
+        let cfg = Config::from_str(s)?;
 
-        self.load_section(&cfg, "r");
-        self.load_section(&cfg, "p");
-        self.load_section(&cfg, "e");
-        self.load_section(&cfg, "m");
+        let mut model = Model::default();
 
-        self.load_section(&cfg, "g");
+        model.load_section(&cfg, "r")?;
+        model.load_section(&cfg, "p")?;
+        model.load_section(&cfg, "e")?;
+        model.load_section(&cfg, "m")?;
+
+        model.load_section(&cfg, "g")?;
+
+        Ok(model)
     }
 
     pub fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
@@ -165,7 +165,7 @@ impl Model {
         ast.key = key.to_owned();
         ast.value = value.to_owned();
 
-        if ast.value == "" {
+        if ast.value.is_empty() {
             return false;
         }
 
@@ -498,161 +498,189 @@ mod tests {
     use crate::enforcer::Enforcer;
     #[test]
     fn test_basic_model() {
-        let m = Model::new_from_file("examples/basic_model.conf");
+        let m = Model::from_file("examples/basic_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
+        assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert!(e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_basic_model_no_policy() {
-        let m = Model::new_from_file("examples/basic_model.conf");
+        let m = Model::from_file("examples/basic_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter);
 
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
+        assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_basic_model_with_root() {
-        let m = Model::new_from_file("examples/basic_with_root_model.conf");
+        let m = Model::from_file("examples/basic_with_root_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert!(e.enforce(vec!["alice", "data1", "read"]));
-        assert!(e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+        assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert!(e.enforce(vec!["bob", "data2", "write"]).unwrap());
+        assert!(e.enforce(vec!["root", "data1", "read"]).unwrap());
+        assert!(e.enforce(vec!["root", "data1", "write"]).unwrap());
+        assert!(e.enforce(vec!["root", "data2", "read"]).unwrap());
+        assert!(e.enforce(vec!["root", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "read"]).unwrap());
     }
 
     #[test]
     fn test_basic_model_with_root_no_policy() {
-        let m = Model::new_from_file("examples/basic_with_root_model.conf");
+        let m = Model::from_file("examples/basic_with_root_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter);
 
-        assert!(!e.enforce(vec!["alice", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data2", "write"]));
-        assert!(e.enforce(vec!["root", "data1", "read"]));
-        assert!(e.enforce(vec!["root", "data1", "write"]));
-        assert!(e.enforce(vec!["root", "data2", "read"]));
-        assert!(e.enforce(vec!["root", "data2", "write"]));
-        assert!(!e.enforce(vec!["alice", "data1", "write"]));
-        assert!(!e.enforce(vec!["alice", "data2", "read"]));
-        assert!(!e.enforce(vec!["alice", "data2", "write"]));
-        assert!(!e.enforce(vec!["bob", "data1", "read"]));
-        assert!(!e.enforce(vec!["bob", "data1", "write"]));
-        assert!(!e.enforce(vec!["bob", "data2", "read"]));
+        assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "write"]).unwrap());
+        assert!(e.enforce(vec!["root", "data1", "read"]).unwrap());
+        assert!(e.enforce(vec!["root", "data1", "write"]).unwrap());
+        assert!(e.enforce(vec!["root", "data2", "read"]).unwrap());
+        assert!(e.enforce(vec!["root", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "data2", "read"]).unwrap());
     }
 
     #[test]
     fn test_basic_model_without_users() {
-        let m = Model::new_from_file("examples/basic_without_users_model.conf");
+        let m = Model::from_file("examples/basic_without_users_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_users_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert!(e.enforce(vec!["data1", "read"]));
-        assert!(!e.enforce(vec!["data1", "write"]));
-        assert!(!e.enforce(vec!["data2", "read"]));
-        assert!(e.enforce(vec!["data2", "write"]));
+        assert!(e.enforce(vec!["data1", "read"]).unwrap());
+        assert!(!e.enforce(vec!["data1", "write"]).unwrap());
+        assert!(!e.enforce(vec!["data2", "read"]).unwrap());
+        assert!(e.enforce(vec!["data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_basic_model_without_resources() {
-        let m = Model::new_from_file("examples/basic_without_resources_model.conf");
+        let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert!(e.enforce(vec!["alice", "read"]));
-        assert!(e.enforce(vec!["bob", "write"]));
-        assert!(!e.enforce(vec!["alice", "write"]));
-        assert!(!e.enforce(vec!["bob", "read"]));
+        assert!(e.enforce(vec!["alice", "read"]).unwrap());
+        assert!(e.enforce(vec!["bob", "write"]).unwrap());
+        assert!(!e.enforce(vec!["alice", "write"]).unwrap());
+        assert!(!e.enforce(vec!["bob", "read"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model_with_resource_roles() {
-        let m = Model::new_from_file("examples/rbac_with_resource_roles_model.conf");
+        let m = Model::from_file("examples/rbac_with_resource_roles_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model_with_domains() {
-        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
+        let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(true, e.enforce(vec!["alice", "domain1", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "domain1", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "write"]));
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain1", "data1", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "read"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "write"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
+        );
     }
 
     use crate::MgmtApi;
     #[test]
     fn test_rbac_model_with_domains_at_runtime() {
-        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
+        let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter);
@@ -670,43 +698,127 @@ mod tests {
         e.add_grouping_policy(vec!["bob", "admin", "domain2"])
             .unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "domain1", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "domain1", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "write"]));
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain1", "data1", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "read"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "write"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
+        );
 
         e.remove_filtered_policy(1, vec!["domain1", "data1"])
             .unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "write"]));
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data1", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "read"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "write"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
+        );
 
         e.remove_policy(vec!["admin", "domain2", "data2", "read"])
             .unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "write"]));
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data1", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data2", "write"])
+                .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "read"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data1", "write"]).unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
+        );
     }
 
     #[test]
     fn test_rbac_model_with_domains_at_runtime_mock_adapter() {
-        let m = Model::new_from_file("examples/rbac_with_domains_model.conf");
+        let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -716,49 +828,67 @@ mod tests {
         e.add_grouping_policy(vec!["alice", "admin", "domain3"])
             .unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "domain3", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "domain1", "data1", "read"]));
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain3", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
 
         e.remove_filtered_policy(1, vec!["domain1", "data1"])
             .unwrap();
-        assert_eq!(false, e.enforce(vec!["alice", "domain1", "data1", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "domain2", "data2", "read"]));
+        assert_eq!(
+            false,
+            e.enforce(vec!["alice", "domain1", "data1", "read"])
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
 
         e.remove_policy(vec!["admin", "domain2", "data2", "read"])
             .unwrap();
-        assert_eq!(false, e.enforce(vec!["bob", "domain2", "data2", "read"]));
+        assert_eq!(
+            false,
+            e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
+        );
     }
 
     #[test]
     fn test_rbac_model_with_deny() {
-        let m = Model::new_from_file("examples/rbac_with_deny_model.conf");
+        let m = Model::from_file("examples/rbac_with_deny_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model_with_not_deny() {
-        let m = Model::new_from_file("examples/rbac_with_not_deny_model.conf");
+        let m = Model::from_file("examples/rbac_with_not_deny_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]));
+        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
     }
 
     #[test]
     fn test_rbac_model_with_custom_data() {
-        let m = Model::new_from_file("examples/rbac_model.conf");
+        let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
@@ -766,25 +896,25 @@ mod tests {
         e.add_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
             .unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
         e.remove_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
             .unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]));
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]));
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
     }
 }
