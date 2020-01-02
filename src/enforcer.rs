@@ -116,46 +116,62 @@ impl<A: Adapter> Enforcer<A> {
             .model
             .model
             .get("r")
-            .ok_or(Error::ModelError(
-                ModelError::R("Missing request definition in conf file".to_owned()).into(),
-            ))?
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::R(
+                    "Missing request definition in conf file".to_owned(),
+                ))
+            })?
             .get("r")
-            .ok_or(Error::ModelError(
-                ModelError::R("Missing request secion in conf file".to_owned()).into(),
-            ))?;
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::R(
+                    "Missing request secion in conf file".to_owned(),
+                ))
+            })?;
         let p = self
             .model
             .model
             .get("p")
-            .ok_or(Error::ModelError(
-                ModelError::P("Missing policy definition in conf file".to_owned()).into(),
-            ))?
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::P(
+                    "Missing policy definition in conf file".to_owned(),
+                ))
+            })?
             .get("p")
-            .ok_or(Error::ModelError(
-                ModelError::P("Missing policy section in conf file".to_owned()).into(),
-            ))?;
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::P(
+                    "Missing policy section in conf file".to_owned(),
+                ))
+            })?;
         let m = self
             .model
             .model
             .get("m")
-            .ok_or(Error::ModelError(
-                ModelError::M("Missing matcher definition in conf file".to_owned()).into(),
-            ))?
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::M(
+                    "Missing matcher definition in conf file".to_owned(),
+                ))
+            })?
             .get("m")
-            .ok_or(Error::ModelError(
-                ModelError::M("Missing matcher section in conf file".to_owned()).into(),
-            ))?;
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::M(
+                    "Missing matcher section in conf file".to_owned(),
+                ))
+            })?;
         let e = self
             .model
             .model
             .get("e")
-            .ok_or(Error::ModelError(
-                ModelError::E("Missing effector definition in conf file".to_owned()).into(),
-            ))?
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::E(
+                    "Missing effector definition in conf file".to_owned(),
+                ))
+            })?
             .get("e")
-            .ok_or(Error::ModelError(
-                ModelError::E("Missing effector section in conf file".to_owned()).into(),
-            ))?;
+            .ok_or_else(|| {
+                Error::ModelError(ModelError::E(
+                    "Missing effector section in conf file".to_owned(),
+                ))
+            })?;
 
         for (i, token) in r.tokens.iter().enumerate() {
             let scope_exp = format!("let {} = \"{}\";", token.clone(), rvals[i]);
