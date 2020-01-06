@@ -5,15 +5,14 @@ use crate::Result;
 
 use ip_network::IpNetwork;
 use regex::Regex;
+use rhai::Any;
 
 use std::collections::HashMap;
 use std::net::IpAddr;
 
 fn escape_assertion(s: String) -> String {
-    let mut s = s;
-    // TODO: should replace . using regex
-    s = s.replacen(".", "_", 100);
-    s
+    let re = Regex::new(r#"(r|p)\."#).unwrap();
+    re.replace_all(&s, "${1}_").to_string()
 }
 
 fn escape_g_function(s: String) -> String {
@@ -30,6 +29,15 @@ fn escape_g_function(s: String) -> String {
         after = re2.replace_all(&after, "gg3($1)").to_string();
     }
     after
+}
+
+fn escape_in_operator(s: String) -> String {
+    let re = Regex::new(
+        r#"(?P<item>(?:r|p)\.(?:sub|obj|act))\s+in\s+(?:\[|\()(?P<arr>[^\]]*)(?:\]|\))"#,
+    )
+    .unwrap();
+
+    re.replace_all(&s, "inMatch($1, [$2])").replace("'", "\"")
 }
 
 pub(crate) type AssertionMap = HashMap<String, Assertion>;
@@ -176,6 +184,7 @@ impl Model {
                 .map(|x| format!("{}_{}", key, x))
                 .collect();
         } else {
+            ast.value = escape_in_operator(ast.value);
             ast.value = escape_assertion(ast.value);
             ast.value = escape_g_function(ast.value);
         }
@@ -386,6 +395,14 @@ fn key_match3(key1: String, key2: String) -> bool {
     regex_match(key1, format!("^{}$", key2))
 }
 
+pub fn in_match(k1: String, k2: Vec<Box<dyn Any>>) -> bool {
+    let r = k2
+        .into_iter()
+        .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
+        .collect::<Vec<String>>();
+    r.contains(&k1)
+}
+
 pub fn regex_match(key1: String, key2: String) -> bool {
     Regex::new(key2.as_str()).unwrap().is_match(key1.as_str())
 }
@@ -492,6 +509,33 @@ mod tests {
         let exp = "gg2(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
 
         assert_eq!(exp, escape_g_function(s.to_owned()));
+    }
+
+    #[test]
+    fn test_escape_in_operator() {
+        let s1 = r#"g(r.sub, p.sub) && r.act in ["a","b","c"] && r.sub in ["alice","bob"] && r.obj in ["data1","data2"]"#;
+        let exp1 = r#"g(r.sub, p.sub) && inMatch(r.act, ["a","b","c"]) && inMatch(r.sub, ["alice","bob"]) && inMatch(r.obj, ["data1","data2"])"#;
+
+        assert_eq!(exp1, escape_in_operator(s1.to_owned()));
+
+        let s2 = r#"g(r.sub, p.sub) && p.act in ["a","b","c"] && p.sub in ["alice","bob"] && p.obj in ["data1","data2"]"#;
+        let exp2 = r#"g(r.sub, p.sub) && inMatch(p.act, ["a","b","c"]) && inMatch(p.sub, ["alice","bob"]) && inMatch(p.obj, ["data1","data2"])"#;
+
+        assert_eq!(exp2, escape_in_operator(s2.to_owned()));
+
+        let s3 =
+            r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.obj in ('data2', 'data3')"#;
+        let exp3 = r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || inMatch(r.obj, ["data2", "data3"])"#;
+
+        assert_eq!(exp3, escape_in_operator(s3.to_owned()));
+    }
+
+    #[test]
+    fn test_escape_assertion() {
+        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
+        let exp = "g(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
+
+        assert_eq!(exp, escape_assertion(s.to_owned()));
     }
 
     use crate::adapter::{FileAdapter, MemoryAdapter};
@@ -916,5 +960,23 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
         assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+    }
+
+    #[test]
+    fn test_rbac_model_using_in_op() {
+        let m = Model::from_file("examples/rbac_model_matcher_using_in_op.conf").unwrap();
+        println!("{}", m.model.get("m").unwrap().get("m").unwrap().value);
+
+        let adapter = FileAdapter::new("examples/rbac_policy.csv");
+        let e = Enforcer::new(m, adapter);
+
+        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["guest", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["alice", "data3", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["bob", "data3", "read"]).unwrap());
     }
 }

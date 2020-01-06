@@ -2,13 +2,11 @@ use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::error::{Error, ModelError};
 use crate::model::Model;
-use crate::model::{load_function_map, FunctionMap};
+use crate::model::{in_match, load_function_map, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
 use rhai::{Engine, RegisterFn, Scope};
-
-// use std::collections::HashMap;
 
 pub trait MatchFnClone2: Fn(String, String) -> bool {
     fn clone_box(&self) -> Box<dyn MatchFnClone2>;
@@ -181,6 +179,7 @@ impl<A: Adapter> Enforcer<A> {
         for (key, func) in self.fm.iter() {
             engine.register_fn(key.as_str(), func.clone());
         }
+        engine.register_fn("inMatch", in_match);
         if let Some(g_result) = self.model.model.get("g") {
             for (key, ast) in g_result.iter() {
                 if key == "g" {
