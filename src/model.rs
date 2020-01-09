@@ -107,7 +107,7 @@ impl Model {
         }
     }
 
-    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
+    fn load_assertion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
         let sec_name = match sec {
             "r" => "request_definition",
             "p" => "policy_definition",
@@ -130,7 +130,7 @@ impl Model {
         let mut i = 1;
 
         loop {
-            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+            if !self.load_assertion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
                 break Ok(());
             } else {
                 i += 1;
