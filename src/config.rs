@@ -156,7 +156,7 @@ impl Config {
         }
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn set(&mut self, key: &str, value: &str) {
         if key.is_empty() {
             panic!("key can't be empty");
@@ -173,12 +173,12 @@ impl Config {
         }
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn get_bool(&self, key: &str) -> Option<bool> {
         self.get(key).and_then(|v| v.parse::<bool>().ok())
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn get_string(&self, key: &str) -> Option<String> {
         self.get_str(key).map(|v| v.to_string())
     }
@@ -187,12 +187,12 @@ impl Config {
         self.get(key)
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn get_int(&self, key: &str) -> Option<i64> {
         self.get(key).and_then(|v| v.parse::<i64>().ok())
     }
 
-    #[cfg(test)]
+    #[allow(dead_code)]
     pub(crate) fn get_float(&self, key: &str) -> Option<f64> {
         self.get(key).and_then(|v| v.parse::<f64>().ok())
     }

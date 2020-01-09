@@ -2,62 +2,47 @@ use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::error::{Error, ModelError};
 use crate::model::Model;
-use crate::model::{in_match, load_function_map, FunctionMap};
+use crate::model::{in_match, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
-use rhai::{Engine, RegisterFn, Scope};
+use rhai::{Any, Engine, RegisterFn, Scope};
 
-pub trait MatchFnClone2: Fn(String, String) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone2>;
+pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone>;
 }
 
-impl<T> MatchFnClone2 for T
+impl<T> MatchFnClone for T
 where
-    T: 'static + Fn(String, String) -> bool + Clone,
+    T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
 {
-    fn clone_box(&self) -> Box<dyn MatchFnClone2> {
+    fn clone_box(&self) -> Box<dyn MatchFnClone> {
         Box::new(self.clone())
     }
 }
 
-impl Clone for Box<dyn MatchFnClone2> {
+impl Clone for Box<dyn MatchFnClone> {
     fn clone(&self) -> Self {
         (**self).clone_box()
     }
 }
 
-pub trait MatchFnClone3: Fn(String, String, String) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone3>;
-}
+pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
+    let cb = move |args: Vec<Box<dyn Any>>| -> bool {
+        let args = args
+            .into_iter()
+            .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
+            .collect::<Vec<String>>();
 
-impl<T> MatchFnClone3 for T
-where
-    T: 'static + Fn(String, String, String) -> bool + Clone,
-{
-    fn clone_box(&self) -> Box<dyn MatchFnClone3> {
-        Box::new(self.clone())
-    }
-}
-
-impl Clone for Box<dyn MatchFnClone3> {
-    fn clone(&self) -> Self {
-        (**self).clone_box()
-    }
-}
-
-pub fn generate_gg2_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone2> {
-    let cb = move |name1: String, name2: String| -> bool {
-        let mut rm = rm.clone();
-        rm.has_link(name1.as_str(), name2.as_str(), None)
-    };
-    Box::new(cb)
-}
-
-pub fn generate_gg3_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone3> {
-    let cb = move |name1: String, name2: String, domain: String| -> bool {
-        let mut rm = rm.clone();
-        rm.has_link(name1.as_str(), name2.as_str(), Some(domain.as_str()))
+        if args.len() == 3 {
+            let mut rm = rm.clone();
+            rm.has_link(&args[0], &args[1], Some(&args[2]))
+        } else if args.len() == 2 {
+            let mut rm = rm.clone();
+            rm.has_link(&args[0], &args[1], None)
+        } else {
+            unreachable!()
+        }
     };
     Box::new(cb)
 }
@@ -77,7 +62,7 @@ impl<A: Adapter> Enforcer<A> {
     /// Enforcer::new creates an enforcer via file or DB.
     pub fn new(m: Model, a: A) -> Self {
         let m = m;
-        let fm = load_function_map();
+        let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
         let rm = Box::new(DefaultRoleManager::new(10));
 
@@ -95,6 +80,10 @@ impl<A: Adapter> Enforcer<A> {
         e
     }
 
+    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+        self.fm.add_function(fname, f);
+    }
+
     /// Enforce decides whether a "subject" can access a "object" with the operation "action",
     /// input parameters are usually: (sub, obj, act).
     ///
@@ -110,7 +99,7 @@ impl<A: Adapter> Enforcer<A> {
     pub fn enforce(&self, rvals: Vec<&str>) -> Result<bool> {
         let mut engine = Engine::new();
         let mut scope: Scope = Vec::new();
-        let r = self
+        let r_ast = self
             .model
             .model
             .get("r")
@@ -125,7 +114,7 @@ impl<A: Adapter> Enforcer<A> {
                     "Missing request secion in conf file".to_owned(),
                 ))
             })?;
-        let p = self
+        let p_ast = self
             .model
             .model
             .get("p")
@@ -140,7 +129,7 @@ impl<A: Adapter> Enforcer<A> {
                     "Missing policy section in conf file".to_owned(),
                 ))
             })?;
-        let m = self
+        let m_ast = self
             .model
             .model
             .get("m")
@@ -155,7 +144,7 @@ impl<A: Adapter> Enforcer<A> {
                     "Missing matcher section in conf file".to_owned(),
                 ))
             })?;
-        let e = self
+        let e_ast = self
             .model
             .model
             .get("e")
@@ -171,41 +160,40 @@ impl<A: Adapter> Enforcer<A> {
                 ))
             })?;
 
-        for (i, token) in r.tokens.iter().enumerate() {
+        for (i, token) in r_ast.tokens.iter().enumerate() {
             let scope_exp = format!("let {} = \"{}\";", token.clone(), rvals[i]);
             engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
         }
 
-        for (key, func) in self.fm.iter() {
+        for (key, func) in self.fm.fm.iter() {
             engine.register_fn(key.as_str(), func.clone());
         }
         engine.register_fn("inMatch", in_match);
+
         if let Some(g_result) = self.model.model.get("g") {
             for (key, ast) in g_result.iter() {
                 if key == "g" {
-                    let g2 = generate_gg2_function(ast.rm.clone());
-                    engine.register_fn("gg2", g2.clone());
-                    let g3 = generate_gg3_function(ast.rm.clone());
-                    engine.register_fn("gg3", g3.clone());
+                    let g = generate_g_function(ast.rm.clone());
+                    engine.register_fn("g", g.clone());
                 } else {
-                    let g2 = generate_gg2_function(ast.rm.clone());
-                    engine.register_fn("g2", g2.clone());
+                    let gn = generate_g_function(ast.rm.clone());
+                    engine.register_fn(key, gn.clone());
                 }
             }
         }
-        let expstring = m.value.clone();
+        let expstring = m_ast.value.clone();
         let mut policy_effects: Vec<EffectKind> = vec![];
-        let policy_len = p.policy.len();
+        let policy_len = p_ast.policy.len();
         if policy_len != 0 {
             policy_effects = vec![EffectKind::Allow; policy_len];
-            if r.tokens.len() != rvals.len() {
+            if r_ast.tokens.len() != rvals.len() {
                 return Ok(false);
             }
-            for (i, pvals) in p.policy.iter().enumerate() {
-                if p.tokens.len() != pvals.len() {
+            for (i, pvals) in p_ast.policy.iter().enumerate() {
+                if p_ast.tokens.len() != pvals.len() {
                     return Ok(false);
                 }
-                for (pi, ptoken) in p.tokens.iter().enumerate() {
+                for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
                     // let p_sub = "alice"; or let p_obj = "resource1"; or let p_sub = "GET";
                     let scope_exp = format!("let {} = \"{}\";", ptoken.clone(), pvals[pi]);
                     engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
@@ -216,7 +204,11 @@ impl<A: Adapter> Enforcer<A> {
                     policy_effects[i] = EffectKind::Indeterminate;
                     continue;
                 }
-                if let Some(j) = p.tokens.iter().position(|x| x == &String::from("p_eft")) {
+                if let Some(j) = p_ast
+                    .tokens
+                    .iter()
+                    .position(|x| x == &String::from("p_eft"))
+                {
                     let eft = &pvals[j];
                     if eft == "allow" {
                         policy_effects[i] = EffectKind::Allow;
@@ -228,14 +220,12 @@ impl<A: Adapter> Enforcer<A> {
                 } else {
                     policy_effects[i] = EffectKind::Allow;
                 }
-                if self.model.model.get("e").unwrap().get("e").unwrap().value
-                    == "priority(p_eft) || deny"
-                {
+                if e_ast.value == "priority(p_eft) || deny" {
                     break;
                 }
             }
         } else {
-            for token in p.tokens.iter() {
+            for token in p_ast.tokens.iter() {
                 let scope_exp = format!("let {} = \"{}\";", token.clone(), "");
                 engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
             }
@@ -247,7 +237,7 @@ impl<A: Adapter> Enforcer<A> {
             }
         }
 
-        let ee = e.value.clone();
+        let ee = e_ast.value.clone();
 
         Ok(self.eft.merge_effects(ee, policy_effects, vec![]))
     }

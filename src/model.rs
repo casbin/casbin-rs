@@ -8,7 +8,9 @@ use regex::Regex;
 use rhai::Any;
 
 use std::collections::HashMap;
+use std::convert::AsRef;
 use std::net::IpAddr;
+use std::path::Path;
 
 fn escape_assertion(s: String) -> String {
     let re = Regex::new(r#"(r|p)\."#).unwrap();
@@ -16,28 +18,15 @@ fn escape_assertion(s: String) -> String {
 }
 
 fn escape_g_function(s: String) -> String {
-    // if passing 2 arguments to g then generate g2
-    // if passing 3 arguments to g then generate g3
-    let re1 = Regex::new(r"g\((\w+,\s*\w+)\)").unwrap();
-    let re2 = Regex::new(r"g\((\w+,\s*\w+,\s*\w+)\)").unwrap();
-
-    let mut after = s;
-    if re1.is_match(&after) {
-        after = re1.replace_all(&after, "gg2($1)").to_string();
-    }
-    if re2.is_match(&after) {
-        after = re2.replace_all(&after, "gg3($1)").to_string();
-    }
-    after
+    let re = Regex::new(r#"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)"#).unwrap();
+    re.replace_all(&s, "${1}([${2}])").to_string()
 }
 
 fn escape_in_operator(s: String) -> String {
-    let re = Regex::new(
-        r#"(?P<item>(?:r|p)\.(?:sub|obj|act))\s+in\s+(?:\[|\()(?P<arr>[^\]]*)(?:\]|\))"#,
-    )
-    .unwrap();
+    let re =
+        Regex::new(r#"((?:r\d*|p\d*)\.(?:[^\s]+))\s+in\s+(?:\[|\()([^\)\]]*)(?:\]|\))"#).unwrap();
 
-    re.replace_all(&s, "inMatch($1, [$2])").replace("'", "\"")
+    re.replace_all(&s, "inMatch($1, [$2])").replace("'", r#"""#)
 }
 
 pub(crate) type AssertionMap = HashMap<String, Assertion>;
@@ -99,47 +88,8 @@ pub struct Model {
 }
 
 impl Model {
-    fn get_key_suffix(&self, i: u64) -> String {
-        if i == 1 {
-            "".to_owned()
-        } else {
-            i.to_string()
-        }
-    }
-
-    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
-        let sec_name = match sec {
-            "r" => "request_definition",
-            "p" => "policy_definition",
-            "g" => "role_definition",
-            "e" => "policy_effect",
-            "m" => "matchers",
-            _ => {
-                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
-            }
-        };
-
-        if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
-            Ok(self.add_def(sec, key, val))
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn load_section(&mut self, cfg: &Config, sec: &str) -> Result<()> {
-        let mut i = 1;
-
-        loop {
-            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
-                break Ok(());
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    pub fn from_file(path: &str) -> Result<Self> {
-        let cfg = Config::from_file(path)?;
+    pub fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
+        let cfg = Config::from_file(p)?;
 
         let mut model = Model::default();
 
@@ -180,13 +130,13 @@ impl Model {
         if sec == "r" || sec == "p" {
             ast.tokens = ast
                 .value
-                .split(", ")
-                .map(|x| format!("{}_{}", key, x))
+                .split(',')
+                .map(|x| format!("{}_{}", key, x.trim()))
                 .collect();
         } else {
             ast.value = escape_in_operator(ast.value);
-            ast.value = escape_assertion(ast.value);
             ast.value = escape_g_function(ast.value);
+            ast.value = escape_assertion(ast.value);
         }
 
         if let Some(new_model) = self.model.get_mut(sec) {
@@ -198,6 +148,45 @@ impl Model {
         }
 
         true
+    }
+
+    fn load_section(&mut self, cfg: &Config, sec: &str) -> Result<()> {
+        let mut i = 1;
+
+        loop {
+            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+                break Ok(());
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
+        let sec_name = match sec {
+            "r" => "request_definition",
+            "p" => "policy_definition",
+            "g" => "role_definition",
+            "e" => "policy_effect",
+            "m" => "matchers",
+            _ => {
+                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
+            }
+        };
+
+        if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
+            Ok(self.add_def(sec, key, val))
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn get_key_suffix(&self, i: u64) -> String {
+        if i == 1 {
+            "".to_owned()
+        } else {
+            i.to_string()
+        }
     }
 
     #[allow(clippy::borrowed_box)]
@@ -348,16 +337,27 @@ impl Model {
     }
 }
 
-pub type FunctionMap = HashMap<String, fn(String, String) -> bool>;
+pub struct FunctionMap {
+    pub(crate) fm: HashMap<String, fn(String, String) -> bool>,
+}
 
-pub fn load_function_map() -> FunctionMap {
-    let mut fm: HashMap<String, fn(String, String) -> bool> = HashMap::new();
-    fm.insert("keyMatch".to_owned(), key_match);
-    fm.insert("keyMatch2".to_owned(), key_match2);
-    fm.insert("keyMatch3".to_owned(), key_match3);
-    fm.insert("regexMatch".to_owned(), regex_match);
-    fm.insert("ipMatch".to_owned(), ip_match);
-    fm
+impl Default for FunctionMap {
+    fn default() -> FunctionMap {
+        let mut fm: HashMap<String, fn(String, String) -> bool> = HashMap::new();
+        fm.insert("keyMatch".to_owned(), key_match);
+        fm.insert("keyMatch2".to_owned(), key_match2);
+        fm.insert("keyMatch3".to_owned(), key_match3);
+        fm.insert("regexMatch".to_owned(), regex_match);
+        fm.insert("ipMatch".to_owned(), ip_match);
+
+        FunctionMap { fm }
+    }
+}
+
+impl FunctionMap {
+    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+        self.fm.insert(fname.to_owned(), f);
+    }
 }
 
 pub fn key_match(key1: String, key2: String) -> bool {
@@ -505,10 +505,20 @@ mod tests {
 
     #[test]
     fn test_escape_g_function() {
-        let s = "g(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
-        let exp = "gg2(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
+        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
+        let exp = "g([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
 
         assert_eq!(exp, escape_g_function(s.to_owned()));
+
+        let s1 = "g2(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
+        let exp1 = "g2([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
+
+        assert_eq!(exp1, escape_g_function(s1.to_owned()));
+
+        let s2 = "g3(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
+        let exp2 = "g3([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
+
+        assert_eq!(exp2, escape_g_function(s2.to_owned()));
     }
 
     #[test]
@@ -528,6 +538,16 @@ mod tests {
         let exp3 = r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || inMatch(r.obj, ["data2", "data3"])"#;
 
         assert_eq!(exp3, escape_in_operator(s3.to_owned()));
+
+        let s4 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act || r.tenant in ('alice', 'bob')"#;
+        let exp4 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act || inMatch(r.tenant, ["alice", "bob"])"#;
+
+        assert_eq!(exp4, escape_in_operator(s4.to_owned()));
+
+        let s5 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act && p2.sub in ('alice', 'bob') || r.obj in ('data2', 'data3')"#;
+        let exp5 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act && inMatch(p2.sub, ["alice", "bob"]) || inMatch(r.obj, ["data2", "data3"])"#;
+
+        assert_eq!(exp5, escape_in_operator(s5.to_owned()));
     }
 
     #[test]
