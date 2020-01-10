@@ -33,11 +33,11 @@ pub(crate) type AssertionMap = HashMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {
-    pub key: String,
-    pub value: String,
-    pub tokens: Vec<String>,
-    pub policy: Vec<Vec<String>>,
-    pub rm: Box<dyn RoleManager>,
+    pub(crate) key: String,
+    pub(crate) value: String,
+    pub(crate) tokens: Vec<String>,
+    pub(crate) policy: Vec<Vec<String>>,
+    pub(crate) rm: Box<dyn RoleManager>,
 }
 
 impl Assertion {

@@ -49,13 +49,13 @@ pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer<A: Adapter> {
-    pub model: Model,
-    pub adapter: A,
-    pub fm: FunctionMap,
-    pub eft: Box<dyn Effector>,
-    pub rm: Box<dyn RoleManager>,
-    pub auto_save: bool,
-    auto_build_role_links: bool,
+    pub(crate) model: Model,
+    pub(crate) adapter: A,
+    pub(crate) fm: FunctionMap,
+    pub(crate) eft: Box<dyn Effector>,
+    pub(crate) rm: Box<dyn RoleManager>,
+    pub(crate) auto_save: bool,
+    pub(crate) auto_build_role_links: bool,
 }
 
 impl<A: Adapter> Enforcer<A> {
