@@ -601,4 +601,46 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]).unwrap());
     }
+
+    #[test]
+    fn test_keymatch_custom_model() {
+        use crate::model::key_match;
+
+        let m1 = Model::from_file("examples/keymatch_custom_model.conf").unwrap();
+        let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
+        let mut e = Enforcer::new(m1, adapter1);
+
+        e.add_function("keyMatchCustom", key_match);
+
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "/alice_data/123", "GET"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
+                .unwrap()
+        );
+
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "/alice_data/resource2", "GET"])
+                .unwrap()
+        );
+
+        assert_eq!(
+            true,
+            e.enforce(vec!["bob", "/bob_data/resource1", "POST"])
+                .unwrap()
+        );
+
+        assert_eq!(
+            true,
+            e.enforce(vec!["cathy", "/cathy_data", "GET"]).unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(vec!["cathy", "/cathy_data", "POST"]).unwrap()
+        );
+    }
 }
