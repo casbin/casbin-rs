@@ -23,7 +23,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.2"
+casbin = "0.1.2"
 ```
 
 ## Get started
