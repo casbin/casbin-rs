@@ -107,7 +107,7 @@ fn load_policy_line(line: String, m: &mut Model) {
     let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
     let key = tokens[0].clone();
 
-    if let Some(sec) = key.chars().nth(0).map(|x| x.to_string()) {
+    if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
         if let Some(t1) = m.model.get_mut(&sec) {
             if let Some(t2) = t1.get_mut(&key) {
                 t2.policy.push(tokens[1..].to_vec());
