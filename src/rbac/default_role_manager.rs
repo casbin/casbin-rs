@@ -4,14 +4,19 @@ use crate::Result;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
-type MatchingFunc = fn(&str, &str) -> bool;
-
 #[derive(Clone)]
 pub struct DefaultRoleManager {
-    pub all_roles: Arc<RwLock<HashMap<String, Arc<RwLock<Role>>>>>,
-    pub max_hierarchy_level: usize,
-    pub has_pattern: bool,
-    pub matching_func: Option<MatchingFunc>,
+    all_roles: Arc<RwLock<HashMap<String, Arc<RwLock<Role>>>>>,
+    max_hierarchy_level: usize,
+}
+
+impl Default for DefaultRoleManager {
+    fn default() -> Self {
+        DefaultRoleManager {
+            all_roles: Arc::new(RwLock::new(HashMap::new())),
+            max_hierarchy_level: 0,
+        }
+    }
 }
 
 impl DefaultRoleManager {
@@ -19,8 +24,6 @@ impl DefaultRoleManager {
         DefaultRoleManager {
             all_roles: Arc::new(RwLock::new(HashMap::new())),
             max_hierarchy_level,
-            has_pattern: false,
-            matching_func: None,
         }
     }
 

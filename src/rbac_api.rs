@@ -52,7 +52,7 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         let mut roles = vec![];
         if let Some(t1) = self.model.model.get_mut("g") {
             if let Some(t2) = t1.get_mut("g") {
-                roles = t2.rm.get_roles(name, None);
+                roles = t2.rm.write().unwrap().get_roles(name, None);
             }
         }
 
@@ -62,7 +62,7 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
     fn get_users_for_role(&self, name: &str) -> Vec<String> {
         if let Some(t1) = self.model.model.get("g") {
             if let Some(t2) = t1.get("g") {
-                return t2.rm.get_users(name, None);
+                return t2.rm.read().unwrap().get_users(name, None);
             }
         }
         return vec![];
@@ -125,7 +125,7 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
             let name1 = q[0].clone();
             name = &name1;
             q = q[1..].to_vec();
-            let roles = self.rm.get_roles(name, domain);
+            let roles = self.rm.write().unwrap().get_roles(name, domain);
             for r in roles.iter().cloned() {
                 if !role_set.contains_key(&r) {
                     q.push(r.clone());

@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::convert::AsRef;
 use std::net::IpAddr;
 use std::path::Path;
+use std::sync::{Arc, RwLock};
 
 fn escape_assertion(s: String) -> String {
     let re = Regex::new(r#"(r|p)\."#).unwrap();
@@ -37,23 +38,31 @@ pub struct Assertion {
     pub(crate) value: String,
     pub(crate) tokens: Vec<String>,
     pub(crate) policy: Vec<Vec<String>>,
-    pub(crate) rm: Box<dyn RoleManager>,
+    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
 }
 
-impl Assertion {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+impl Default for Assertion {
+    fn default() -> Self {
         Assertion {
             key: String::new(),
             value: String::new(),
             tokens: vec![],
             policy: vec![],
-            rm: Box::new(DefaultRoleManager::new(0)),
+            rm: Arc::new(RwLock::new(DefaultRoleManager::new(0))),
         }
     }
+}
 
-    #[allow(clippy::borrowed_box)]
-    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) -> Result<()> {
+impl Assertion {
+    pub fn get_policy(&self) -> &Vec<Vec<String>> {
+        &self.policy
+    }
+
+    pub fn get_mut_policy(&mut self) -> &mut Vec<Vec<String>> {
+        &mut self.policy
+    }
+
+    pub fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         let count = self.value.chars().filter(|&c| c == '_').count();
         for rule in &self.policy {
             if count < 2 {
@@ -66,9 +75,11 @@ impl Assertion {
                 return Err(Error::PolicyError(PolicyError::UnmatchPolicyDefinition).into());
             }
             if count == 2 {
-                rm.add_link(&rule[0], &rule[1], None);
+                rm.write().unwrap().add_link(&rule[0], &rule[1], None);
             } else if count == 3 {
-                rm.add_link(&rule[0], &rule[1], Some(&rule[2]));
+                rm.write()
+                    .unwrap()
+                    .add_link(&rule[0], &rule[1], Some(&rule[2]));
             } else if count >= 4 {
                 return Err(Error::ModelError(ModelError::P(
                     "Multiple domains are not supported".to_owned(),
@@ -76,7 +87,7 @@ impl Assertion {
                 .into());
             }
         }
-        self.rm = rm.clone();
+        self.rm = Arc::clone(&rm);
         // self.rm.print_roles();
         Ok(())
     }
@@ -119,7 +130,7 @@ impl Model {
     }
 
     pub fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
-        let mut ast = Assertion::new();
+        let mut ast = Assertion::default();
         ast.key = key.to_owned();
         ast.value = value.to_owned();
 
@@ -154,7 +165,7 @@ impl Model {
         let mut i = 1;
 
         loop {
-            if !self.load_assersion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+            if !self.load_assertion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
                 break Ok(());
             } else {
                 i += 1;
@@ -162,7 +173,15 @@ impl Model {
         }
     }
 
-    fn load_assersion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
+    pub fn get_model(&self) -> &HashMap<String, AssertionMap> {
+        &self.model
+    }
+
+    pub fn get_mut_model(&mut self) -> &mut HashMap<String, AssertionMap> {
+        &mut self.model
+    }
+
+    fn load_assertion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
         let sec_name = match sec {
             "r" => "request_definition",
             "p" => "policy_definition",
@@ -189,11 +208,10 @@ impl Model {
         }
     }
 
-    #[allow(clippy::borrowed_box)]
-    pub fn build_role_links(&mut self, rm: &mut Box<dyn RoleManager>) -> Result<()> {
+    pub fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         if let Some(asts) = self.model.get_mut("g") {
-            for (_key, ast) in asts.iter_mut() {
-                ast.build_role_links(rm)?;
+            for ast in asts.values_mut() {
+                ast.build_role_links(Arc::clone(&rm))?;
             }
         }
         Ok(())

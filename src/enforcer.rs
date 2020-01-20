@@ -8,6 +8,8 @@ use crate::Result;
 
 use rhai::{Any, Engine, RegisterFn, Scope};
 
+use std::sync::{Arc, RwLock};
+
 pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
     fn clone_box(&self) -> Box<dyn MatchFnClone>;
 }
@@ -27,7 +29,7 @@ impl Clone for Box<dyn MatchFnClone> {
     }
 }
 
-pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
+pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> Box<dyn MatchFnClone> {
     let cb = move |args: Vec<Box<dyn Any>>| -> bool {
         let args = args
             .into_iter()
@@ -35,11 +37,11 @@ pub fn generate_g_function(rm: Box<dyn RoleManager>) -> Box<dyn MatchFnClone> {
             .collect::<Vec<String>>();
 
         if args.len() == 3 {
-            let mut rm = rm.clone();
-            rm.has_link(&args[0], &args[1], Some(&args[2]))
+            rm.write()
+                .unwrap()
+                .has_link(&args[0], &args[1], Some(&args[2]))
         } else if args.len() == 2 {
-            let mut rm = rm.clone();
-            rm.has_link(&args[0], &args[1], None)
+            rm.write().unwrap().has_link(&args[0], &args[1], None)
         } else {
             unreachable!()
         }
@@ -53,7 +55,7 @@ pub struct Enforcer<A: Adapter> {
     pub(crate) adapter: A,
     pub(crate) fm: FunctionMap,
     pub(crate) eft: Box<dyn Effector>,
-    pub(crate) rm: Box<dyn RoleManager>,
+    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
 }
@@ -64,7 +66,7 @@ impl<A: Adapter> Enforcer<A> {
         let m = m;
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
-        let rm = Box::new(DefaultRoleManager::new(10));
+        let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
 
         let mut e = Self {
             model: m,
@@ -75,6 +77,7 @@ impl<A: Adapter> Enforcer<A> {
             auto_save: true,
             auto_build_role_links: true,
         };
+
         // TODO: check filtered adapter, match over a implementor?
         e.load_policy().unwrap();
         e
@@ -243,8 +246,8 @@ impl<A: Adapter> Enforcer<A> {
     }
 
     pub fn build_role_links(&mut self) -> Result<()> {
-        self.rm.clear();
-        self.model.build_role_links(&mut self.rm)?;
+        self.rm.write().unwrap().clear();
+        self.model.build_role_links(Arc::clone(&self.rm))?;
         Ok(())
     }
 
