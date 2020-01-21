@@ -1,13 +1,12 @@
 use crate::adapter::Adapter;
-use crate::error::Error;
+use crate::error::{Error, ModelError};
 use crate::model::Model;
+use crate::Result;
 
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::{Error as IoError, ErrorKind};
-
-use crate::Result;
 
 pub struct FileAdapter {
     pub file_path: String,
@@ -54,21 +53,27 @@ impl Adapter for FileAdapter {
         }
 
         let mut tmp = String::new();
-        let ast_map1 = m.model.get("p").unwrap();
+        let ast_map1 = m.get_model().get("p").ok_or_else(|| {
+            Error::ModelError(ModelError::P(
+                "Missing policy definition in conf file".to_owned(),
+            ))
+        })?;
         for (ptype, ast) in ast_map1 {
-            for rule in &ast.policy {
+            for rule in ast.get_policy() {
                 let s1 = format!("{}, {}\n", ptype, rule.join(","));
                 tmp += s1.as_str();
             }
         }
 
-        let ast_map2 = m.model.get("g").unwrap();
-        for (ptype, ast) in ast_map2 {
-            for rule in &ast.policy {
-                let s1 = format!("{}, {}\n", ptype, rule.join(","));
-                tmp += s1.as_str();
+        if let Some(ast_map2) = m.get_model().get("g") {
+            for (ptype, ast) in ast_map2 {
+                for rule in ast.get_policy() {
+                    let s1 = format!("{}, {}\n", ptype, rule.join(","));
+                    tmp += s1.as_str();
+                }
             }
         }
+
         self.save_policy_file(tmp)?;
         Ok(())
     }
@@ -102,7 +107,7 @@ fn load_policy_line(line: String, m: &mut Model) {
     let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
     let key = tokens[0].clone();
 
-    if let Some(sec) = key.chars().nth(0).map(|x| x.to_string()) {
+    if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
         if let Some(t1) = m.model.get_mut(&sec) {
             if let Some(t2) = t1.get_mut(&key) {
                 t2.policy.push(tokens[1..].to_vec());
