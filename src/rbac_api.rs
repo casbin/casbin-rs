@@ -194,6 +194,11 @@ mod tests {
     use crate::enforcer::Enforcer;
     use crate::model::Model;
 
+    fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
+        v.sort_unstable();
+        v
+    }
+
     #[test]
     fn test_role_api() {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
@@ -211,8 +216,8 @@ mod tests {
 
         e.add_role_for_user("alice", "data1_admin").unwrap();
         assert_eq!(
-            vec!["data2_admin", "data1_admin"],
-            e.get_roles_for_user("alice")
+            vec!["data1_admin", "data2_admin"],
+            sort_unstable(e.get_roles_for_user("alice"))
         );
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
@@ -297,8 +302,8 @@ mod tests {
                 .add_role_for_user("alice", "data1_admin")
                 .unwrap();
             assert_eq!(
-                vec!["data2_admin", "data1_admin"],
-                ee.write().unwrap().get_roles_for_user("alice")
+                vec!["data1_admin", "data2_admin"],
+                sort_unstable(ee.write().unwrap().get_roles_for_user("alice"))
             );
             assert_eq!(
                 vec![String::new(); 0],
@@ -554,7 +559,7 @@ mod tests {
 
         assert_eq!(
             vec!["admin", "data1_admin", "data2_admin"],
-            e.get_implicit_roles_for_user("alice", None)
+            sort_unstable(e.get_implicit_roles_for_user("alice", None))
         );
         assert_eq!(
             vec![String::new(); 0],
@@ -586,7 +591,7 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_implicit_permissions_for_user("alice", None)
+            sort_unstable(e.get_implicit_permissions_for_user("alice", None))
         );
         assert_eq!(
             vec![vec!["bob", "data2", "write"]],
@@ -615,7 +620,7 @@ mod tests {
         );
         assert_eq!(
             vec!["alice", "bob"],
-            e.get_implicit_users_for_permission(vec!["data2", "write"])
+            sort_unstable(e.get_implicit_users_for_permission(vec!["data2", "write"]))
         );
     }
 
@@ -632,7 +637,7 @@ mod tests {
                 vec!["role:reader", "domain1", "data1", "read"],
                 vec!["role:writer", "domain1", "data1", "write"],
             ],
-            e.get_implicit_permissions_for_user("alice", Some("domain1"))
+            sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
         );
     }
 }

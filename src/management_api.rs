@@ -247,6 +247,11 @@ mod tests {
     use crate::model::Model;
     use crate::RbacApi;
 
+    fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
+        v.sort_unstable();
+        v
+    }
+
     #[test]
     fn test_modify_grouping_policy_api() {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
@@ -307,7 +312,7 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_policy()
+            sort_unstable(e.get_policy())
         );
 
         e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
@@ -326,7 +331,7 @@ mod tests {
                 vec!["data2_admin", "data2", "write"],
                 vec!["eve", "data3", "read"],
             ],
-            e.get_policy()
+            sort_unstable(e.get_policy())
         );
 
         e.remove_filtered_policy(1, vec!["data2"]).unwrap();
@@ -347,7 +352,7 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_policy()
+            sort_unstable(e.get_policy())
         );
 
         assert_eq!(
@@ -363,7 +368,7 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_filtered_policy(0, vec!["data2_admin"])
+            sort_unstable(e.get_filtered_policy(0, vec!["data2_admin"]))
         );
         assert_eq!(
             vec![vec!["alice", "data1", "read"],],
@@ -375,28 +380,28 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_filtered_policy(1, vec!["data2"])
+            sort_unstable(e.get_filtered_policy(1, vec!["data2"]))
         );
         assert_eq!(
             vec![
                 vec!["alice", "data1", "read"],
                 vec!["data2_admin", "data2", "read"],
             ],
-            e.get_filtered_policy(2, vec!["read"])
+            sort_unstable(e.get_filtered_policy(2, vec!["read"]))
         );
         assert_eq!(
             vec![
                 vec!["bob", "data2", "write"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_filtered_policy(2, vec!["write"])
+            sort_unstable(e.get_filtered_policy(2, vec!["write"]))
         );
         assert_eq!(
             vec![
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_filtered_policy(0, vec!["data2_admin", "data2"])
+            sort_unstable(e.get_filtered_policy(0, vec!["data2_admin", "data2"]))
         );
         // Note: "" (empty string) in fieldValues means matching all values.
         assert_eq!(
@@ -408,7 +413,7 @@ mod tests {
                 vec!["bob", "data2", "write"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_filtered_policy(1, vec!["data2", "write"])
+            sort_unstable(e.get_filtered_policy(1, vec!["data2", "write"]))
         );
 
         assert_eq!(true, e.has_policy(vec!["alice", "data1", "read"]));
@@ -447,9 +452,12 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter);
 
-        assert_eq!(vec!["alice", "bob", "data2_admin"], e.get_all_subjects());
-        assert_eq!(vec!["data1", "data2"], e.get_all_objects());
-        assert_eq!(vec!["read", "write"], e.get_all_actions());
+        assert_eq!(
+            vec!["alice", "bob", "data2_admin"],
+            sort_unstable(e.get_all_subjects())
+        );
+        assert_eq!(vec!["data1", "data2"], sort_unstable(e.get_all_objects()));
+        assert_eq!(vec!["read", "write"], sort_unstable(e.get_all_actions()));
         assert_eq!(vec!["data2_admin"], e.get_all_roles());
     }
 }
