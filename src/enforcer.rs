@@ -454,7 +454,7 @@ mod tests {
             .unwrap();
         e.add_permission_for_user("data2_admin", vec!["data2", "write"])
             .unwrap();
-        e.add_role_for_user("alice", "data2_admin").unwrap();
+        e.add_role_for_user("alice", "data2_admin", None).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());

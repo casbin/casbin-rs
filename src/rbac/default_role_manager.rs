@@ -49,9 +49,9 @@ impl RoleManager for DefaultRoleManager {
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
-        if let Some(domain_val) = domain {
-            name1 = format!("{}::{}", domain_val, name1);
-            name2 = format!("{}::{}", domain_val, name2);
+        if let Some(domain) = domain {
+            name1 = format!("{}::{}", domain, name1);
+            name2 = format!("{}::{}", domain, name2);
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
@@ -61,9 +61,9 @@ impl RoleManager for DefaultRoleManager {
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
-        if let Some(domain_val) = domain {
-            name1 = format!("{}::{}", domain_val, name1);
-            name2 = format!("{}::{}", domain_val, name2);
+        if let Some(domain) = domain {
+            name1 = format!("{}::{}", domain, name1);
+            name2 = format!("{}::{}", domain, name2);
         }
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return Err(
@@ -79,9 +79,9 @@ impl RoleManager for DefaultRoleManager {
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
         let mut name1 = name1.to_owned();
         let mut name2 = name2.to_owned();
-        if let Some(domain_val) = domain {
-            name1 = format!("{}::{}", domain_val, name1);
-            name2 = format!("{}::{}", domain_val, name2);
+        if let Some(domain) = domain {
+            name1 = format!("{}::{}", domain, name1);
+            name2 = format!("{}::{}", domain, name2);
         }
         if name1 == name2 {
             return true;
@@ -97,20 +97,20 @@ impl RoleManager for DefaultRoleManager {
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
         let mut name = name.to_owned();
-        if let Some(domain_val) = domain {
-            name = format!("{}::{}", domain_val, name);
+        if let Some(domain) = domain {
+            name = format!("{}::{}", domain, name);
         }
         if !self.has_role(&name) {
             return vec![];
         }
         let role = self.create_role(&name);
 
-        if let Some(domain_val) = domain {
+        if let Some(domain) = domain {
             role.read()
                 .unwrap()
                 .get_roles()
                 .iter()
-                .map(|x| x[domain_val.len() + 2..].to_string())
+                .map(|x| x[domain.len() + 2..].to_string())
                 .collect()
         } else {
             role.read().unwrap().get_roles()
@@ -119,38 +119,35 @@ impl RoleManager for DefaultRoleManager {
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
         let mut name = name.to_owned();
-        if let Some(domain_val) = domain {
-            name = format!("{}::{}", domain_val, name);
+        if let Some(domain) = domain {
+            name = format!("{}::{}", domain, name);
         }
         if !self.has_role(&name) {
             return vec![];
         }
 
         let mut names: Vec<String> = vec![];
-        for (_key, role) in self.all_roles.read().unwrap().iter() {
+        for role in self.all_roles.read().unwrap().values() {
             if role.read().unwrap().has_direct_role(&name) {
                 names.push(role.read().unwrap().name.clone());
             }
         }
-        if let Some(domain_val) = domain {
+
+        if let Some(domain) = domain {
             return names
                 .iter()
-                .map(|x| {
-                    let domain_prefix = format!("{}::", domain_val);
-                    let domain_end_pos = x.find(&domain_prefix).unwrap();
-                    x[domain_end_pos..].to_string()
-                })
+                .map(|x| x[domain.len() + 2..].to_string())
                 .collect();
         }
         names
     }
 
     fn print_roles(&self) {
-        println!("current role manager roles: {:?}", self.all_roles.clone());
+        println!("current role manager roles: {:?}", self.all_roles);
     }
 
     fn clear(&mut self) {
-        self.all_roles = Arc::new(RwLock::new(HashMap::new()));
+        self.all_roles.write().unwrap().clear();
     }
 }
 
@@ -172,7 +169,7 @@ impl Role {
         if self
             .roles
             .iter()
-            .any(|role| *(role.read().unwrap()).name == other_role.read().unwrap().name)
+            .any(|role| role.read().unwrap().name == other_role.read().unwrap().name)
         {
             return;
         }
@@ -224,6 +221,11 @@ impl Role {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
+        v.sort_unstable();
+        v
+    }
 
     #[test]
     fn test_role() {
@@ -337,6 +339,7 @@ mod tests {
         assert_eq!(true, rm.has_link("u4", "admin", Some("domain2")));
 
         rm.delete_link("g1", "admin", Some("domain1")).unwrap();
+
         rm.delete_link("u4", "admin", Some("domain2")).unwrap();
 
         assert_eq!(true, rm.has_link("u1", "g1", Some("domain1")));
@@ -358,5 +361,27 @@ mod tests {
         assert_eq!(false, rm.has_link("u4", "g1", Some("domain2")));
         assert_eq!(true, rm.has_link("u4", "admin", Some("domain1")));
         assert_eq!(false, rm.has_link("u4", "admin", Some("domain2")));
+    }
+
+    #[test]
+    fn test_users() {
+        let mut rm = DefaultRoleManager::new(3);
+        rm.add_link("u1", "g1", Some("domain1"));
+        rm.add_link("u2", "g1", Some("domain1"));
+
+        rm.add_link("u3", "g2", Some("domain2"));
+        rm.add_link("u4", "g2", Some("domain2"));
+
+        rm.add_link("u5", "g3", None);
+
+        assert_eq!(
+            vec!["u1", "u2"],
+            sort_unstable(rm.get_users("g1", Some("domain1")))
+        );
+        assert_eq!(
+            vec!["u3", "u4"],
+            sort_unstable(rm.get_users("g2", Some("domain2")))
+        );
+        assert_eq!(vec!["u5"], rm.get_users("g3", None));
     }
 }
