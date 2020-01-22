@@ -254,10 +254,13 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter);
 
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("eve"));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("non_exist"));
+        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("eve", None));
+        assert_eq!(
+            vec![String::new(); 0],
+            e.get_roles_for_user("non_exist", None)
+        );
 
         e.remove_grouping_policy(vec!["alice", "data2_admin"])
             .unwrap();
@@ -265,10 +268,10 @@ mod tests {
         e.add_grouping_policy(vec!["eve", "data3_admin"]).unwrap();
 
         let named_grouping_policy = vec!["alice", "data2_admin"];
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         e.add_named_grouping_policy("g", named_grouping_policy.clone())
             .unwrap();
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
+        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         e.remove_named_grouping_policy("g", named_grouping_policy.clone())
             .unwrap();
 
@@ -277,20 +280,32 @@ mod tests {
         e.add_grouping_policy(vec!["bob", "data1_admin"]).unwrap();
         e.add_grouping_policy(vec!["eve", "data3_admin"]).unwrap();
 
-        assert_eq!(vec!["bob"], e.get_users_for_role("data1_admin"));
-        assert_eq!(vec![String::new(); 0], e.get_users_for_role("data2_admin"));
-        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin"));
+        assert_eq!(vec!["bob"], e.get_users_for_role("data1_admin", None));
+        assert_eq!(
+            vec![String::new(); 0],
+            e.get_users_for_role("data2_admin", None)
+        );
+        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
 
         e.remove_filtered_grouping_policy(0, vec!["bob"]).unwrap();
 
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
-        assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve"));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("non_exist"));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+        assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve", None));
+        assert_eq!(
+            vec![String::new(); 0],
+            e.get_roles_for_user("non_exist", None)
+        );
 
-        assert_eq!(vec![String::new(); 0], e.get_users_for_role("data1_admin"));
-        assert_eq!(vec![String::new(); 0], e.get_users_for_role("data2_admin"));
-        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin"));
+        assert_eq!(
+            vec![String::new(); 0],
+            e.get_users_for_role("data1_admin", None)
+        );
+        assert_eq!(
+            vec![String::new(); 0],
+            e.get_users_for_role("data2_admin", None)
+        );
+        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
     }
 
     #[test]
