@@ -21,7 +21,7 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
             return Ok(false);
         }
         if self.auto_save {
-            return self.adapter.add_policy(sec, ptype, rule.clone());
+            return self.adapter.add_policy(sec, ptype, rule);
         }
         Ok(rule_added)
     }
@@ -32,7 +32,7 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
             return Ok(false);
         }
         if self.auto_save {
-            return self.adapter.remove_policy(sec, ptype, rule.clone());
+            return self.adapter.remove_policy(sec, ptype, rule);
         }
         Ok(rule_removed)
     }
@@ -51,12 +51,9 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
             return Ok(false);
         }
         if self.auto_save {
-            return self.adapter.remove_filtered_policy(
-                sec,
-                ptype,
-                field_index,
-                field_values.clone(),
-            );
+            return self
+                .adapter
+                .remove_filtered_policy(sec, ptype, field_index, field_values);
         }
         Ok(rule_removed)
     }

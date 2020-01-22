@@ -2,13 +2,19 @@ use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
 use crate::MgmtApi;
 use crate::Result;
-use std::collections::HashMap;
+
+use std::collections::HashSet;
 
 pub trait RbacApi {
     fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool>;
-    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool>;
+    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool>;
+    fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool>;
+    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool>;
     fn get_roles_for_user(&mut self, name: &str) -> Vec<String>;
     fn get_users_for_role(&self, name: &str) -> Vec<String>;
     fn has_role_for_user(&mut self, name: &str, role: &str) -> bool;
@@ -17,7 +23,7 @@ pub trait RbacApi {
     fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool>;
     fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
     fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool>;
-    fn get_permissions_for_user(&self, user: &str) -> Vec<Vec<String>>;
+    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>>;
     fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool;
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
     fn get_implicit_permissions_for_user(
@@ -25,7 +31,6 @@ pub trait RbacApi {
         name: &str,
         domain: Option<&str>,
     ) -> Vec<Vec<String>>;
-    fn get_permissions_for_user_in_domain(&self, user: &str, domain: &str) -> Vec<Vec<String>>;
     fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String>;
 }
 
@@ -36,16 +41,36 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         self.add_policy(perm)
     }
 
-    fn add_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
-        self.add_grouping_policy(vec![user, role])
+    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool> {
+        self.add_grouping_policy(if let Some(domain) = domain {
+            vec![user, role, domain]
+        } else {
+            vec![user, role]
+        })
     }
 
-    fn delete_role_for_user(&mut self, user: &str, role: &str) -> Result<bool> {
-        self.remove_grouping_policy(vec![user, role])
+    fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.remove_grouping_policy(if let Some(domain) = domain {
+            vec![user, role, domain]
+        } else {
+            vec![user, role]
+        })
     }
 
-    fn delete_roles_for_user(&mut self, user: &str) -> Result<bool> {
-        self.remove_filtered_grouping_policy(0, vec![user])
+    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+        self.remove_filtered_grouping_policy(
+            0,
+            if let Some(domain) = domain {
+                vec![user, "", domain]
+            } else {
+                vec![user]
+            },
+        )
     }
 
     fn get_roles_for_user(&mut self, name: &str) -> Vec<String> {
@@ -104,8 +129,14 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         self.remove_filtered_policy(0, vec![user])
     }
 
-    fn get_permissions_for_user(&self, user: &str) -> Vec<Vec<String>> {
-        self.get_filtered_policy(0, vec![user])
+    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
+        self.get_filtered_policy(0, {
+            if let Some(domain) = domain {
+                vec![user, domain]
+            } else {
+                vec![user]
+            }
+        })
     }
 
     fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool {
@@ -115,26 +146,15 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
     }
 
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let mut res: Vec<String> = vec![];
-        let mut role_set: HashMap<String, bool> = HashMap::new();
-        role_set.insert(name.to_owned(), true);
-        let mut name = name;
-        let mut q: Vec<String> = vec![name.to_owned()];
+        let mut res: HashSet<String> = HashSet::new();
+        let roles = self.rm.write().unwrap().get_roles(name, domain);
+        res.extend(roles.clone());
 
-        while !q.is_empty() {
-            let name1 = q[0].clone();
-            name = &name1;
-            q = q[1..].to_vec();
-            let roles = self.rm.write().unwrap().get_roles(name, domain);
-            for r in roles.iter().cloned() {
-                if !role_set.contains_key(&r) {
-                    q.push(r.clone());
-                    role_set.insert(r.clone(), true);
-                    res.push(r.clone());
-                }
-            }
-        }
-        res
+        roles.iter().for_each(|role| {
+            res.extend(self.get_implicit_roles_for_user(role, domain));
+        });
+
+        res.into_iter().collect()
     }
 
     fn get_implicit_permissions_for_user(
@@ -148,19 +168,10 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
         let mut res = vec![];
 
         for role in roles.iter() {
-            if let Some(domain_val) = domain {
-                let mut permissions = self.get_permissions_for_user_in_domain(role, domain_val);
-                res.append(&mut permissions);
-            } else {
-                let mut permissions = self.get_permissions_for_user(role);
-                res.append(&mut permissions);
-            }
+            let permissions = self.get_permissions_for_user(role, domain);
+            res.extend(permissions);
         }
         res
-    }
-
-    fn get_permissions_for_user_in_domain(&self, user: &str, domain: &str) -> Vec<Vec<String>> {
-        self.get_filtered_policy(0, vec![user, domain])
     }
 
     fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String> {
@@ -190,6 +201,12 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
+        v.sort_unstable();
+        v
+    }
+
     use crate::adapter::FileAdapter;
     use crate::enforcer::Enforcer;
     use crate::model::Model;
@@ -209,7 +226,7 @@ mod tests {
         assert_eq!(false, e.has_role_for_user("alice", "data1_admin"));
         assert_eq!(true, e.has_role_for_user("alice", "data2_admin"));
 
-        e.add_role_for_user("alice", "data1_admin").unwrap();
+        e.add_role_for_user("alice", "data1_admin", None).unwrap();
         assert_eq!(
             vec!["data2_admin", "data1_admin"],
             e.get_roles_for_user("alice")
@@ -217,23 +234,24 @@ mod tests {
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.delete_role_for_user("alice", "data1_admin").unwrap();
+        e.delete_role_for_user("alice", "data1_admin", None)
+            .unwrap();
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.delete_roles_for_user("alice").unwrap();
+        e.delete_roles_for_user("alice", None).unwrap();
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.add_role_for_user("alice", "data1_admin").unwrap();
+        e.add_role_for_user("alice", "data1_admin", None).unwrap();
         e.delete_user("alice").unwrap();
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob"));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("data2_admin"));
 
-        e.add_role_for_user("alice", "data2_admin").unwrap();
+        e.add_role_for_user("alice", "data2_admin", None).unwrap();
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
         assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
@@ -294,7 +312,7 @@ mod tests {
         thread::spawn(move || {
             ee.write()
                 .unwrap()
-                .add_role_for_user("alice", "data1_admin")
+                .add_role_for_user("alice", "data1_admin", None)
                 .unwrap();
             assert_eq!(
                 vec!["data2_admin", "data1_admin"],
@@ -314,7 +332,7 @@ mod tests {
 
         e.write()
             .unwrap()
-            .delete_role_for_user("alice", "data1_admin")
+            .delete_role_for_user("alice", "data1_admin", None)
             .unwrap();
         assert_eq!(
             vec!["data2_admin"],
@@ -329,7 +347,10 @@ mod tests {
             e.write().unwrap().get_roles_for_user("data2_admin")
         );
 
-        e.write().unwrap().delete_roles_for_user("alice").unwrap();
+        e.write()
+            .unwrap()
+            .delete_roles_for_user("alice", None)
+            .unwrap();
         assert_eq!(
             vec![String::new(); 0],
             e.write().unwrap().get_roles_for_user("alice")
@@ -345,7 +366,7 @@ mod tests {
 
         e.write()
             .unwrap()
-            .add_role_for_user("alice", "data1_admin")
+            .add_role_for_user("alice", "data1_admin", None)
             .unwrap();
         e.write().unwrap().delete_user("alice").unwrap();
         assert_eq!(
@@ -363,7 +384,7 @@ mod tests {
 
         e.write()
             .unwrap()
-            .add_role_for_user("alice", "data2_admin")
+            .add_role_for_user("alice", "data2_admin", None)
             .unwrap();
         assert_eq!(
             true,
@@ -495,11 +516,11 @@ mod tests {
 
         assert_eq!(
             vec![vec!["alice", "read"]],
-            e.get_permissions_for_user("alice")
+            e.get_permissions_for_user("alice", None)
         );
         assert_eq!(
             vec![vec!["bob", "write"]],
-            e.get_permissions_for_user("bob")
+            e.get_permissions_for_user("bob", None)
         );
 
         assert_eq!(true, e.has_permission_for_user("alice", vec!["read"]));
@@ -545,16 +566,16 @@ mod tests {
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
-            e.get_permissions_for_user("alice")
+            e.get_permissions_for_user("alice", None)
         );
         assert_eq!(
             vec![vec!["bob", "data2", "write"]],
-            e.get_permissions_for_user("bob")
+            e.get_permissions_for_user("bob", None)
         );
 
         assert_eq!(
             vec!["admin", "data1_admin", "data2_admin"],
-            e.get_implicit_roles_for_user("alice", None)
+            sort_unstable(e.get_implicit_roles_for_user("alice", None))
         );
         assert_eq!(
             vec![String::new(); 0],
@@ -571,11 +592,11 @@ mod tests {
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
-            e.get_permissions_for_user("alice")
+            e.get_permissions_for_user("alice", None)
         );
         assert_eq!(
             vec![vec!["bob", "data2", "write"]],
-            e.get_permissions_for_user("bob")
+            e.get_permissions_for_user("bob", None)
         );
 
         assert_eq!(
@@ -586,7 +607,7 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            e.get_implicit_permissions_for_user("alice", None)
+            sort_unstable(e.get_implicit_permissions_for_user("alice", None))
         );
         assert_eq!(
             vec![vec!["bob", "data2", "write"]],
@@ -632,7 +653,7 @@ mod tests {
                 vec!["role:reader", "domain1", "data1", "read"],
                 vec!["role:writer", "domain1", "data1", "write"],
             ],
-            e.get_implicit_permissions_for_user("alice", Some("domain1"))
+            sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
         );
     }
 }
