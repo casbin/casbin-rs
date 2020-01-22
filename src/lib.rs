@@ -9,6 +9,8 @@ mod rbac;
 mod rbac_api;
 
 pub mod error;
+pub mod prelude;
+
 pub use adapter::{Adapter, FileAdapter};
 pub use enforcer::Enforcer;
 pub use internal_api::InternalApi;

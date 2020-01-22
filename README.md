@@ -23,7 +23,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.1.4"
+casbin = "0.1.5"
 ```
 
 ## Get started
@@ -31,7 +31,7 @@ casbin = "0.1.4"
 1. New a Casbin enforcer with a model file and a policy file:
 
 ```rust
-use casbin::{Enforcer, Model, FileAdapter};
+use casbin::prelude::*;
 
 let model = Model::from_file("path/to/model.conf")?;
 let adapter = FileAdapter::new("path/to/policy.csv");
