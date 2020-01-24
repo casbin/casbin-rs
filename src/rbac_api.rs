@@ -202,14 +202,14 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
 mod tests {
     use super::*;
 
+    use crate::adapter::FileAdapter;
+    use crate::enforcer::Enforcer;
+    use crate::model::Model;
+
     fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
         v.sort_unstable();
         v
     }
-
-    use crate::adapter::FileAdapter;
-    use crate::enforcer::Enforcer;
-    use crate::model::Model;
 
     #[test]
     fn test_role_api() {
@@ -658,7 +658,7 @@ mod tests {
         );
         assert_eq!(
             vec!["alice", "bob"],
-            e.get_implicit_users_for_permission(vec!["data2", "write"])
+            sort_unstable(e.get_implicit_users_for_permission(vec!["data2", "write"]))
         );
     }
 
