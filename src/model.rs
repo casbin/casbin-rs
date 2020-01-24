@@ -3,11 +3,12 @@ use crate::error::{Error, ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
+use indexmap::IndexSet;
 use ip_network::IpNetwork;
 use regex::Regex;
 use rhai::Any;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::convert::AsRef;
 use std::net::IpAddr;
 use std::path::Path;
@@ -37,7 +38,7 @@ pub struct Assertion {
     pub(crate) key: String,
     pub(crate) value: String,
     pub(crate) tokens: Vec<String>,
-    pub(crate) policy: HashSet<Vec<String>>,
+    pub(crate) policy: IndexSet<Vec<String>>,
     pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
 }
 
@@ -47,18 +48,18 @@ impl Default for Assertion {
             key: String::new(),
             value: String::new(),
             tokens: vec![],
-            policy: HashSet::new(),
+            policy: IndexSet::new(),
             rm: Arc::new(RwLock::new(DefaultRoleManager::new(0))),
         }
     }
 }
 
 impl Assertion {
-    pub fn get_policy(&self) -> &HashSet<Vec<String>> {
+    pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
         &self.policy
     }
 
-    pub fn get_mut_policy(&mut self) -> &mut HashSet<Vec<String>> {
+    pub fn get_mut_policy(&mut self) -> &mut IndexSet<Vec<String>> {
         &mut self.policy
     }
 
@@ -282,7 +283,7 @@ impl Model {
     ) -> Vec<String> {
         self.get_policy(sec, ptype)
             .into_iter()
-            .fold(HashSet::new(), |mut acc, x| {
+            .fold(IndexSet::new(), |mut acc, x| {
                 acc.insert(x[field_index].clone());
                 acc
             })
@@ -324,7 +325,7 @@ impl Model {
         let mut res = false;
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                let mut tmp: HashSet<Vec<String>> = HashSet::new();
+                let mut tmp: IndexSet<Vec<String>> = IndexSet::new();
                 for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
