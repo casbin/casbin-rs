@@ -3,26 +3,26 @@ use crate::error::{Error, ModelError};
 use crate::model::Model;
 use crate::Result;
 
+use std::convert::AsRef;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::io::{Error as IoError, ErrorKind};
+use std::path::Path;
 
-pub struct FileAdapter {
-    pub file_path: String,
+pub struct FileAdapter<P: AsRef<Path>> {
+    pub file_path: P,
 }
 
 type LoadPolicyFileHandler = fn(String, &mut Model);
 
-impl FileAdapter {
-    pub fn new(path: &str) -> Self {
-        FileAdapter {
-            file_path: path.to_owned(),
-        }
+impl<P: AsRef<Path>> FileAdapter<P> {
+    pub fn new(p: P) -> Self {
+        FileAdapter { file_path: p }
     }
 
     pub fn load_policy_file(&self, m: &mut Model, handler: LoadPolicyFileHandler) -> Result<()> {
-        let f = File::open(self.file_path.clone())?;
+        let f = File::open(&self.file_path)?;
         let f = BufReader::new(f);
         for line in f.lines() {
             handler(line?, m);
@@ -31,20 +31,20 @@ impl FileAdapter {
     }
 
     pub fn save_policy_file(&self, text: String) -> Result<()> {
-        let mut file = File::create(self.file_path.clone())?;
+        let mut file = File::create(&self.file_path)?;
         file.write_all(text.as_bytes())?;
         Ok(())
     }
 }
 
-impl Adapter for FileAdapter {
+impl<P: AsRef<Path>> Adapter for FileAdapter<P> {
     fn load_policy(&self, m: &mut Model) -> Result<()> {
         self.load_policy_file(m, load_policy_line)?;
         Ok(())
     }
 
     fn save_policy(&self, m: &mut Model) -> Result<()> {
-        if self.file_path.is_empty() {
+        if self.file_path.as_ref().as_os_str().is_empty() {
             return Err(Error::IoError(IoError::new(
                 ErrorKind::Other,
                 "save policy failed, file path is empty",
