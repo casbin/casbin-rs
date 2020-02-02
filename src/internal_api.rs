@@ -1,6 +1,8 @@
-use crate::adapter::Adapter;
+use crate::emitter::{Event, EMITTER};
 use crate::enforcer::Enforcer;
 use crate::Result;
+
+use emitbrown::Events;
 
 pub trait InternalApi {
     fn add_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;
@@ -14,15 +16,21 @@ pub trait InternalApi {
     ) -> Result<bool>;
 }
 
-impl<A: Adapter> InternalApi for Enforcer<A> {
+impl InternalApi for Enforcer {
     fn add_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
         let rule_added = self.model.add_policy(sec, ptype, rule.clone());
         if !rule_added {
             return Ok(false);
         }
+
         if self.auto_save {
             return self.adapter.add_policy(sec, ptype, rule);
         }
+
+        if rule_added {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+        }
+
         Ok(rule_added)
     }
 
@@ -31,9 +39,15 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
         if !rule_removed {
             return Ok(false);
         }
+
         if self.auto_save {
             return self.adapter.remove_policy(sec, ptype, rule);
         }
+
+        if rule_removed {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+        }
+
         Ok(rule_removed)
     }
 
@@ -54,6 +68,9 @@ impl<A: Adapter> InternalApi for Enforcer<A> {
             return self
                 .adapter
                 .remove_filtered_policy(sec, ptype, field_index, field_values);
+        }
+        if rule_removed {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
         Ok(rule_removed)
     }

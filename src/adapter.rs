@@ -7,7 +7,7 @@ pub use memory_adapter::MemoryAdapter;
 use crate::model::Model;
 use crate::Result;
 
-pub trait Adapter {
+pub trait Adapter: Send + Sync {
     fn load_policy(&self, m: &mut Model) -> Result<()>;
     fn save_policy(&self, m: &mut Model) -> Result<()>;
     fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;

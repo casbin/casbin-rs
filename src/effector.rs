@@ -1,5 +1,5 @@
 pub trait Effector: Send + Sync {
-    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>, results: Vec<f64>) -> bool;
+    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>) -> bool;
 }
 
 #[derive(PartialEq, Clone)]
@@ -12,9 +12,8 @@ pub enum EffectKind {
 #[derive(Default)]
 pub struct DefaultEffector {}
 
-// TODO: can we remove results? seems to be useless
 impl Effector for DefaultEffector {
-    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>, _results: Vec<f64>) -> bool {
+    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>) -> bool {
         if expr == "some(where (p_eft == allow))" {
             let mut result = false;
             for eft in effects {

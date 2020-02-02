@@ -37,7 +37,7 @@ impl<P: AsRef<Path>> FileAdapter<P> {
     }
 }
 
-impl<P: AsRef<Path>> Adapter for FileAdapter<P> {
+impl<P: AsRef<Path> + Send + Sync> Adapter for FileAdapter<P> {
     fn load_policy(&self, m: &mut Model) -> Result<()> {
         self.load_policy_file(m, load_policy_line)?;
         Ok(())

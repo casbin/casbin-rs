@@ -1,4 +1,3 @@
-use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
 use crate::InternalApi;
 use crate::Result;
@@ -70,7 +69,7 @@ pub trait MgmtApi {
     fn get_all_named_roles(&self, ptype: &str) -> Vec<String>;
 }
 
-impl<A: Adapter> MgmtApi for Enforcer<A> {
+impl MgmtApi for Enforcer {
     fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
         self.add_named_policy("p", params)
     }
@@ -252,7 +251,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -313,7 +312,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![
@@ -353,7 +352,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![
@@ -460,7 +459,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(vec!["alice", "bob", "data2_admin"], e.get_all_subjects());
         assert_eq!(vec!["data1", "data2"], e.get_all_objects());

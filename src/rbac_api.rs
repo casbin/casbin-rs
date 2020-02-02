@@ -1,4 +1,3 @@
-use crate::adapter::Adapter;
 use crate::enforcer::Enforcer;
 use crate::MgmtApi;
 use crate::Result;
@@ -34,7 +33,7 @@ pub trait RbacApi {
     fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String>;
 }
 
-impl<A: Adapter> RbacApi for Enforcer<A> {
+impl RbacApi for Enforcer {
     fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
         let mut perm = permission;
         perm.insert(0, user);
@@ -216,7 +215,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -298,7 +297,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Arc::new(RwLock::new(Enforcer::new(m, adapter)));
+        let e = Arc::new(RwLock::new(Enforcer::new(m, Box::new(adapter)).unwrap()));
         let ee = e.clone();
 
         assert_eq!(
@@ -529,7 +528,7 @@ mod tests {
         let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
@@ -584,7 +583,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -610,7 +609,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -642,7 +641,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec!["alice"],
@@ -667,7 +666,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![
