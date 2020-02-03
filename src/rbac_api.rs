@@ -1,3 +1,4 @@
+use crate::cached_enforcer::CachedEnforcer;
 use crate::enforcer::Enforcer;
 use crate::MgmtApi;
 use crate::Result;
@@ -194,6 +195,86 @@ impl RbacApi for Enforcer {
             }
         }
         res
+    }
+}
+
+impl RbacApi for CachedEnforcer {
+    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_permission_for_user(user, permission)
+    }
+
+    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool> {
+        self.enforcer.add_role_for_user(user, role, domain)
+    }
+
+    fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.enforcer.delete_role_for_user(user, role, domain)
+    }
+
+    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+        self.enforcer.delete_roles_for_user(user, domain)
+    }
+
+    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_roles_for_user(name, domain)
+    }
+
+    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_users_for_role(name, domain)
+    }
+
+    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool {
+        self.enforcer.has_role_for_user(name, role, domain)
+    }
+
+    fn delete_user(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_user(name)
+    }
+
+    fn delete_role(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_role(name)
+    }
+
+    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.delete_permission(permission)
+    }
+
+    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.delete_permission_for_user(user, permission)
+    }
+
+    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
+        self.enforcer.delete_permissions_for_user(user)
+    }
+
+    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
+        self.enforcer.get_permissions_for_user(user, domain)
+    }
+
+    fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool {
+        self.enforcer.has_permission_for_user(user, permission)
+    }
+
+    fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_implicit_roles_for_user(name, domain)
+    }
+
+    fn get_implicit_permissions_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<Vec<String>> {
+        self.enforcer
+            .get_implicit_permissions_for_user(name, domain)
+    }
+
+    fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String> {
+        self.enforcer.get_implicit_users_for_permission(permission)
     }
 }
 

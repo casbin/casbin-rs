@@ -86,7 +86,7 @@ impl Enforcer {
         EMITTER.lock().unwrap().on(
             Event::PolicyChange,
             Box::new(|e: &mut Enforcer| {
-                if let Some(ref w) = e.watcher {
+                if let Some(ref mut w) = e.watcher {
                     w.update();
                 }
             }),
