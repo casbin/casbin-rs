@@ -3,6 +3,7 @@ use crate::error::{Error, ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
+use indexmap::IndexSet;
 use ip_network::IpNetwork;
 use regex::Regex;
 use rhai::Any;
@@ -37,7 +38,7 @@ pub struct Assertion {
     pub(crate) key: String,
     pub(crate) value: String,
     pub(crate) tokens: Vec<String>,
-    pub(crate) policy: Vec<Vec<String>>,
+    pub(crate) policy: IndexSet<Vec<String>>,
     pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
 }
 
@@ -47,18 +48,18 @@ impl Default for Assertion {
             key: String::new(),
             value: String::new(),
             tokens: vec![],
-            policy: vec![],
+            policy: IndexSet::new(),
             rm: Arc::new(RwLock::new(DefaultRoleManager::new(0))),
         }
     }
 }
 
 impl Assertion {
-    pub fn get_policy(&self) -> &Vec<Vec<String>> {
+    pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
         &self.policy
     }
 
-    pub fn get_mut_policy(&mut self) -> &mut Vec<Vec<String>> {
+    pub fn get_mut_policy(&mut self) -> &mut IndexSet<Vec<String>> {
         &mut self.policy
     }
 
@@ -220,9 +221,9 @@ impl Model {
     pub fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                t2.policy.push(rule.into_iter().map(String::from).collect());
-                t2.policy.dedup(); // avoid re-add, policy rules should be unique
-                return true;
+                return t2
+                    .policy
+                    .insert(rule.into_iter().map(String::from).collect());
             }
         }
         false
@@ -231,7 +232,7 @@ impl Model {
     pub fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>> {
         if let Some(t1) = self.model.get(sec) {
             if let Some(t2) = t1.get(ptype) {
-                return t2.policy.clone();
+                return t2.policy.iter().map(|x| x.to_owned()).collect();
             }
         }
         vec![]
@@ -250,7 +251,7 @@ impl Model {
                 for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
-                        if field_value != &"" && &rule[field_index + i] != field_value {
+                        if !field_value.is_empty() && &rule[field_index + i] != field_value {
                             matched = false;
                             break;
                         }
@@ -280,25 +281,21 @@ impl Model {
         ptype: &str,
         field_index: usize,
     ) -> Vec<String> {
-        let mut values = vec![];
-        let policy = self.get_policy(sec, ptype);
-        for rule in policy {
-            values.push(rule[field_index].clone());
-        }
-        values.sort_unstable();
-        values.dedup(); // sort and then dedup will remove all duplicates
-        values
+        self.get_policy(sec, ptype)
+            .into_iter()
+            .fold(IndexSet::new(), |mut acc, x| {
+                acc.insert(x[field_index].clone());
+                acc
+            })
+            .into_iter()
+            .collect()
     }
 
     pub fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                for (i, r) in t2.policy.iter().enumerate() {
-                    if r == &rule {
-                        t2.policy.remove(i);
-                        return true;
-                    }
-                }
+                let rule: Vec<String> = rule.iter().map(|&x| String::from(x)).collect();
+                return t2.policy.remove(&rule);
             }
         }
         false
@@ -306,13 +303,14 @@ impl Model {
 
     pub fn clear_policy(&mut self) {
         if let Some(model_p) = self.model.get_mut("p") {
-            for (_key, ast) in model_p.iter_mut() {
-                ast.policy = vec![];
+            for ast in model_p.values_mut() {
+                ast.policy.clear();
             }
         }
+
         if let Some(model_g) = self.model.get_mut("g") {
-            for (_key, ast) in model_g.iter_mut() {
-                ast.policy = vec![];
+            for ast in model_g.values_mut() {
+                ast.policy.clear();
             }
         }
     }
@@ -325,13 +323,13 @@ impl Model {
         field_values: Vec<&str>,
     ) -> bool {
         let mut res = false;
-        let mut tmp: Vec<Vec<String>> = vec![];
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                for (_, rule) in t2.policy.iter().enumerate() {
+                let mut tmp: IndexSet<Vec<String>> = IndexSet::new();
+                for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
-                        if !field_value.is_empty() && rule[field_index + i] != *field_value {
+                        if !field_value.is_empty() && &rule[field_index + i] != field_value {
                             matched = false;
                             break;
                         }
@@ -339,15 +337,9 @@ impl Model {
                     if matched {
                         res = true;
                     } else {
-                        tmp.push(rule.clone());
+                        tmp.insert(rule.clone());
                     }
                 }
-            }
-        }
-
-        // update new policy
-        if let Some(t1) = self.model.get_mut(sec) {
-            if let Some(t2) = t1.get_mut(ptype) {
                 t2.policy = tmp;
             }
         }
