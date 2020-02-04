@@ -1,4 +1,4 @@
-use crate::adapter::Adapter;
+use crate::cached_enforcer::CachedEnforcer;
 use crate::enforcer::Enforcer;
 use crate::InternalApi;
 use crate::Result;
@@ -70,7 +70,7 @@ pub trait MgmtApi {
     fn get_all_named_roles(&self, ptype: &str) -> Vec<String>;
 }
 
-impl<A: Adapter> MgmtApi for Enforcer<A> {
+impl MgmtApi for Enforcer {
     fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
         self.add_named_policy("p", params)
     }
@@ -239,6 +239,175 @@ impl<A: Adapter> MgmtApi for Enforcer<A> {
     }
 }
 
+impl MgmtApi for CachedEnforcer {
+    fn get_policy(&self) -> Vec<Vec<String>> {
+        self.enforcer.get_policy()
+    }
+
+    fn get_named_policy(&self, ptype: &str) -> Vec<Vec<String>> {
+        self.enforcer.get_named_policy(ptype)
+    }
+
+    fn get_filtered_policy(&self, field_index: usize, field_values: Vec<&str>) -> Vec<Vec<String>> {
+        self.enforcer.get_filtered_policy(field_index, field_values)
+    }
+
+    fn get_filtered_named_policy(
+        &self,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Vec<Vec<String>> {
+        self.enforcer
+            .get_filtered_named_policy(ptype, field_index, field_values)
+    }
+
+    fn has_policy(&self, params: Vec<&str>) -> bool {
+        self.enforcer.has_policy(params)
+    }
+
+    fn has_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool {
+        self.enforcer.has_named_policy(ptype, params)
+    }
+
+    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_policy(params)
+    }
+
+    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_policy(params)
+    }
+
+    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_named_policy(ptype, params)
+    }
+
+    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_named_policy(ptype, params)
+    }
+
+    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_grouping_policy(params)
+    }
+
+    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_grouping_policy(params)
+    }
+
+    fn get_grouping_policy(&self) -> Vec<Vec<String>> {
+        self.enforcer.get_grouping_policy()
+    }
+
+    fn get_named_grouping_policy(&self, ptype: &str) -> Vec<Vec<String>> {
+        self.enforcer.get_named_grouping_policy(ptype)
+    }
+
+    fn get_filtered_grouping_policy(
+        &self,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Vec<Vec<String>> {
+        self.enforcer
+            .get_filtered_grouping_policy(field_index, field_values)
+    }
+
+    fn get_filtered_named_grouping_policy(
+        &self,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Vec<Vec<String>> {
+        self.enforcer
+            .get_filtered_named_grouping_policy(ptype, field_index, field_values)
+    }
+
+    fn has_grouping_policy(&self, params: Vec<&str>) -> bool {
+        self.enforcer.has_grouping_policy(params)
+    }
+
+    fn has_grouping_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool {
+        self.enforcer.has_grouping_named_policy(ptype, params)
+    }
+
+    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_named_grouping_policy(ptype, params)
+    }
+
+    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_named_grouping_policy(ptype, params)
+    }
+
+    fn remove_filtered_policy(
+        &mut self,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .remove_filtered_policy(field_index, field_values)
+    }
+
+    fn remove_filtered_grouping_policy(
+        &mut self,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .remove_filtered_grouping_policy(field_index, field_values)
+    }
+
+    fn remove_filtered_named_policy(
+        &mut self,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .remove_filtered_named_policy(ptype, field_index, field_values)
+    }
+
+    fn remove_filtered_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        field_index: usize,
+        field_values: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .remove_filtered_named_grouping_policy(ptype, field_index, field_values)
+    }
+
+    fn get_all_subjects(&self) -> Vec<String> {
+        self.enforcer.get_all_subjects()
+    }
+
+    fn get_all_named_subjects(&self, ptype: &str) -> Vec<String> {
+        self.enforcer.get_all_named_subjects(ptype)
+    }
+
+    fn get_all_objects(&self) -> Vec<String> {
+        self.enforcer.get_all_objects()
+    }
+
+    fn get_all_named_objects(&self, ptype: &str) -> Vec<String> {
+        self.enforcer.get_all_named_objects(ptype)
+    }
+
+    fn get_all_actions(&self) -> Vec<String> {
+        self.enforcer.get_all_actions()
+    }
+
+    fn get_all_named_actions(&self, ptype: &str) -> Vec<String> {
+        self.enforcer.get_all_named_actions(ptype)
+    }
+
+    fn get_all_roles(&self) -> Vec<String> {
+        self.enforcer.get_all_roles()
+    }
+
+    fn get_all_named_roles(&self, ptype: &str) -> Vec<String> {
+        self.enforcer.get_all_named_roles(ptype)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,7 +426,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -318,7 +487,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![
@@ -358,7 +527,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![
@@ -465,7 +634,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec!["alice", "bob", "data2_admin"],

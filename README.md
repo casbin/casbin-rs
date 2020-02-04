@@ -23,7 +23,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.1.5"
+casbin = "0.1.6"
 ```
 
 ## Get started
@@ -36,7 +36,7 @@ use casbin::prelude::*;
 let model = Model::from_file("path/to/model.conf")?;
 let adapter = FileAdapter::new("path/to/policy.csv");
 
-let e = Enforcer::new(model, adapter);
+let e = Enforcer::new(model, adapter)?;
 ```
 
 2. Add an enforcement hook into your code right before the access happens:

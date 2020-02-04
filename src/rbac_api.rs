@@ -1,4 +1,4 @@
-use crate::adapter::Adapter;
+use crate::cached_enforcer::CachedEnforcer;
 use crate::enforcer::Enforcer;
 use crate::MgmtApi;
 use crate::Result;
@@ -34,7 +34,7 @@ pub trait RbacApi {
     fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String>;
 }
 
-impl<A: Adapter> RbacApi for Enforcer<A> {
+impl RbacApi for Enforcer {
     fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
         let mut perm = permission;
         perm.insert(0, user);
@@ -198,6 +198,86 @@ impl<A: Adapter> RbacApi for Enforcer<A> {
     }
 }
 
+impl RbacApi for CachedEnforcer {
+    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_permission_for_user(user, permission)
+    }
+
+    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool> {
+        self.enforcer.add_role_for_user(user, role, domain)
+    }
+
+    fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.enforcer.delete_role_for_user(user, role, domain)
+    }
+
+    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+        self.enforcer.delete_roles_for_user(user, domain)
+    }
+
+    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_roles_for_user(name, domain)
+    }
+
+    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_users_for_role(name, domain)
+    }
+
+    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool {
+        self.enforcer.has_role_for_user(name, role, domain)
+    }
+
+    fn delete_user(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_user(name)
+    }
+
+    fn delete_role(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_role(name)
+    }
+
+    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.delete_permission(permission)
+    }
+
+    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.delete_permission_for_user(user, permission)
+    }
+
+    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
+        self.enforcer.delete_permissions_for_user(user)
+    }
+
+    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
+        self.enforcer.get_permissions_for_user(user, domain)
+    }
+
+    fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool {
+        self.enforcer.has_permission_for_user(user, permission)
+    }
+
+    fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+        self.enforcer.get_implicit_roles_for_user(name, domain)
+    }
+
+    fn get_implicit_permissions_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<Vec<String>> {
+        self.enforcer
+            .get_implicit_permissions_for_user(name, domain)
+    }
+
+    fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String> {
+        self.enforcer.get_implicit_users_for_permission(permission)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -216,7 +296,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -298,7 +378,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Arc::new(RwLock::new(Enforcer::new(m, adapter)));
+        let e = Arc::new(RwLock::new(Enforcer::new(m, Box::new(adapter)).unwrap()));
         let ee = e.clone();
 
         assert_eq!(
@@ -529,7 +609,7 @@ mod tests {
         let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
@@ -584,7 +664,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -610,7 +690,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -642,7 +722,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec!["alice"],
@@ -667,7 +747,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             vec![

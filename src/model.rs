@@ -575,7 +575,7 @@ mod tests {
         let m = Model::from_file("examples/basic_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -592,7 +592,7 @@ mod tests {
         let m = Model::from_file("examples/basic_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -609,7 +609,7 @@ mod tests {
         let m = Model::from_file("examples/basic_with_root_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert!(e.enforce(vec!["bob", "data2", "write"]).unwrap());
@@ -630,7 +630,7 @@ mod tests {
         let m = Model::from_file("examples/basic_with_root_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert!(!e.enforce(vec!["bob", "data2", "write"]).unwrap());
@@ -651,7 +651,7 @@ mod tests {
         let m = Model::from_file("examples/basic_without_users_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_users_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(e.enforce(vec!["data1", "read"]).unwrap());
         assert!(!e.enforce(vec!["data1", "write"]).unwrap());
@@ -664,7 +664,7 @@ mod tests {
         let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert!(e.enforce(vec!["alice", "read"]).unwrap());
         assert!(e.enforce(vec!["bob", "write"]).unwrap());
@@ -677,7 +677,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -694,7 +694,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_resource_roles_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -711,7 +711,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(
             true,
@@ -757,7 +757,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
         e.add_policy(vec!["admin", "domain1", "data1", "read"])
             .unwrap();
         e.add_policy(vec!["admin", "domain1", "data1", "write"])
@@ -895,7 +895,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         e.add_policy(vec!["admin", "domain3", "data1", "read"])
             .unwrap();
@@ -938,7 +938,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_deny_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -955,7 +955,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_with_not_deny_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
     }
@@ -965,7 +965,7 @@ mod tests {
         let m = Model::from_file("examples/rbac_model.conf").unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, adapter);
+        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         e.add_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
             .unwrap();
@@ -998,7 +998,7 @@ mod tests {
         println!("{}", m.model.get("m").unwrap().get("m").unwrap().value);
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, adapter);
+        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
