@@ -5,6 +5,8 @@ authors = ["Joey <joey.xf@gmail.com>"]
 edition = "2018"
 license = "Apache-2.0"
 description = "An authorization library that supports access control models like ACL, RBAC, ABAC."
+readme = "README.md"
+keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -17,3 +19,5 @@ emitbrown = "0.1.8"
 lazy_static = "1.4.0"
 indexmap = "1.3.1"
 
+[profile.release.build-override]
+opt-level = 0
