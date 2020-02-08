@@ -428,7 +428,7 @@ pub fn ip_match(key1: String, key2: String) -> bool {
                     Ok(ip_network) => ip_network.contains(ip_addr1),
                     Err(err) => panic!("invalid ip network {}", err),
                 },
-                Err(_err) => panic!("invalid netmask {}", key2_split[1]),
+                _ => panic!("invalid netmask {}", key2_split[1]),
             }
         } else {
             if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) = (ip_addr1, ip_addr2) {
