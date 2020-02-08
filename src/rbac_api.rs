@@ -421,14 +421,16 @@ mod tests {
 
     #[test]
     fn test_role_api_threads() {
-    use std::sync::{Arc, RwLock};
-        use std::thread;
         use async_std::task;
+        use std::sync::{Arc, RwLock};
+        use std::thread;
         task::block_on(async {
             let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let e = Arc::new(RwLock::new(Enforcer::new(m, Box::new(adapter)).await.unwrap()));
+            let e = Arc::new(RwLock::new(
+                Enforcer::new(m, Box::new(adapter)).await.unwrap(),
+            ));
             let ee = e.clone();
 
             assert_eq!(
@@ -481,8 +483,10 @@ mod tests {
                         vec![String::new(); 0],
                         ee.write().unwrap().get_roles_for_user("data2_admin", None)
                     );
-                    });
-            }).join().unwrap();
+                });
+            })
+            .join()
+            .unwrap();
 
             e.write()
                 .unwrap()

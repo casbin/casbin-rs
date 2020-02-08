@@ -312,112 +312,112 @@ mod tests {
     fn test_key_match_model_in_memory() {
         use async_std::task;
         task::block_on(async {
-        let mut m = Model::default();
-        m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
-        m.add_def("e", "e", "some(where (p.eft == allow))");
-        m.add_def(
-            "m",
-            "m",
-            "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
-        );
+            let mut m = Model::default();
+            m.add_def("r", "r", "sub, obj, act");
+            m.add_def("p", "p", "sub, obj, act");
+            m.add_def("e", "e", "some(where (p.eft == allow))");
+            m.add_def(
+                "m",
+                "m",
+                "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+            );
 
-        let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
-        assert_eq!(
-            true,
-            e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["alice", "/alice_data/resource2", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["alice", "/bob_data/resource1", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["alice", "/bob_data/resource1", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["alice", "/bob_data/resource2", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["alice", "/bob_data/resource2", "POST"])
-                .unwrap()
-        );
+            let adapter = FileAdapter::new("examples/keymatch_policy.csv");
+            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            assert_eq!(
+                true,
+                e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["alice", "/alice_data/resource2", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["alice", "/bob_data/resource1", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["alice", "/bob_data/resource1", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["alice", "/bob_data/resource2", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["alice", "/bob_data/resource2", "POST"])
+                    .unwrap()
+            );
 
-        assert_eq!(
-            false,
-            e.enforce(vec!["bob", "/alice_data/resource1", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["bob", "/alice_data/resource1", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["bob", "/alice_data/resource2", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["bob", "/alice_data/resource2", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["bob", "/bob_data/resource1", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["bob", "/bob_data/resource1", "POST"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["bob", "/bob_data/resource2", "GET"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["bob", "/bob_data/resource2", "POST"])
-                .unwrap()
-        );
+            assert_eq!(
+                false,
+                e.enforce(vec!["bob", "/alice_data/resource1", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["bob", "/alice_data/resource1", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["bob", "/alice_data/resource2", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["bob", "/alice_data/resource2", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["bob", "/bob_data/resource1", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["bob", "/bob_data/resource1", "POST"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["bob", "/bob_data/resource2", "GET"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["bob", "/bob_data/resource2", "POST"])
+                    .unwrap()
+            );
 
-        assert_eq!(
-            true,
-            e.enforce(vec!["cathy", "/cathy_data", "GET"]).unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(vec!["cathy", "/cathy_data", "POST"]).unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(vec!["cathy", "/cathy_data", "DELETE"]).unwrap()
-        );
+            assert_eq!(
+                true,
+                e.enforce(vec!["cathy", "/cathy_data", "GET"]).unwrap()
+            );
+            assert_eq!(
+                true,
+                e.enforce(vec!["cathy", "/cathy_data", "POST"]).unwrap()
+            );
+            assert_eq!(
+                false,
+                e.enforce(vec!["cathy", "/cathy_data", "DELETE"]).unwrap()
+            );
         });
     }
 
@@ -425,23 +425,23 @@ mod tests {
     fn test_key_match_model_in_memory_deny() {
         use async_std::task;
         task::block_on(async {
-        let mut m = Model::default();
-        m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
-        m.add_def("e", "e", "!some(where (p.eft == deny))");
-        m.add_def(
-            "m",
-            "m",
-            "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
-        );
+            let mut m = Model::default();
+            m.add_def("r", "r", "sub, obj, act");
+            m.add_def("p", "p", "sub, obj, act");
+            m.add_def("e", "e", "!some(where (p.eft == deny))");
+            m.add_def(
+                "m",
+                "m",
+                "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+            );
 
-        let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
-        assert_eq!(
-            true,
-            e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
-                .unwrap()
-        );
+            let adapter = FileAdapter::new("examples/keymatch_policy.csv");
+            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            assert_eq!(
+                true,
+                e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
+                    .unwrap()
+            );
         });
     }
 
@@ -450,23 +450,23 @@ mod tests {
     fn test_rbac_model_in_memory_indeterminate() {
         use async_std::task;
         task::block_on(async {
+            let mut m = Model::default();
+            m.add_def("r", "r", "sub, obj, act");
+            m.add_def("p", "p", "sub, obj, act");
+            m.add_def("g", "g", "_, _");
+            m.add_def("e", "e", "some(where (p.eft == allow))");
+            m.add_def(
+                "m",
+                "m",
+                "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
+            );
 
-        let mut m = Model::default();
-        m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
-        m.add_def("g", "g", "_, _");
-        m.add_def("e", "e", "some(where (p.eft == allow))");
-        m.add_def(
-            "m",
-            "m",
-            "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
-        );
-
-        let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "invalid"]).await
-            .unwrap();
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+            let adapter = MemoryAdapter::default();
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            e.add_permission_for_user("alice", vec!["data1", "invalid"])
+                .await
+                .unwrap();
+            assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         });
     }
 
@@ -474,38 +474,43 @@ mod tests {
     fn test_rbac_model_in_memory() {
         use async_std::task;
         task::block_on(async {
+            let mut m = Model::default();
+            m.add_def("r", "r", "sub, obj, act");
+            m.add_def("p", "p", "sub, obj, act");
+            m.add_def("g", "g", "_, _");
+            m.add_def("e", "e", "some(where (p.eft == allow))");
+            m.add_def(
+                "m",
+                "m",
+                "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
+            );
 
-        let mut m = Model::default();
-        m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
-        m.add_def("g", "g", "_, _");
-        m.add_def("e", "e", "some(where (p.eft == allow))");
-        m.add_def(
-            "m",
-            "m",
-            "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
-        );
+            let adapter = MemoryAdapter::default();
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            e.add_permission_for_user("alice", vec!["data1", "read"])
+                .await
+                .unwrap();
+            e.add_permission_for_user("bob", vec!["data2", "write"])
+                .await
+                .unwrap();
+            e.add_permission_for_user("data2_admin", vec!["data2", "read"])
+                .await
+                .unwrap();
+            e.add_permission_for_user("data2_admin", vec!["data2", "write"])
+                .await
+                .unwrap();
+            e.add_role_for_user("alice", "data2_admin", None)
+                .await
+                .unwrap();
 
-        let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "read"]).await
-            .unwrap();
-        e.add_permission_for_user("bob", vec!["data2", "write"]).await
-            .unwrap();
-        e.add_permission_for_user("data2_admin", vec!["data2", "read"]).await
-            .unwrap();
-        e.add_permission_for_user("data2_admin", vec!["data2", "write"]).await
-            .unwrap();
-        e.add_role_for_user("alice", "data2_admin", None).await.unwrap();
-
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
         });
     }
 
@@ -513,33 +518,34 @@ mod tests {
     fn test_not_used_rbac_model_in_memory() {
         use async_std::task;
         task::block_on(async {
+            let mut m = Model::default();
+            m.add_def("r", "r", "sub, obj, act");
+            m.add_def("p", "p", "sub, obj, act");
+            m.add_def("g", "g", "_, _");
+            m.add_def("e", "e", "some(where (p.eft == allow))");
+            m.add_def(
+                "m",
+                "m",
+                "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
+            );
 
-        let mut m = Model::default();
-        m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
-        m.add_def("g", "g", "_, _");
-        m.add_def("e", "e", "some(where (p.eft == allow))");
-        m.add_def(
-            "m",
-            "m",
-            "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
-        );
+            let adapter = MemoryAdapter::default();
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            e.add_permission_for_user("alice", vec!["data1", "read"])
+                .await
+                .unwrap();
+            e.add_permission_for_user("bob", vec!["data2", "write"])
+                .await
+                .unwrap();
 
-        let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "read"]).await
-            .unwrap();
-        e.add_permission_for_user("bob", vec!["data2", "write"]).await
-            .unwrap();
-
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
         });
     }
 
@@ -588,7 +594,9 @@ mod tests {
             let adapter = FileAdapter::new("examples/basic_policy.csv");
             let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
             e.enable_auto_save(false);
-            e.remove_policy(vec!["alice", "data1", "read"]).await.unwrap();
+            e.remove_policy(vec!["alice", "data1", "read"])
+                .await
+                .unwrap();
             e.load_policy().await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
@@ -601,7 +609,9 @@ mod tests {
             assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
             e.enable_auto_save(true);
-            e.remove_policy(vec!["alice", "data1", "read"]).await.unwrap();
+            e.remove_policy(vec!["alice", "data1", "read"])
+                .await
+                .unwrap();
             e.load_policy().await.unwrap();
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
