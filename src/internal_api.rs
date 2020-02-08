@@ -3,12 +3,24 @@ use crate::emitter::{Event, CACHED_EMITTER, EMITTER};
 use crate::enforcer::Enforcer;
 use crate::Result;
 
+use async_trait::async_trait;
 use emitbrown::Events;
 
+#[async_trait]
 pub trait InternalApi {
-    fn add_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;
-    fn remove_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;
-    fn remove_filtered_policy_internal(
+    async fn add_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool>;
+    async fn remove_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool>;
+    async fn remove_filtered_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
@@ -17,15 +29,21 @@ pub trait InternalApi {
     ) -> Result<bool>;
 }
 
+#[async_trait]
 impl InternalApi for Enforcer {
-    fn add_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn add_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool> {
         let rule_added = self.model.add_policy(sec, ptype, rule.clone());
         if !rule_added {
             return Ok(false);
         }
 
         if self.auto_save {
-            return self.adapter.add_policy(sec, ptype, rule);
+            return self.adapter.add_policy(sec, ptype, rule).await;
         }
 
         if rule_added {
@@ -35,14 +53,19 @@ impl InternalApi for Enforcer {
         Ok(rule_added)
     }
 
-    fn remove_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn remove_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool> {
         let rule_removed = self.model.remove_policy(sec, ptype, rule.clone());
         if !rule_removed {
             return Ok(false);
         }
 
         if self.auto_save {
-            return self.adapter.remove_policy(sec, ptype, rule);
+            return self.adapter.remove_policy(sec, ptype, rule).await;
         }
 
         if rule_removed {
@@ -52,7 +75,7 @@ impl InternalApi for Enforcer {
         Ok(rule_removed)
     }
 
-    fn remove_filtered_policy_internal(
+    async fn remove_filtered_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
@@ -70,7 +93,8 @@ impl InternalApi for Enforcer {
         if self.auto_save {
             return self
                 .adapter
-                .remove_filtered_policy(sec, ptype, field_index, field_values);
+                .remove_filtered_policy(sec, ptype, field_index, field_values)
+                .await;
         }
 
         if rule_removed {
@@ -81,9 +105,15 @@ impl InternalApi for Enforcer {
     }
 }
 
+#[async_trait]
 impl InternalApi for CachedEnforcer {
-    fn add_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
-        let result = self.enforcer.add_policy_internal(sec, ptype, rule);
+    async fn add_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool> {
+        let result = self.enforcer.add_policy_internal(sec, ptype, rule).await;
 
         if let Ok(true) = result {
             CACHED_EMITTER
@@ -95,8 +125,13 @@ impl InternalApi for CachedEnforcer {
         result
     }
 
-    fn remove_policy_internal(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
-        let result = self.enforcer.remove_policy_internal(sec, ptype, rule);
+    async fn remove_policy_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<&str>,
+    ) -> Result<bool> {
+        let result = self.enforcer.remove_policy_internal(sec, ptype, rule).await;
 
         if let Ok(true) = result {
             CACHED_EMITTER
@@ -108,16 +143,17 @@ impl InternalApi for CachedEnforcer {
         result
     }
 
-    fn remove_filtered_policy_internal(
+    async fn remove_filtered_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
-        let result =
-            self.enforcer
-                .remove_filtered_policy_internal(sec, ptype, field_index, field_values);
+        let result = self
+            .enforcer
+            .remove_filtered_policy_internal(sec, ptype, field_index, field_values)
+            .await;
 
         if let Ok(true) = result {
             CACHED_EMITTER

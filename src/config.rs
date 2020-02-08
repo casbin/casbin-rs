@@ -2,12 +2,12 @@ use crate::error::Error;
 use crate::Result;
 
 use std::collections::HashMap;
-
 use std::convert::AsRef;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::{BufReader, Cursor, Error as IoError, ErrorKind};
-use std::path::Path;
+
+use async_std::fs::File;
+use async_std::io::prelude::*;
+use async_std::io::{BufReader, Cursor, Error as IoError, ErrorKind};
+use async_std::path::Path;
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";
@@ -19,39 +19,40 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    pub(crate) fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
+    pub(crate) async fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
 
-        c.parse(p)?;
+        c.parse(p).await?;
         Ok(c)
     }
 
-    pub(crate) fn from_str<S: AsRef<str>>(s: S) -> Result<Self> {
+    pub(crate) async fn from_str<S: AsRef<str>>(s: S) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
 
-        c.parse_buffer(&mut BufReader::new(Cursor::new(s.as_ref().as_bytes())))?;
+        c.parse_buffer(&mut BufReader::new(Cursor::new(s.as_ref().as_bytes())))
+            .await?;
         Ok(c)
     }
 
-    fn parse<P: AsRef<Path>>(&mut self, p: P) -> Result<()> {
-        let mut f = File::open(p)?;
+    async fn parse<P: AsRef<Path>>(&mut self, p: P) -> Result<()> {
+        let mut f = File::open(p).await?;
         let mut c = Vec::new();
-        f.read_to_end(&mut c)?;
+        f.read_to_end(&mut c).await?;
 
         let mut reader: BufReader<Cursor<&[u8]>> = BufReader::new(Cursor::new(&c));
-        self.parse_buffer(&mut reader)
+        self.parse_buffer(&mut reader).await
     }
 
-    fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) -> Result<()> {
+    async fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) -> Result<()> {
         let mut section = String::new();
 
         loop {
             let mut line = String::new();
-            let bytes = reader.read_line(&mut line)?;
+            let bytes = reader.read_line(&mut line).await?;
             if bytes == 0 {
                 // EOF reached
                 break Ok(());
@@ -70,7 +71,7 @@ impl Config {
                     line = line[..line.len() - 1].trim_end().to_string();
 
                     let mut inner_line = String::new();
-                    let inner_bytes = reader.read_line(&mut inner_line)?;
+                    let inner_bytes = reader.read_line(&mut inner_line).await?;
                     if inner_bytes == 0 {
                         break;
                     }
@@ -204,96 +205,104 @@ mod tests {
 
     #[test]
     fn test_get() {
-        let mut config = Config::from_file("examples/testini.ini").unwrap();
+        use async_std::task;
 
-        assert_eq!(Some(true), config.get_bool("debug"));
-        assert_eq!(Some(64), config.get_int("math::math.i64"));
-        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-        assert_eq!(
-            Some("10.0.0.1".to_owned()),
-            config.get_string("mysql::mysql.master.host")
-        );
+        task::block_on(async {
+            let mut config = Config::from_file("examples/testini.ini").await.unwrap();
 
-        config.set("other::key1", "new test key");
-        assert_eq!(
-            Some("new test key".to_owned()),
-            config.get_string("other::key1")
-        );
+            assert_eq!(Some(true), config.get_bool("debug"));
+            assert_eq!(Some(64), config.get_int("math::math.i64"));
+            assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+            assert_eq!(
+                Some("10.0.0.1".to_owned()),
+                config.get_string("mysql::mysql.master.host")
+            );
 
-        config.set("other::key1", "test key");
-        assert_eq!(
-            Some("test key".to_owned()),
-            config.get_string("other::key1")
-        );
+            config.set("other::key1", "new test key");
+            assert_eq!(
+                Some("new test key".to_owned()),
+                config.get_string("other::key1")
+            );
 
-        assert_eq!(
-            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-            config.get_string("multi1::name")
-        );
-        assert_eq!(
-            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-            config.get_string("multi2::name")
-        );
-        assert_eq!(
-            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-            config.get_string("multi3::name")
-        );
-        assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
-        assert_eq!(
-            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-            config.get_string("multi5::name")
-        );
+            config.set("other::key1", "test key");
+            assert_eq!(
+                Some("test key".to_owned()),
+                config.get_string("other::key1")
+            );
+
+            assert_eq!(
+                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+                config.get_string("multi1::name")
+            );
+            assert_eq!(
+                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+                config.get_string("multi2::name")
+            );
+            assert_eq!(
+                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+                config.get_string("multi3::name")
+            );
+            assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
+            assert_eq!(
+                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+                config.get_string("multi5::name")
+            );
+        });
     }
 
     #[test]
     fn test_from_text() {
-        let text: &str = r#"
-            # test config
-            debug = true
-            url = act.wiki
+        use async_std::task;
 
-            ; redis config
-            [redis]
-            redis.key = push1,push2
+        task::block_on(async {
+            let text: &str = r#"
+                # test config
+                debug = true
+                url = act.wiki
 
-            ; mysql config
-            [mysql]
-            mysql.dev.host = 127.0.0.1
-            mysql.dev.user = root
-            mysql.dev.pass = 123456
-            mysql.dev.db = test
+                ; redis config
+                [redis]
+                redis.key = push1,push2
 
-            mysql.master.host = 10.0.0.1
-            mysql.master.user = root
-            mysql.master.pass = 89dds)2$#d
-            mysql.master.db = act
+                ; mysql config
+                [mysql]
+                mysql.dev.host = 127.0.0.1
+                mysql.dev.user = root
+                mysql.dev.pass = 123456
+                mysql.dev.db = test
 
-            ; math config
-            [math]
-            math.i64 = 64
-            math.f64 = 64.1
-        "#;
+                mysql.master.host = 10.0.0.1
+                mysql.master.user = root
+                mysql.master.pass = 89dds)2$#d
+                mysql.master.db = act
 
-        let mut config = Config::from_str(text).unwrap();
+                ; math config
+                [math]
+                math.i64 = 64
+                math.f64 = 64.1
+            "#;
 
-        assert_eq!(Some(true), config.get_bool("debug"));
-        assert_eq!(Some(64), config.get_int("math::math.i64"));
-        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-        assert_eq!(
-            Some("10.0.0.1".to_owned()),
-            config.get_string("mysql::mysql.master.host")
-        );
+            let mut config = Config::from_str(text).await.unwrap();
 
-        config.set("other::key1", "new test key");
-        assert_eq!(
-            Some("new test key".to_owned()),
-            config.get_string("other::key1")
-        );
+            assert_eq!(Some(true), config.get_bool("debug"));
+            assert_eq!(Some(64), config.get_int("math::math.i64"));
+            assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+            assert_eq!(
+                Some("10.0.0.1".to_owned()),
+                config.get_string("mysql::mysql.master.host")
+            );
 
-        config.set("other::key1", "test key");
-        assert_eq!(
-            Some("test key".to_owned()),
-            config.get_string("other::key1")
-        );
+            config.set("other::key1", "new test key");
+            assert_eq!(
+                Some("new test key".to_owned()),
+                config.get_string("other::key1")
+            );
+
+            config.set("other::key1", "test key");
+            assert_eq!(
+                Some("test key".to_owned()),
+                config.get_string("other::key1")
+            );
+        });
     }
 }

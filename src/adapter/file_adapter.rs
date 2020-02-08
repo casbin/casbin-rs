@@ -4,11 +4,15 @@ use crate::model::Model;
 use crate::Result;
 
 use std::convert::AsRef;
-use std::fs::File;
-use std::io::prelude::*;
-use std::io::BufReader;
 use std::io::{Error as IoError, ErrorKind};
-use std::path::Path;
+
+use async_std::fs::File;
+use async_std::io::prelude::*;
+use async_std::io::BufReader;
+use async_std::path::Path;
+use async_std::prelude::*;
+
+use async_trait::async_trait;
 
 pub struct FileAdapter<P: AsRef<Path>> {
     pub file_path: P,
@@ -21,29 +25,35 @@ impl<P: AsRef<Path>> FileAdapter<P> {
         FileAdapter { file_path: p }
     }
 
-    pub fn load_policy_file(&self, m: &mut Model, handler: LoadPolicyFileHandler) -> Result<()> {
-        let f = File::open(&self.file_path)?;
-        let f = BufReader::new(f);
-        for line in f.lines() {
+    pub async fn load_policy_file(
+        &self,
+        m: &mut Model,
+        handler: LoadPolicyFileHandler,
+    ) -> Result<()> {
+        let f = File::open(&self.file_path).await?;
+        let mut lines = BufReader::new(f).lines();
+
+        while let Some(line) = lines.next().await {
             handler(line?, m);
         }
         Ok(())
     }
 
-    pub fn save_policy_file(&self, text: String) -> Result<()> {
-        let mut file = File::create(&self.file_path)?;
-        file.write_all(text.as_bytes())?;
+    pub async fn save_policy_file(&self, text: String) -> Result<()> {
+        let mut file = File::create(&self.file_path).await?;
+        file.write_all(text.as_bytes()).await?;
         Ok(())
     }
 }
 
+#[async_trait]
 impl<P: AsRef<Path> + Send + Sync> Adapter for FileAdapter<P> {
-    fn load_policy(&self, m: &mut Model) -> Result<()> {
-        self.load_policy_file(m, load_policy_line)?;
+    async fn load_policy(&self, m: &mut Model) -> Result<()> {
+        self.load_policy_file(m, load_policy_line).await?;
         Ok(())
     }
 
-    fn save_policy(&self, m: &mut Model) -> Result<()> {
+    async fn save_policy(&self, m: &mut Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
             return Err(Error::IoError(IoError::new(
                 ErrorKind::Other,
@@ -74,21 +84,21 @@ impl<P: AsRef<Path> + Send + Sync> Adapter for FileAdapter<P> {
             }
         }
 
-        self.save_policy_file(tmp)?;
+        self.save_policy_file(tmp).await?;
         Ok(())
     }
 
-    fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(true)
     }
 
-    fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    async fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(true)
     }
 
-    fn remove_filtered_policy(
+    async fn remove_filtered_policy(
         &self,
         _sec: &str,
         _ptype: &str,

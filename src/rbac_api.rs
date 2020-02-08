@@ -3,26 +3,38 @@ use crate::enforcer::Enforcer;
 use crate::MgmtApi;
 use crate::Result;
 
+use async_trait::async_trait;
+
 use std::collections::HashSet;
 
+#[async_trait]
 pub trait RbacApi {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
-    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool>;
-    fn delete_role_for_user(
+    async fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
+    async fn add_role_for_user(
         &mut self,
         user: &str,
         role: &str,
         domain: Option<&str>,
     ) -> Result<bool>;
-    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool>;
+    async fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool>;
+    async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool>;
     fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
     fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String>;
     fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool;
-    fn delete_user(&mut self, name: &str) -> Result<bool>;
-    fn delete_role(&mut self, name: &str) -> Result<bool>;
-    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool>;
-    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
-    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool>;
+    async fn delete_user(&mut self, name: &str) -> Result<bool>;
+    async fn delete_role(&mut self, name: &str) -> Result<bool>;
+    async fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool>;
+    async fn delete_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool>;
+    async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool>;
     fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>>;
     fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool;
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
@@ -34,22 +46,29 @@ pub trait RbacApi {
     fn get_implicit_users_for_permission(&self, permission: Vec<&str>) -> Vec<String>;
 }
 
+#[async_trait]
 impl RbacApi for Enforcer {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+    async fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
         let mut perm = permission;
         perm.insert(0, user);
-        self.add_policy(perm)
+        self.add_policy(perm).await
     }
 
-    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool> {
+    async fn add_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
         self.add_grouping_policy(if let Some(domain) = domain {
             vec![user, role, domain]
         } else {
             vec![user, role]
         })
+        .await
     }
 
-    fn delete_role_for_user(
+    async fn delete_role_for_user(
         &mut self,
         user: &str,
         role: &str,
@@ -60,9 +79,10 @@ impl RbacApi for Enforcer {
         } else {
             vec![user, role]
         })
+        .await
     }
 
-    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+    async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
         self.remove_filtered_grouping_policy(
             0,
             if let Some(domain) = domain {
@@ -71,6 +91,7 @@ impl RbacApi for Enforcer {
                 vec![user]
             },
         )
+        .await
     }
 
     fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
@@ -105,28 +126,32 @@ impl RbacApi for Enforcer {
         has_role
     }
 
-    fn delete_user(&mut self, name: &str) -> Result<bool> {
-        self.remove_filtered_grouping_policy(0, vec![name])
+    async fn delete_user(&mut self, name: &str) -> Result<bool> {
+        self.remove_filtered_grouping_policy(0, vec![name]).await
     }
 
-    fn delete_role(&mut self, name: &str) -> Result<bool> {
-        let res1 = self.remove_filtered_grouping_policy(1, vec![name])?;
-        let res2 = self.remove_filtered_policy(0, vec![name])?;
+    async fn delete_role(&mut self, name: &str) -> Result<bool> {
+        let res1 = self.remove_filtered_grouping_policy(1, vec![name]).await?;
+        let res2 = self.remove_filtered_policy(0, vec![name]).await?;
         Ok(res1 || res2)
     }
 
-    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
-        self.remove_filtered_policy(1, permission)
+    async fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
+        self.remove_filtered_policy(1, permission).await
     }
 
-    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+    async fn delete_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool> {
         let mut permission = permission;
         permission.insert(0, user);
-        self.remove_policy(permission)
+        self.remove_policy(permission).await
     }
 
-    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
-        self.remove_filtered_policy(0, vec![user])
+    async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
+        self.remove_filtered_policy(0, vec![user]).await
     }
 
     fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
@@ -198,26 +223,34 @@ impl RbacApi for Enforcer {
     }
 }
 
+#[async_trait]
 impl RbacApi for CachedEnforcer {
-    fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
-        self.enforcer.add_permission_for_user(user, permission)
+    async fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer
+            .add_permission_for_user(user, permission)
+            .await
     }
 
-    fn add_role_for_user(&mut self, user: &str, role: &str, domain: Option<&str>) -> Result<bool> {
-        self.enforcer.add_role_for_user(user, role, domain)
-    }
-
-    fn delete_role_for_user(
+    async fn add_role_for_user(
         &mut self,
         user: &str,
         role: &str,
         domain: Option<&str>,
     ) -> Result<bool> {
-        self.enforcer.delete_role_for_user(user, role, domain)
+        self.enforcer.add_role_for_user(user, role, domain).await
     }
 
-    fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
-        self.enforcer.delete_roles_for_user(user, domain)
+    async fn delete_role_for_user(
+        &mut self,
+        user: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.enforcer.delete_role_for_user(user, role, domain).await
+    }
+
+    async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+        self.enforcer.delete_roles_for_user(user, domain).await
     }
 
     fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
@@ -232,24 +265,30 @@ impl RbacApi for CachedEnforcer {
         self.enforcer.has_role_for_user(name, role, domain)
     }
 
-    fn delete_user(&mut self, name: &str) -> Result<bool> {
-        self.enforcer.delete_user(name)
+    async fn delete_user(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_user(name).await
     }
 
-    fn delete_role(&mut self, name: &str) -> Result<bool> {
-        self.enforcer.delete_role(name)
+    async fn delete_role(&mut self, name: &str) -> Result<bool> {
+        self.enforcer.delete_role(name).await
     }
 
-    fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
-        self.enforcer.delete_permission(permission)
+    async fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool> {
+        self.enforcer.delete_permission(permission).await
     }
 
-    fn delete_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool> {
-        self.enforcer.delete_permission_for_user(user, permission)
+    async fn delete_permission_for_user(
+        &mut self,
+        user: &str,
+        permission: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .delete_permission_for_user(user, permission)
+            .await
     }
 
-    fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
-        self.enforcer.delete_permissions_for_user(user)
+    async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
+        self.enforcer.delete_permissions_for_user(user).await
     }
 
     fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
@@ -293,469 +332,510 @@ mod tests {
 
     #[test]
     fn test_role_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("data2_admin", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("non_exists", None)
-        );
+            assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("data2_admin", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("non_exists", None)
+            );
 
-        assert_eq!(false, e.has_role_for_user("alice", "data1_admin", None));
-        assert_eq!(true, e.has_role_for_user("alice", "data2_admin", None));
+            assert_eq!(false, e.has_role_for_user("alice", "data1_admin", None));
+            assert_eq!(true, e.has_role_for_user("alice", "data2_admin", None));
 
-        e.add_role_for_user("alice", "data1_admin", None).unwrap();
-        assert_eq!(
-            vec!["data2_admin", "data1_admin"],
-            e.get_roles_for_user("alice", None)
-        );
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("data2_admin", None)
-        );
-
-        e.delete_role_for_user("alice", "data1_admin", None)
-            .unwrap();
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("data2_admin", None)
-        );
-
-        e.delete_roles_for_user("alice", None).unwrap();
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("data2_admin", None)
-        );
-
-        e.add_role_for_user("alice", "data1_admin", None).unwrap();
-        e.delete_user("alice").unwrap();
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("data2_admin", None)
-        );
-
-        e.add_role_for_user("alice", "data2_admin", None).unwrap();
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
-
-        e.delete_role("data2_admin").unwrap();
-        assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
-    }
-
-    use std::sync::{Arc, RwLock};
-    use std::thread;
-
-    #[test]
-    fn test_role_api_threads() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
-
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Arc::new(RwLock::new(Enforcer::new(m, Box::new(adapter)).unwrap()));
-        let ee = e.clone();
-
-        assert_eq!(
-            vec!["data2_admin"],
-            e.write().unwrap().get_roles_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("non_exists", None)
-        );
-
-        assert_eq!(
-            false,
-            e.write()
-                .unwrap()
-                .has_role_for_user("alice", "data1_admin", None)
-        );
-        assert_eq!(
-            true,
-            e.write()
-                .unwrap()
-                .has_role_for_user("alice", "data2_admin", None)
-        );
-
-        thread::spawn(move || {
-            ee.write()
-                .unwrap()
-                .add_role_for_user("alice", "data1_admin", None)
+            e.add_role_for_user("alice", "data1_admin", None)
+                .await
                 .unwrap();
             assert_eq!(
                 vec!["data2_admin", "data1_admin"],
-                ee.write().unwrap().get_roles_for_user("alice", None)
+                e.get_roles_for_user("alice", None)
+            );
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("data2_admin", None)
+            );
+
+            e.delete_role_for_user("alice", "data1_admin", None)
+                .await
+                .unwrap();
+            assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("data2_admin", None)
+            );
+
+            e.delete_roles_for_user("alice", None).await.unwrap();
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("data2_admin", None)
+            );
+
+            e.add_role_for_user("alice", "data1_admin", None)
+                .await
+                .unwrap();
+            e.delete_user("alice").await.unwrap();
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("data2_admin", None)
+            );
+
+            e.add_role_for_user("alice", "data2_admin", None)
+                .await
+                .unwrap();
+            assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+
+            e.delete_role("data2_admin").await.unwrap();
+            assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data2", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data1", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "data2", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
+        });
+    }
+
+    #[test]
+    fn test_role_api_threads() {
+    use std::sync::{Arc, RwLock};
+        use std::thread;
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let e = Arc::new(RwLock::new(Enforcer::new(m, Box::new(adapter)).await.unwrap()));
+            let ee = e.clone();
+
+            assert_eq!(
+                vec!["data2_admin"],
+                e.write().unwrap().get_roles_for_user("alice", None)
             );
             assert_eq!(
                 vec![String::new(); 0],
-                ee.write().unwrap().get_roles_for_user("bob", None)
+                e.write().unwrap().get_roles_for_user("bob", None)
             );
             assert_eq!(
                 vec![String::new(); 0],
-                ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                e.write().unwrap().get_roles_for_user("data2_admin", None)
             );
-        })
-        .join()
-        .unwrap();
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("non_exists", None)
+            );
 
-        e.write()
-            .unwrap()
-            .delete_role_for_user("alice", "data1_admin", None)
-            .unwrap();
-        assert_eq!(
-            vec!["data2_admin"],
-            e.write().unwrap().get_roles_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
-        );
+            assert_eq!(
+                false,
+                e.write()
+                    .unwrap()
+                    .has_role_for_user("alice", "data1_admin", None)
+            );
+            assert_eq!(
+                true,
+                e.write()
+                    .unwrap()
+                    .has_role_for_user("alice", "data2_admin", None)
+            );
 
-        e.write()
-            .unwrap()
-            .delete_roles_for_user("alice", None)
-            .unwrap();
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
-        );
+            thread::spawn(move || {
+                task::block_on(async move {
+                    ee.write()
+                        .unwrap()
+                        .add_role_for_user("alice", "data1_admin", None)
+                        .await
+                        .unwrap();
 
-        e.write()
-            .unwrap()
-            .add_role_for_user("alice", "data1_admin", None)
-            .unwrap();
-        e.write().unwrap().delete_user("alice").unwrap();
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
-        );
+                    assert_eq!(
+                        vec!["data2_admin", "data1_admin"],
+                        ee.write().unwrap().get_roles_for_user("alice", None)
+                    );
+                    assert_eq!(
+                        vec![String::new(); 0],
+                        ee.write().unwrap().get_roles_for_user("bob", None)
+                    );
+                    assert_eq!(
+                        vec![String::new(); 0],
+                        ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                    );
+                    });
+            }).join().unwrap();
 
-        e.write()
-            .unwrap()
-            .add_role_for_user("alice", "data2_admin", None)
-            .unwrap();
-        assert_eq!(
-            true,
-            e.read()
+            e.write()
                 .unwrap()
-                .enforce(vec!["alice", "data1", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["alice", "data1", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.read()
-                .unwrap()
-                .enforce(vec!["alice", "data2", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.read()
-                .unwrap()
-                .enforce(vec!["alice", "data2", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data1", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data1", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data2", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data2", "write"])
-                .unwrap()
-        );
+                .delete_role_for_user("alice", "data1_admin", None)
+                .await
+                .unwrap();
+            assert_eq!(
+                vec!["data2_admin"],
+                e.write().unwrap().get_roles_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("bob", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("data2_admin", None)
+            );
 
-        e.write().unwrap().delete_role("data2_admin").unwrap();
-        assert_eq!(
-            true,
-            e.read()
+            e.write()
                 .unwrap()
-                .enforce(vec!["alice", "data1", "read"])
+                .delete_roles_for_user("alice", None)
+                .await
+                .unwrap();
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("bob", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("data2_admin", None)
+            );
+
+            e.write()
                 .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
+                .add_role_for_user("alice", "data1_admin", None)
+                .await
+                .unwrap();
+            e.write().unwrap().delete_user("alice").await.unwrap();
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("bob", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.write().unwrap().get_roles_for_user("data2_admin", None)
+            );
+
+            e.write()
                 .unwrap()
-                .enforce(vec!["alice", "data1", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["alice", "data2", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["alice", "data2", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data1", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data1", "write"])
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data2", "read"])
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.read()
-                .unwrap()
-                .enforce(vec!["bob", "data2", "write"])
-                .unwrap()
-        );
+                .add_role_for_user("alice", "data2_admin", None)
+                .await
+                .unwrap();
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data1", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data1", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data2", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data2", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data1", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data1", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data2", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data2", "write"])
+                    .unwrap()
+            );
+
+            e.write().unwrap().delete_role("data2_admin").await.unwrap();
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data1", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data1", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data2", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["alice", "data2", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data1", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data1", "write"])
+                    .unwrap()
+            );
+            assert_eq!(
+                false,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data2", "read"])
+                    .unwrap()
+            );
+            assert_eq!(
+                true,
+                e.read()
+                    .unwrap()
+                    .enforce(vec!["bob", "data2", "write"])
+                    .unwrap()
+            );
+        });
     }
 
     #[test]
     fn test_permission_api() {
-        let m = Model::from_file("examples/basic_without_resources_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/basic_without_resources_model.conf")
+                .await
+                .unwrap();
 
-        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
-        assert_eq!(
-            vec![vec!["alice", "read"]],
-            e.get_permissions_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![vec!["bob", "write"]],
-            e.get_permissions_for_user("bob", None)
-        );
+            assert_eq!(
+                vec![vec!["alice", "read"]],
+                e.get_permissions_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![vec!["bob", "write"]],
+                e.get_permissions_for_user("bob", None)
+            );
 
-        assert_eq!(true, e.has_permission_for_user("alice", vec!["read"]));
-        assert_eq!(false, e.has_permission_for_user("alice", vec!["write"]));
-        assert_eq!(false, e.has_permission_for_user("bob", vec!["read"]));
-        assert_eq!(true, e.has_permission_for_user("bob", vec!["write"]));
+            assert_eq!(true, e.has_permission_for_user("alice", vec!["read"]));
+            assert_eq!(false, e.has_permission_for_user("alice", vec!["write"]));
+            assert_eq!(false, e.has_permission_for_user("bob", vec!["read"]));
+            assert_eq!(true, e.has_permission_for_user("bob", vec!["write"]));
 
-        e.delete_permission(vec!["read"]).unwrap();
+            e.delete_permission(vec!["read"]).await.unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
-        e.add_permission_for_user("bob", vec!["read"]).unwrap();
+            e.add_permission_for_user("bob", vec!["read"])
+                .await
+                .unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
-        e.delete_permission_for_user("bob", vec!["read"]).unwrap();
+            e.delete_permission_for_user("bob", vec!["read"])
+                .await
+                .unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
-        assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+            assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
 
-        e.delete_permissions_for_user("bob").unwrap();
+            e.delete_permissions_for_user("bob").await.unwrap();
 
-        assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
-        assert_eq!(false, e.enforce(vec!["bob", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
+            assert_eq!(false, e.enforce(vec!["bob", "write"]).unwrap());
+        });
     }
 
     #[test]
     fn test_implicit_role_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec![vec!["alice", "data1", "read"]],
-            e.get_permissions_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![vec!["bob", "data2", "write"]],
-            e.get_permissions_for_user("bob", None)
-        );
+            assert_eq!(
+                vec![vec!["alice", "data1", "read"]],
+                e.get_permissions_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![vec!["bob", "data2", "write"]],
+                e.get_permissions_for_user("bob", None)
+            );
 
-        assert_eq!(
-            vec!["admin", "data1_admin", "data2_admin"],
-            sort_unstable(e.get_implicit_roles_for_user("alice", None))
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_implicit_roles_for_user("bob", None)
-        );
+            assert_eq!(
+                vec!["admin", "data1_admin", "data2_admin"],
+                sort_unstable(e.get_implicit_roles_for_user("alice", None))
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_implicit_roles_for_user("bob", None)
+            );
+        });
     }
 
     #[test]
     fn test_implicit_permission_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec![vec!["alice", "data1", "read"]],
-            e.get_permissions_for_user("alice", None)
-        );
-        assert_eq!(
-            vec![vec!["bob", "data2", "write"]],
-            e.get_permissions_for_user("bob", None)
-        );
+            assert_eq!(
+                vec![vec!["alice", "data1", "read"]],
+                e.get_permissions_for_user("alice", None)
+            );
+            assert_eq!(
+                vec![vec!["bob", "data2", "write"]],
+                e.get_permissions_for_user("bob", None)
+            );
 
-        assert_eq!(
-            vec![
-                vec!["alice", "data1", "read"],
-                vec!["data1_admin", "data1", "read"],
-                vec!["data1_admin", "data1", "write"],
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_implicit_permissions_for_user("alice", None))
-        );
-        assert_eq!(
-            vec![vec!["bob", "data2", "write"]],
-            e.get_implicit_permissions_for_user("bob", None)
-        );
+            assert_eq!(
+                vec![
+                    vec!["alice", "data1", "read"],
+                    vec!["data1_admin", "data1", "read"],
+                    vec!["data1_admin", "data1", "write"],
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_implicit_permissions_for_user("alice", None))
+            );
+            assert_eq!(
+                vec![vec!["bob", "data2", "write"]],
+                e.get_implicit_permissions_for_user("bob", None)
+            );
+        });
     }
 
     #[test]
     fn test_implicit_user_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec!["alice"],
-            e.get_implicit_users_for_permission(vec!["data1", "read"])
-        );
-        assert_eq!(
-            vec!["alice"],
-            e.get_implicit_users_for_permission(vec!["data1", "write"])
-        );
-        assert_eq!(
-            vec!["alice"],
-            e.get_implicit_users_for_permission(vec!["data2", "read"])
-        );
-        assert_eq!(
-            vec!["alice", "bob"],
-            sort_unstable(e.get_implicit_users_for_permission(vec!["data2", "write"]))
-        );
+            assert_eq!(
+                vec!["alice"],
+                e.get_implicit_users_for_permission(vec!["data1", "read"])
+            );
+            assert_eq!(
+                vec!["alice"],
+                e.get_implicit_users_for_permission(vec!["data1", "write"])
+            );
+            assert_eq!(
+                vec!["alice"],
+                e.get_implicit_users_for_permission(vec!["data2", "read"])
+            );
+            assert_eq!(
+                vec!["alice", "bob"],
+                sort_unstable(e.get_implicit_users_for_permission(vec!["data2", "write"]))
+            );
+        });
     }
 
     #[test]
     fn test_implicit_permission_api_with_domain() {
-        let m = Model::from_file("examples/rbac_with_domains_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_with_domains_model.conf")
+                .await
+                .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec![
-                vec!["alice", "domain1", "data2", "read"],
-                vec!["role:reader", "domain1", "data1", "read"],
-                vec!["role:writer", "domain1", "data1", "write"],
-            ],
-            sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
-        );
+            assert_eq!(
+                vec![
+                    vec!["alice", "domain1", "data2", "read"],
+                    vec!["role:reader", "domain1", "data1", "read"],
+                    vec!["role:writer", "domain1", "data1", "write"],
+                ],
+                sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
+            );
+        });
     }
 }

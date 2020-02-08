@@ -3,6 +3,9 @@ use crate::enforcer::Enforcer;
 use crate::InternalApi;
 use crate::Result;
 
+use async_trait::async_trait;
+
+#[async_trait]
 pub trait MgmtApi {
     fn get_policy(&self) -> Vec<Vec<String>>;
     fn get_named_policy(&self, ptype: &str) -> Vec<Vec<String>>;
@@ -15,12 +18,12 @@ pub trait MgmtApi {
     ) -> Vec<Vec<String>>;
     fn has_policy(&self, params: Vec<&str>) -> bool;
     fn has_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool;
-    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
-    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
+    async fn add_policy(&mut self, params: Vec<&str>) -> Result<bool>;
+    async fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool>;
+    async fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
+    async fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
+    async fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
+    async fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool>;
     fn get_grouping_policy(&self) -> Vec<Vec<String>>;
     fn get_named_grouping_policy(&self, ptype: &str) -> Vec<Vec<String>>;
     fn get_filtered_grouping_policy(
@@ -36,25 +39,29 @@ pub trait MgmtApi {
     ) -> Vec<Vec<String>>;
     fn has_grouping_policy(&self, params: Vec<&str>) -> bool;
     fn has_grouping_named_policy(&self, ptype: &str, params: Vec<&str>) -> bool;
-    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
-    fn remove_filtered_policy(
+    async fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool>;
+    async fn remove_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool>;
+    async fn remove_filtered_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool>;
-    fn remove_filtered_grouping_policy(
+    async fn remove_filtered_grouping_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool>;
-    fn remove_filtered_named_policy(
+    async fn remove_filtered_named_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool>;
-    fn remove_filtered_named_grouping_policy(
+    async fn remove_filtered_named_grouping_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
@@ -70,78 +77,87 @@ pub trait MgmtApi {
     fn get_all_named_roles(&self, ptype: &str) -> Vec<String>;
 }
 
+#[async_trait]
 impl MgmtApi for Enforcer {
-    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.add_named_policy("p", params)
+    async fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.add_named_policy("p", params).await
     }
 
-    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.remove_named_policy("p", params)
+    async fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.remove_named_policy("p", params).await
     }
 
-    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.add_policy_internal("p", ptype, params)
+    async fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.add_policy_internal("p", ptype, params).await
     }
 
-    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.remove_policy_internal("p", ptype, params)
+    async fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.remove_policy_internal("p", ptype, params).await
     }
 
-    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.add_named_grouping_policy("g", params)
+    async fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.add_named_grouping_policy("g", params).await
     }
 
-    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        let rule_added = self.add_policy_internal("g", ptype, params)?;
+    async fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        let rule_added = self.add_policy_internal("g", ptype, params).await?;
         self.build_role_links()?;
         Ok(rule_added)
     }
 
-    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.remove_named_grouping_policy("g", params)
+    async fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.remove_named_grouping_policy("g", params).await
     }
 
-    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        let rule_removed = self.remove_policy_internal("g", ptype, params)?;
+    async fn remove_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool> {
+        let rule_removed = self.remove_policy_internal("g", ptype, params).await?;
         self.build_role_links()?;
         Ok(rule_removed)
     }
 
-    fn remove_filtered_grouping_policy(
+    async fn remove_filtered_grouping_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
         self.remove_filtered_named_grouping_policy("g", field_index, field_values)
+            .await
     }
 
-    fn remove_filtered_named_grouping_policy(
+    async fn remove_filtered_named_grouping_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
-        let rule_removed =
-            self.remove_filtered_policy_internal("g", ptype, field_index, field_values)?;
+        let rule_removed = self
+            .remove_filtered_policy_internal("g", ptype, field_index, field_values)
+            .await?;
         self.build_role_links()?;
         Ok(rule_removed)
     }
 
-    fn remove_filtered_policy(
+    async fn remove_filtered_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
         self.remove_filtered_named_policy("p", field_index, field_values)
+            .await
     }
 
-    fn remove_filtered_named_policy(
+    async fn remove_filtered_named_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
         self.remove_filtered_policy_internal("p", ptype, field_index, field_values)
+            .await
     }
 
     fn get_policy(&self) -> Vec<Vec<String>> {
@@ -239,6 +255,7 @@ impl MgmtApi for Enforcer {
     }
 }
 
+#[async_trait]
 impl MgmtApi for CachedEnforcer {
     fn get_policy(&self) -> Vec<Vec<String>> {
         self.enforcer.get_policy()
@@ -270,28 +287,28 @@ impl MgmtApi for CachedEnforcer {
         self.enforcer.has_named_policy(ptype, params)
     }
 
-    fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.add_policy(params)
+    async fn add_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_policy(params).await
     }
 
-    fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.remove_policy(params)
+    async fn remove_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_policy(params).await
     }
 
-    fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.add_named_policy(ptype, params)
+    async fn add_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_named_policy(ptype, params).await
     }
 
-    fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.remove_named_policy(ptype, params)
+    async fn remove_named_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_named_policy(ptype, params).await
     }
 
-    fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.add_grouping_policy(params)
+    async fn add_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_grouping_policy(params).await
     }
 
-    fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.remove_grouping_policy(params)
+    async fn remove_grouping_policy(&mut self, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.remove_grouping_policy(params).await
     }
 
     fn get_grouping_policy(&self) -> Vec<Vec<String>> {
@@ -329,33 +346,41 @@ impl MgmtApi for CachedEnforcer {
         self.enforcer.has_grouping_named_policy(ptype, params)
     }
 
-    fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.add_named_grouping_policy(ptype, params)
+    async fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
+        self.enforcer.add_named_grouping_policy(ptype, params).await
     }
 
-    fn remove_named_grouping_policy(&mut self, ptype: &str, params: Vec<&str>) -> Result<bool> {
-        self.enforcer.remove_named_grouping_policy(ptype, params)
+    async fn remove_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<&str>,
+    ) -> Result<bool> {
+        self.enforcer
+            .remove_named_grouping_policy(ptype, params)
+            .await
     }
 
-    fn remove_filtered_policy(
+    async fn remove_filtered_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
         self.enforcer
             .remove_filtered_policy(field_index, field_values)
+            .await
     }
 
-    fn remove_filtered_grouping_policy(
+    async fn remove_filtered_grouping_policy(
         &mut self,
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
         self.enforcer
             .remove_filtered_grouping_policy(field_index, field_values)
+            .await
     }
 
-    fn remove_filtered_named_policy(
+    async fn remove_filtered_named_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
@@ -363,9 +388,10 @@ impl MgmtApi for CachedEnforcer {
     ) -> Result<bool> {
         self.enforcer
             .remove_filtered_named_policy(ptype, field_index, field_values)
+            .await
     }
 
-    fn remove_filtered_named_grouping_policy(
+    async fn remove_filtered_named_grouping_policy(
         &mut self,
         ptype: &str,
         field_index: usize,
@@ -373,6 +399,7 @@ impl MgmtApi for CachedEnforcer {
     ) -> Result<bool> {
         self.enforcer
             .remove_filtered_named_grouping_policy(ptype, field_index, field_values)
+            .await
     }
 
     fn get_all_subjects(&self) -> Vec<String> {
@@ -423,225 +450,259 @@ mod tests {
 
     #[test]
     fn test_modify_grouping_policy_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("eve", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("non_exist", None)
-        );
+            assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("eve", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("non_exist", None)
+            );
 
-        e.remove_grouping_policy(vec!["alice", "data2_admin"])
-            .unwrap();
-        e.add_grouping_policy(vec!["bob", "data1_admin"]).unwrap();
-        e.add_grouping_policy(vec!["eve", "data3_admin"]).unwrap();
+            e.remove_grouping_policy(vec!["alice", "data2_admin"])
+                .await
+                .unwrap();
+            e.add_grouping_policy(vec!["bob", "data1_admin"])
+                .await
+                .unwrap();
+            e.add_grouping_policy(vec!["eve", "data3_admin"])
+                .await
+                .unwrap();
 
-        let named_grouping_policy = vec!["alice", "data2_admin"];
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
-        e.add_named_grouping_policy("g", named_grouping_policy.clone())
-            .unwrap();
-        assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
-        e.remove_named_grouping_policy("g", named_grouping_policy.clone())
-            .unwrap();
+            let named_grouping_policy = vec!["alice", "data2_admin"];
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+            e.add_named_grouping_policy("g", named_grouping_policy.clone())
+                .await
+                .unwrap();
+            assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
+            e.remove_named_grouping_policy("g", named_grouping_policy.clone())
+                .await
+                .unwrap();
 
-        e.remove_grouping_policy(vec!["alice", "data2_admin"])
-            .unwrap();
-        e.add_grouping_policy(vec!["bob", "data1_admin"]).unwrap();
-        e.add_grouping_policy(vec!["eve", "data3_admin"]).unwrap();
+            e.remove_grouping_policy(vec!["alice", "data2_admin"])
+                .await
+                .unwrap();
+            e.add_grouping_policy(vec!["bob", "data1_admin"])
+                .await
+                .unwrap();
+            e.add_grouping_policy(vec!["eve", "data3_admin"])
+                .await
+                .unwrap();
 
-        assert_eq!(vec!["bob"], e.get_users_for_role("data1_admin", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_users_for_role("data2_admin", None)
-        );
-        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
+            assert_eq!(vec!["bob"], e.get_users_for_role("data1_admin", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_users_for_role("data2_admin", None)
+            );
+            assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
 
-        e.remove_filtered_grouping_policy(0, vec!["bob"]).unwrap();
+            e.remove_filtered_grouping_policy(0, vec!["bob"])
+                .await
+                .unwrap();
 
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
-        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
-        assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve", None));
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_roles_for_user("non_exist", None)
-        );
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+            assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+            assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_roles_for_user("non_exist", None)
+            );
 
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_users_for_role("data1_admin", None)
-        );
-        assert_eq!(
-            vec![String::new(); 0],
-            e.get_users_for_role("data2_admin", None)
-        );
-        assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_users_for_role("data1_admin", None)
+            );
+            assert_eq!(
+                vec![String::new(); 0],
+                e.get_users_for_role("data2_admin", None)
+            );
+            assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
+        });
     }
 
     #[test]
     fn test_modify_policy_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec![
-                vec!["alice", "data1", "read"],
-                vec!["bob", "data2", "write"],
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_policy())
-        );
+            assert_eq!(
+                vec![
+                    vec!["alice", "data1", "read"],
+                    vec!["bob", "data2", "write"],
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_policy())
+            );
 
-        e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
-        e.remove_policy(vec!["bob", "data2", "write"]).unwrap();
-        e.remove_policy(vec!["alice", "data1", "read"]).unwrap();
-        e.add_policy(vec!["eve", "data3", "read"]).unwrap();
-        e.add_policy(vec!["eve", "data3", "read"]).unwrap();
+            e.remove_policy(vec!["alice", "data1", "read"])
+                .await
+                .unwrap();
+            e.remove_policy(vec!["bob", "data2", "write"])
+                .await
+                .unwrap();
+            e.remove_policy(vec!["alice", "data1", "read"])
+                .await
+                .unwrap();
+            e.add_policy(vec!["eve", "data3", "read"]).await.unwrap();
+            e.add_policy(vec!["eve", "data3", "read"]).await.unwrap();
 
-        let named_policy = vec!["eve", "data3", "read"];
-        e.remove_named_policy("p", named_policy.clone()).unwrap();
-        e.add_named_policy("p", named_policy.clone()).unwrap();
+            let named_policy = vec!["eve", "data3", "read"];
+            e.remove_named_policy("p", named_policy.clone())
+                .await
+                .unwrap();
+            e.add_named_policy("p", named_policy.clone()).await.unwrap();
 
-        assert_eq!(
-            vec![
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-                vec!["eve", "data3", "read"],
-            ],
-            sort_unstable(e.get_policy())
-        );
+            assert_eq!(
+                vec![
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                    vec!["eve", "data3", "read"],
+                ],
+                sort_unstable(e.get_policy())
+            );
 
-        e.remove_filtered_policy(1, vec!["data2"]).unwrap();
-        assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
+            e.remove_filtered_policy(1, vec!["data2"]).await.unwrap();
+            assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
+        });
     }
 
     #[test]
     fn test_get_policy_api() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec![
-                vec!["alice", "data1", "read"],
-                vec!["bob", "data2", "write"],
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_policy())
-        );
+            assert_eq!(
+                vec![
+                    vec!["alice", "data1", "read"],
+                    vec!["bob", "data2", "write"],
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_policy())
+            );
 
-        assert_eq!(
-            vec![vec!["alice", "data1", "read"]],
-            e.get_filtered_policy(0, vec!["alice"])
-        );
-        assert_eq!(
-            vec![vec!["bob", "data2", "write"]],
-            e.get_filtered_policy(0, vec!["bob"])
-        );
-        assert_eq!(
-            vec![
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_filtered_policy(0, vec!["data2_admin"]))
-        );
-        assert_eq!(
-            vec![vec!["alice", "data1", "read"],],
-            e.get_filtered_policy(1, vec!["data1"])
-        );
-        assert_eq!(
-            vec![
-                vec!["bob", "data2", "write"],
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_filtered_policy(1, vec!["data2"]))
-        );
-        assert_eq!(
-            vec![
-                vec!["alice", "data1", "read"],
-                vec!["data2_admin", "data2", "read"],
-            ],
-            sort_unstable(e.get_filtered_policy(2, vec!["read"]))
-        );
-        assert_eq!(
-            vec![
-                vec!["bob", "data2", "write"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_filtered_policy(2, vec!["write"]))
-        );
-        assert_eq!(
-            vec![
-                vec!["data2_admin", "data2", "read"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_filtered_policy(0, vec!["data2_admin", "data2"]))
-        );
-        // Note: "" (empty string) in fieldValues means matching all values.
-        assert_eq!(
-            vec![vec!["data2_admin", "data2", "read"],],
-            e.get_filtered_policy(0, vec!["data2_admin", "", "read"])
-        );
-        assert_eq!(
-            vec![
-                vec!["bob", "data2", "write"],
-                vec!["data2_admin", "data2", "write"],
-            ],
-            sort_unstable(e.get_filtered_policy(1, vec!["data2", "write"]))
-        );
+            assert_eq!(
+                vec![vec!["alice", "data1", "read"]],
+                e.get_filtered_policy(0, vec!["alice"])
+            );
+            assert_eq!(
+                vec![vec!["bob", "data2", "write"]],
+                e.get_filtered_policy(0, vec!["bob"])
+            );
+            assert_eq!(
+                vec![
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_filtered_policy(0, vec!["data2_admin"]))
+            );
+            assert_eq!(
+                vec![vec!["alice", "data1", "read"],],
+                e.get_filtered_policy(1, vec!["data1"])
+            );
+            assert_eq!(
+                vec![
+                    vec!["bob", "data2", "write"],
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_filtered_policy(1, vec!["data2"]))
+            );
+            assert_eq!(
+                vec![
+                    vec!["alice", "data1", "read"],
+                    vec!["data2_admin", "data2", "read"],
+                ],
+                sort_unstable(e.get_filtered_policy(2, vec!["read"]))
+            );
+            assert_eq!(
+                vec![
+                    vec!["bob", "data2", "write"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_filtered_policy(2, vec!["write"]))
+            );
+            assert_eq!(
+                vec![
+                    vec!["data2_admin", "data2", "read"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_filtered_policy(0, vec!["data2_admin", "data2"]))
+            );
+            // Note: "" (empty string) in fieldValues means matching all values.
+            assert_eq!(
+                vec![vec!["data2_admin", "data2", "read"],],
+                e.get_filtered_policy(0, vec!["data2_admin", "", "read"])
+            );
+            assert_eq!(
+                vec![
+                    vec!["bob", "data2", "write"],
+                    vec!["data2_admin", "data2", "write"],
+                ],
+                sort_unstable(e.get_filtered_policy(1, vec!["data2", "write"]))
+            );
 
-        assert_eq!(true, e.has_policy(vec!["alice", "data1", "read"]));
-        assert_eq!(true, e.has_policy(vec!["bob", "data2", "write"]));
-        assert_eq!(false, e.has_policy(vec!["alice", "data2", "read"]));
-        assert_eq!(false, e.has_policy(vec!["bob", "data3", "write"]));
+            assert_eq!(true, e.has_policy(vec!["alice", "data1", "read"]));
+            assert_eq!(true, e.has_policy(vec!["bob", "data2", "write"]));
+            assert_eq!(false, e.has_policy(vec!["alice", "data2", "read"]));
+            assert_eq!(false, e.has_policy(vec!["bob", "data3", "write"]));
 
-        assert_eq!(
-            vec![vec!["alice", "data2_admin"]],
-            e.get_filtered_grouping_policy(0, vec!["alice"])
-        );
-        let empty_policy: Vec<Vec<String>> = vec![];
-        assert_eq!(empty_policy, e.get_filtered_grouping_policy(0, vec!["bob"]));
-        assert_eq!(
-            empty_policy,
-            e.get_filtered_grouping_policy(1, vec!["data1_admin"])
-        );
-        assert_eq!(
-            vec![vec!["alice", "data2_admin"],],
-            e.get_filtered_grouping_policy(1, vec!["data2_admin"])
-        );
-        // Note: "" (empty string) in fieldValues means matching all values.
-        assert_eq!(
-            empty_policy,
-            e.get_filtered_grouping_policy(0, vec!["data2_admin"])
-        );
+            assert_eq!(
+                vec![vec!["alice", "data2_admin"]],
+                e.get_filtered_grouping_policy(0, vec!["alice"])
+            );
+            let empty_policy: Vec<Vec<String>> = vec![];
+            assert_eq!(empty_policy, e.get_filtered_grouping_policy(0, vec!["bob"]));
+            assert_eq!(
+                empty_policy,
+                e.get_filtered_grouping_policy(1, vec!["data1_admin"])
+            );
+            assert_eq!(
+                vec![vec!["alice", "data2_admin"],],
+                e.get_filtered_grouping_policy(1, vec!["data2_admin"])
+            );
+            // Note: "" (empty string) in fieldValues means matching all values.
+            assert_eq!(
+                empty_policy,
+                e.get_filtered_grouping_policy(0, vec!["data2_admin"])
+            );
 
-        assert_eq!(true, e.has_grouping_policy(vec!["alice", "data2_admin"]));
-        assert_eq!(false, e.has_grouping_policy(vec!["bob", "data2_admin"]));
+            assert_eq!(true, e.has_grouping_policy(vec!["alice", "data2_admin"]));
+            assert_eq!(false, e.has_grouping_policy(vec!["bob", "data2_admin"]));
+        });
     }
 
     #[test]
     fn test_get_list() {
-        let m = Model::from_file("examples/rbac_model.conf").unwrap();
+        use async_std::task;
+        task::block_on(async {
+            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(m, Box::new(adapter)).unwrap();
+            let adapter = FileAdapter::new("examples/rbac_policy.csv");
+            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
 
-        assert_eq!(
-            vec!["alice", "bob", "data2_admin"],
-            sort_unstable(e.get_all_subjects())
-        );
-        assert_eq!(vec!["data1", "data2"], sort_unstable(e.get_all_objects()));
-        assert_eq!(vec!["read", "write"], sort_unstable(e.get_all_actions()));
-        assert_eq!(vec!["data2_admin"], e.get_all_roles());
+            assert_eq!(
+                vec!["alice", "bob", "data2_admin"],
+                sort_unstable(e.get_all_subjects())
+            );
+            assert_eq!(vec!["data1", "data2"], sort_unstable(e.get_all_objects()));
+            assert_eq!(vec!["read", "write"], sort_unstable(e.get_all_actions()));
+            assert_eq!(vec!["data2_admin"], e.get_all_roles());
+        });
     }
 }
