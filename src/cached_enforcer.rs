@@ -18,11 +18,11 @@ pub struct CachedEnforcer {
 }
 
 impl CachedEnforcer {
-    pub fn new(m: Model, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new(m: Model, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             ttl: Duration::from_secs(120),
             max_cached_items: 1000,
-            enforcer: Enforcer::new(m, a)?,
+            enforcer: Enforcer::new(m, a).await?,
             cache: None,
         };
 
