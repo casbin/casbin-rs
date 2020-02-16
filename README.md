@@ -1,5 +1,7 @@
 # casbin-rs
 
+[![Crates.io](https://img.shields.io/crates/v/casbin.svg)](https://crates.io/crates/casbin)
+[![Docs](https://docs.rs/casbin/badge.svg)](https://docs.rs/casbin)
 [![Build Status](https://travis-ci.org/casbin/casbin-rs.svg?branch=master)](https://travis-ci.org/casbin/casbin-rs)
 [![codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
 
