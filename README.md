@@ -30,35 +30,35 @@ casbin = "0.2.0"
 
 1. New a Casbin enforcer with a model file and a policy file:
 
-```rust
-use casbin::prelude::*;
-use async_std::task;
+    ```rust
+    use casbin::prelude::*;
+    use async_std::task;
 
-task::block_on(async {
-    let model = Model::from_file("path/to/model.conf")?;
-    let adapter = Box::new(FileAdapter::new("path/to/policy.csv"));
+    task::block_on(async {
+        let model = Model::from_file("path/to/model.conf")?;
+        let adapter = Box::new(FileAdapter::new("path/to/policy.csv"));
 
-    let e = Enforcer::new(model, adapter).await?;
-});
-```
+        let e = Enforcer::new(model, adapter).await?;
+    });
+    ```
 
 2. Add an enforcement hook into your code right before the access happens:
 
-```rust
-sub = "alice"; // the user that wants to access a resource.
-obj = "data1"; // the resource that is going to be accessed.
-act = "read"; // the operation that the user performs on the resource.
+    ```rust
+    sub = "alice"; // the user that wants to access a resource.
+    obj = "data1"; // the resource that is going to be accessed.
+    act = "read"; // the operation that the user performs on the resource.
 
-if let Ok(authorized) = e.enforce(vec![sub, obj, act]) {
-    if authorized {
-        // permit alice to read data1
+    if let Ok(authorized) = e.enforce(vec![sub, obj, act]) {
+        if authorized {
+            // permit alice to read data1
+        } else {
+            // deny the request
+        }
     } else {
-        // deny the request
+        // error occurs
     }
-} else {
-    // error occurs
-}
-```
+    ```
 
 ## Table of contents
 
@@ -80,14 +80,14 @@ if let Ok(authorized) = e.enforce(vec![sub, obj, act]) {
 1. [**ACL (Access Control List)**](https://en.wikipedia.org/wiki/Access_control_list)
 2. **ACL with [superuser](https://en.wikipedia.org/wiki/Superuser)**
 3. **ACL without users**: especially useful for systems that don't have authentication or user log-ins.
-3. **ACL without resources**: some scenarios may target for a type of resources instead of an individual resource by using permissions like ``write-article``, ``read-log``. It doesn't control the access to a specific article or log.
-4. **[RBAC (Role-Based Access Control)](https://en.wikipedia.org/wiki/Role-based_access_control)**
-5. **RBAC with resource roles**: both users and resources can have roles (or groups) at the same time.
-6. **RBAC with domains/tenants**: users can have different role sets for different domains/tenants.
-7. **[ABAC (Attribute-Based Access Control)](https://en.wikipedia.org/wiki/Attribute-Based_Access_Control)**: syntax sugar like ``resource.Owner`` can be used to get the attribute for a resource.
-8. **[RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer)**: supports paths like ``/res/*``, ``/res/:id`` and HTTP methods like ``GET``, ``POST``, ``PUT``, ``DELETE``.
-9. **Deny-override**: both allow and deny authorizations are supported, deny overrides the allow.
-10. **Priority**: the policy rules can be prioritized like firewall rules.
+4. **ACL without resources**: some scenarios may target for a type of resources instead of an individual resource by using permissions like ``write-article``, ``read-log``. It doesn't control the access to a specific article or log.
+5. **[RBAC (Role-Based Access Control)](https://en.wikipedia.org/wiki/Role-based_access_control)**
+6. **RBAC with resource roles**: both users and resources can have roles (or groups) at the same time.
+7. **RBAC with domains/tenants**: users can have different role sets for different domains/tenants.
+8. **[ABAC (Attribute-Based Access Control)](https://en.wikipedia.org/wiki/Attribute-Based_Access_Control)**: syntax sugar like ``resource.Owner`` can be used to get the attribute for a resource.
+9. **[RESTful](https://en.wikipedia.org/wiki/Representational_state_transfer)**: supports paths like ``/res/*``, ``/res/:id`` and HTTP methods like ``GET``, ``POST``, ``PUT``, ``DELETE``.
+10. **Deny-override**: both allow and deny authorizations are supported, deny overrides the allow.
+11. **Priority**: the policy rules can be prioritized like firewall rules.
 
 ## How it works?
 
