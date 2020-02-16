@@ -10,10 +10,21 @@ use std::collections::HashSet;
 #[async_trait]
 pub trait RbacApi {
     async fn add_permission_for_user(&mut self, user: &str, permission: Vec<&str>) -> Result<bool>;
+    async fn add_permissions_for_user(
+        &mut self,
+        user: &str,
+        permissions: Vec<Vec<&str>>,
+    ) -> Result<bool>;
     async fn add_role_for_user(
         &mut self,
         user: &str,
         role: &str,
+        domain: Option<&str>,
+    ) -> Result<bool>;
+    async fn add_roles_for_user(
+        &mut self,
+        user: &str,
+        roles: Vec<&str>,
         domain: Option<&str>,
     ) -> Result<bool>;
     async fn delete_role_for_user(
@@ -23,9 +34,6 @@ pub trait RbacApi {
         domain: Option<&str>,
     ) -> Result<bool>;
     async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool>;
-    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
-    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String>;
-    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool;
     async fn delete_user(&mut self, name: &str) -> Result<bool>;
     async fn delete_role(&mut self, name: &str) -> Result<bool>;
     async fn delete_permission(&mut self, permission: Vec<&str>) -> Result<bool>;
@@ -35,6 +43,9 @@ pub trait RbacApi {
         permission: Vec<&str>,
     ) -> Result<bool>;
     async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool>;
+    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
+    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String>;
+    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool;
     fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>>;
     fn has_permission_for_user(&self, user: &str, permission: Vec<&str>) -> bool;
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
@@ -54,6 +65,21 @@ impl RbacApi for Enforcer {
         self.add_policy(perm).await
     }
 
+    async fn add_permissions_for_user(
+        &mut self,
+        user: &str,
+        permissions: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        let perms = permissions
+            .into_iter()
+            .map(|mut p| {
+                p.insert(0, user);
+                p
+            })
+            .collect();
+        self.add_policies(perms).await
+    }
+
     async fn add_role_for_user(
         &mut self,
         user: &str,
@@ -65,6 +91,27 @@ impl RbacApi for Enforcer {
         } else {
             vec![user, role]
         })
+        .await
+    }
+
+    async fn add_roles_for_user(
+        &mut self,
+        user: &str,
+        roles: Vec<&str>,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.add_grouping_policies(
+            roles
+                .into_iter()
+                .map(|role| {
+                    if let Some(domain) = domain {
+                        vec![user, role, domain]
+                    } else {
+                        vec![user, role]
+                    }
+                })
+                .collect(),
+        )
         .await
     }
 
@@ -96,7 +143,7 @@ impl RbacApi for Enforcer {
 
     fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
         let mut roles = vec![];
-        if let Some(t1) = self.model.model.get_mut("g") {
+        if let Some(t1) = self.model.get_mut_model().get_mut("g") {
             if let Some(t2) = t1.get_mut("g") {
                 roles = t2.rm.write().unwrap().get_roles(name, domain);
             }
@@ -106,7 +153,7 @@ impl RbacApi for Enforcer {
     }
 
     fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        if let Some(t1) = self.model.model.get("g") {
+        if let Some(t1) = self.model.get_model().get("g") {
             if let Some(t2) = t1.get("g") {
                 return t2.rm.read().unwrap().get_users(name, domain);
             }
@@ -231,6 +278,16 @@ impl RbacApi for CachedEnforcer {
             .await
     }
 
+    async fn add_permissions_for_user(
+        &mut self,
+        user: &str,
+        permissions: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        self.enforcer
+            .add_permissions_for_user(user, permissions)
+            .await
+    }
+
     async fn add_role_for_user(
         &mut self,
         user: &str,
@@ -238,6 +295,15 @@ impl RbacApi for CachedEnforcer {
         domain: Option<&str>,
     ) -> Result<bool> {
         self.enforcer.add_role_for_user(user, role, domain).await
+    }
+
+    async fn add_roles_for_user(
+        &mut self,
+        user: &str,
+        roles: Vec<&str>,
+        domain: Option<&str>,
+    ) -> Result<bool> {
+        self.enforcer.add_roles_for_user(user, roles, domain).await
     }
 
     async fn delete_role_for_user(
@@ -323,7 +389,7 @@ mod tests {
 
     use crate::adapter::FileAdapter;
     use crate::enforcer::Enforcer;
-    use crate::model::Model;
+    use crate::model::DefaultModel;
 
     fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
         v.sort_unstable();
@@ -334,10 +400,12 @@ mod tests {
     fn test_role_api() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
             assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -425,11 +493,13 @@ mod tests {
         use std::sync::{Arc, RwLock};
         use std::thread;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
             let e = Arc::new(RwLock::new(
-                Enforcer::new(m, Box::new(adapter)).await.unwrap(),
+                Enforcer::new(m, adapter).await.unwrap(),
             ));
             let ee = e.clone();
 
@@ -669,12 +739,12 @@ mod tests {
     fn test_permission_api() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_without_resources_model.conf")
+            let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
@@ -733,10 +803,12 @@ mod tests {
     fn test_implicit_role_api() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(
                 vec![vec!["alice", "data1", "read"]],
@@ -762,10 +834,12 @@ mod tests {
     fn test_implicit_permission_api() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(
                 vec![vec!["alice", "data1", "read"]],
@@ -797,10 +871,12 @@ mod tests {
     fn test_implicit_user_api() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(
                 vec!["alice"],
@@ -825,12 +901,12 @@ mod tests {
     fn test_implicit_permission_api_with_domain() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_domains_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(
                 vec![

@@ -18,16 +18,16 @@ pub struct FileAdapter<P: AsRef<Path>> {
     pub file_path: P,
 }
 
-type LoadPolicyFileHandler = fn(String, &mut Model);
+type LoadPolicyFileHandler = fn(String, &mut dyn Model);
 
-impl<P: AsRef<Path>> FileAdapter<P> {
-    pub fn new(p: P) -> Self {
-        FileAdapter { file_path: p }
+impl<P: AsRef<Path> + Send + Sync + 'static> FileAdapter<P> {
+    pub fn new(p: P) -> Box<dyn Adapter> {
+        Box::new(FileAdapter { file_path: p }) as Box<dyn Adapter>
     }
 
     pub async fn load_policy_file(
         &self,
-        m: &mut Model,
+        m: &mut dyn Model,
         handler: LoadPolicyFileHandler,
     ) -> Result<()> {
         let f = File::open(&self.file_path).await?;
@@ -47,13 +47,13 @@ impl<P: AsRef<Path>> FileAdapter<P> {
 }
 
 #[async_trait]
-impl<P: AsRef<Path> + Send + Sync> Adapter for FileAdapter<P> {
-    async fn load_policy(&self, m: &mut Model) -> Result<()> {
+impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
+    async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
         self.load_policy_file(m, load_policy_line).await?;
         Ok(())
     }
 
-    async fn save_policy(&self, m: &mut Model) -> Result<()> {
+    async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
             return Err(Error::IoError(IoError::new(
                 ErrorKind::Other,
@@ -90,27 +90,47 @@ impl<P: AsRef<Path> + Send + Sync> Adapter for FileAdapter<P> {
 
     async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(true)
+        Ok(false)
     }
 
-    async fn remove_policy(&self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    async fn add_policies(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rules: Vec<Vec<&str>>,
+    ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(true)
+        Ok(false)
+    }
+
+    async fn remove_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+        // this api shouldn't implement, just for convinent
+        Ok(false)
+    }
+
+    async fn remove_policies(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        // this api shouldn't implement, just for convinent
+        Ok(false)
     }
 
     async fn remove_filtered_policy(
-        &self,
+        &mut self,
         _sec: &str,
         _ptype: &str,
         _field_index: usize,
         _field_values: Vec<&str>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(true)
+        Ok(false)
     }
 }
 
-fn load_policy_line(line: String, m: &mut Model) {
+fn load_policy_line(line: String, m: &mut dyn Model) {
     if line.is_empty() || line.starts_with('#') {
         return;
     }
@@ -118,7 +138,7 @@ fn load_policy_line(line: String, m: &mut Model) {
     let key = tokens[0].clone();
 
     if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
-        if let Some(t1) = m.model.get_mut(&sec) {
+        if let Some(t1) = m.get_mut_model().get_mut(&sec) {
             if let Some(t2) = t1.get_mut(&key) {
                 t2.policy.insert(tokens[1..].to_vec());
             }

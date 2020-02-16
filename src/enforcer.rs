@@ -2,8 +2,8 @@ use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError};
-use crate::model::Model;
 use crate::model::{in_match, FunctionMap};
+use crate::model::Model;
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::watcher::Watcher;
 use crate::Result;
@@ -54,7 +54,7 @@ pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> Box<dyn MatchFnC
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
-    pub(crate) model: Model,
+    pub(crate) model: Box<dyn Model>,
     pub(crate) adapter: Box<dyn Adapter>,
     pub(crate) fm: FunctionMap,
     pub(crate) eft: Box<dyn Effector>,
@@ -66,7 +66,7 @@ pub struct Enforcer {
 
 impl Enforcer {
     /// Enforcer::new creates an enforcer via file or DB.
-    pub async fn new(m: Model, a: Box<dyn Adapter>) -> Result<Self> {
+    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<Self> {
         let m = m;
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
@@ -101,12 +101,12 @@ impl Enforcer {
         self.fm.add_function(fname, f);
     }
 
-    pub fn get_model(&self) -> &Model {
-        &self.model
+    pub fn get_model(&self) -> &dyn Model {
+        &*self.model
     }
 
-    pub fn get_mut_model(&mut self) -> &mut Model {
-        &mut self.model
+    pub fn get_mut_model(&mut self) -> &mut dyn Model {
+        &mut *self.model
     }
 
     pub fn set_watcher(&mut self, w: Box<dyn Watcher>) {
@@ -118,13 +118,13 @@ impl Enforcer {
     ///
     /// # Examples
     /// ```
-    /// use casbin::{Enforcer, Model, FileAdapter};
+    /// use casbin::{Enforcer, DefaultModel, FileAdapter};
     /// use async_std::task;
     ///
     /// task::block_on(async {
-    ///     let m = Model::from_file("examples/basic_model.conf").await.unwrap();
+    ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
     ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
-    ///     let e = Enforcer::new(m, Box::new( adapter)).await.unwrap();
+    ///     let e = Enforcer::new(m,  adapter).await.unwrap();
     ///     assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
     /// });
     /// ```
@@ -133,7 +133,7 @@ impl Enforcer {
         let mut scope: Scope = Vec::new();
         let r_ast = self
             .model
-            .model
+            .get_model()
             .get("r")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::R(
@@ -148,7 +148,7 @@ impl Enforcer {
             })?;
         let p_ast = self
             .model
-            .model
+            .get_model()
             .get("p")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::P(
@@ -163,7 +163,7 @@ impl Enforcer {
             })?;
         let m_ast = self
             .model
-            .model
+            .get_model()
             .get("m")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::M(
@@ -178,7 +178,7 @@ impl Enforcer {
             })?;
         let e_ast = self
             .model
-            .model
+            .get_model()
             .get("e")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::E(
@@ -202,7 +202,7 @@ impl Enforcer {
         }
         engine.register_fn("inMatch", in_match);
 
-        if let Some(g_result) = self.model.model.get("g") {
+        if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
                 if key == "g" {
                     let g = generate_g_function(ast.rm.clone());
@@ -282,7 +282,7 @@ impl Enforcer {
 
     pub async fn load_policy(&mut self) -> Result<()> {
         self.model.clear_policy();
-        self.adapter.load_policy(&mut self.model).await?;
+        self.adapter.load_policy(&mut *self.model).await?;
 
         if self.auto_build_role_links {
             self.build_role_links()?;
@@ -307,12 +307,13 @@ impl Enforcer {
 mod tests {
     use super::*;
     use crate::adapter::{FileAdapter, MemoryAdapter};
+    use crate::model::DefaultModel;
 
     #[test]
     fn test_key_match_model_in_memory() {
         use async_std::task;
         task::block_on(async {
-            let mut m = Model::default();
+            let mut m = DefaultModel::new();
             m.add_def("r", "r", "sub, obj, act");
             m.add_def("p", "p", "sub, obj, act");
             m.add_def("e", "e", "some(where (p.eft == allow))");
@@ -323,7 +324,7 @@ mod tests {
             );
 
             let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
             assert_eq!(
                 true,
                 e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
@@ -425,7 +426,7 @@ mod tests {
     fn test_key_match_model_in_memory_deny() {
         use async_std::task;
         task::block_on(async {
-            let mut m = Model::default();
+            let mut m = DefaultModel::new();
             m.add_def("r", "r", "sub, obj, act");
             m.add_def("p", "p", "sub, obj, act");
             m.add_def("e", "e", "!some(where (p.eft == deny))");
@@ -436,7 +437,7 @@ mod tests {
             );
 
             let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
             assert_eq!(
                 true,
                 e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
@@ -450,7 +451,7 @@ mod tests {
     fn test_rbac_model_in_memory_indeterminate() {
         use async_std::task;
         task::block_on(async {
-            let mut m = Model::default();
+            let mut m = DefaultModel::new();
             m.add_def("r", "r", "sub, obj, act");
             m.add_def("p", "p", "sub, obj, act");
             m.add_def("g", "g", "_, _");
@@ -461,8 +462,8 @@ mod tests {
                 "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
             );
 
-            let adapter = MemoryAdapter::default();
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.add_permission_for_user("alice", vec!["data1", "invalid"])
                 .await
                 .unwrap();
@@ -474,7 +475,7 @@ mod tests {
     fn test_rbac_model_in_memory() {
         use async_std::task;
         task::block_on(async {
-            let mut m = Model::default();
+            let mut m = DefaultModel::new();
             m.add_def("r", "r", "sub, obj, act");
             m.add_def("p", "p", "sub, obj, act");
             m.add_def("g", "g", "_, _");
@@ -485,8 +486,8 @@ mod tests {
                 "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
             );
 
-            let adapter = MemoryAdapter::default();
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.add_permission_for_user("alice", vec!["data1", "read"])
                 .await
                 .unwrap();
@@ -518,7 +519,7 @@ mod tests {
     fn test_not_used_rbac_model_in_memory() {
         use async_std::task;
         task::block_on(async {
-            let mut m = Model::default();
+            let mut m = DefaultModel::new();
             m.add_def("r", "r", "sub, obj, act");
             m.add_def("p", "p", "sub, obj, act");
             m.add_def("g", "g", "_, _");
@@ -529,8 +530,8 @@ mod tests {
                 "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act",
             );
 
-            let adapter = MemoryAdapter::default();
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.add_permission_for_user("alice", vec!["data1", "read"])
                 .await
                 .unwrap();
@@ -553,12 +554,12 @@ mod tests {
     fn test_ip_match_model() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/ipmatch_model.conf")
+            let m = DefaultModel::from_file("examples/ipmatch_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(e.enforce(vec!["192.168.2.123", "data1", "read"]).unwrap());
 
@@ -589,10 +590,12 @@ mod tests {
     fn test_enable_auto_save() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.enable_auto_save(false);
             e.remove_policy(vec!["alice", "data1", "read"])
                 .await
@@ -628,10 +631,12 @@ mod tests {
     fn test_role_links() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
-            let adapter = MemoryAdapter::default();
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.enable_auto_build_role_links(false);
             e.build_role_links().unwrap();
             assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]).unwrap());
@@ -642,17 +647,23 @@ mod tests {
     fn test_get_and_set_model() {
         use async_std::task;
         task::block_on(async {
-            let m1 = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m1 = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
             let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-            let mut e = Enforcer::new(m1, Box::new(adapter1)).await.unwrap();
+            let mut e = Enforcer::new(m1, adapter1)
+                .await
+                .unwrap();
 
             assert_eq!(false, e.enforce(vec!["root", "data1", "read"]).unwrap());
 
-            let m2 = Model::from_file("examples/basic_with_root_model.conf")
+            let m2 = DefaultModel::from_file("examples/basic_with_root_model.conf")
                 .await
                 .unwrap();
             let adapter2 = FileAdapter::new("examples/basic_policy.csv");
-            let e2 = Enforcer::new(m2, Box::new(adapter2)).await.unwrap();
+            let e2 = Enforcer::new(m2, adapter2)
+                .await
+                .unwrap();
 
             e.model = e2.model;
             assert_eq!(true, e.enforce(vec!["root", "data1", "read"]).unwrap());
@@ -663,16 +674,24 @@ mod tests {
     fn test_get_and_set_adapter_in_mem() {
         use async_std::task;
         task::block_on(async {
-            let m1 = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m1 = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
             let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-            let mut e = Enforcer::new(m1, Box::new(adapter1)).await.unwrap();
+            let mut e = Enforcer::new(m1, adapter1)
+                .await
+                .unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
 
-            let m2 = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m2 = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
             let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
-            let e2 = Enforcer::new(m2, Box::new(adapter2)).await.unwrap();
+            let e2 = Enforcer::new(m2, adapter2)
+                .await
+                .unwrap();
 
             e.adapter = e2.adapter;
             e.load_policy().await.unwrap();
@@ -687,11 +706,13 @@ mod tests {
         use async_std::task;
 
         task::block_on(async {
-            let m1 = Model::from_file("examples/keymatch_custom_model.conf")
+            let m1 = DefaultModel::from_file("examples/keymatch_custom_model.conf")
                 .await
                 .unwrap();
             let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
-            let mut e = Enforcer::new(m1, Box::new(adapter1)).await.unwrap();
+            let mut e = Enforcer::new(m1, adapter1)
+                .await
+                .unwrap();
 
             e.add_function("keyMatchCustom", key_match);
 

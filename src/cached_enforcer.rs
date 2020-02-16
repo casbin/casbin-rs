@@ -18,7 +18,7 @@ pub struct CachedEnforcer {
 }
 
 impl CachedEnforcer {
-    pub async fn new(m: Model, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             ttl: Duration::from_secs(120),
             max_cached_items: 1000,
@@ -62,8 +62,8 @@ impl CachedEnforcer {
         if let Some(ref mut cache) = self.cache {
             let key: Vec<String> = rvals.iter().map(|&x| String::from(x)).collect();
 
-            if cache.contains_key(&key) {
-                Ok(*cache.get(&key).unwrap())
+            if let Some(result) = cache.get(&key) {
+                Ok(*result)
             } else {
                 let result = self.enforcer.enforce(rvals)?;
                 cache.insert(key, result, self.ttl);

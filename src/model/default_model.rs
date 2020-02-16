@@ -1,109 +1,33 @@
 use crate::config::Config;
-use crate::error::{Error, ModelError, PolicyError};
-use crate::rbac::{DefaultRoleManager, RoleManager};
+use crate::error::{Error, ModelError};
+use crate::model::{Assertion, AssertionMap, Model};
+use crate::rbac::RoleManager;
+use crate::util::*;
 use crate::Result;
 
-use async_std::net::IpAddr;
 use async_std::path::Path;
 use indexmap::IndexSet;
-use ip_network::IpNetwork;
-use regex::Regex;
-use rhai::Any;
 
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::sync::{Arc, RwLock};
 
-fn escape_assertion(s: String) -> String {
-    let re = Regex::new(r#"(r|p)\."#).unwrap();
-    re.replace_all(&s, "${1}_").to_string()
-}
-
-fn escape_g_function(s: String) -> String {
-    let re = Regex::new(r#"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)"#).unwrap();
-    re.replace_all(&s, "${1}([${2}])").to_string()
-}
-
-fn escape_in_operator(s: String) -> String {
-    let re =
-        Regex::new(r#"((?:r\d*|p\d*)\.(?:[^\s]+))\s+in\s+(?:\[|\()([^\)\]]*)(?:\]|\))"#).unwrap();
-
-    re.replace_all(&s, "inMatch($1, [$2])").replace("'", r#"""#)
-}
-
-pub(crate) type AssertionMap = HashMap<String, Assertion>;
-
-#[derive(Clone)]
-pub struct Assertion {
-    pub(crate) key: String,
-    pub(crate) value: String,
-    pub(crate) tokens: Vec<String>,
-    pub(crate) policy: IndexSet<Vec<String>>,
-    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
-}
-
-impl Default for Assertion {
-    fn default() -> Self {
-        Assertion {
-            key: String::new(),
-            value: String::new(),
-            tokens: vec![],
-            policy: IndexSet::new(),
-            rm: Arc::new(RwLock::new(DefaultRoleManager::new(0))),
-        }
-    }
-}
-
-impl Assertion {
-    pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
-        &self.policy
-    }
-
-    pub fn get_mut_policy(&mut self) -> &mut IndexSet<Vec<String>> {
-        &mut self.policy
-    }
-
-    pub fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
-        let count = self.value.chars().filter(|&c| c == '_').count();
-        for rule in &self.policy {
-            if count < 2 {
-                return Err(Error::ModelError(ModelError::P(
-                    r#"the number of "_" in role definition should be at least 2"#.to_owned(),
-                ))
-                .into());
-            }
-            if rule.len() < count {
-                return Err(Error::PolicyError(PolicyError::UnmatchPolicyDefinition).into());
-            }
-            if count == 2 {
-                rm.write().unwrap().add_link(&rule[0], &rule[1], None);
-            } else if count == 3 {
-                rm.write()
-                    .unwrap()
-                    .add_link(&rule[0], &rule[1], Some(&rule[2]));
-            } else if count >= 4 {
-                return Err(Error::ModelError(ModelError::P(
-                    "Multiple domains are not supported".to_owned(),
-                ))
-                .into());
-            }
-        }
-        self.rm = Arc::clone(&rm);
-        // self.rm.print_roles();
-        Ok(())
-    }
-}
-
 #[derive(Clone, Default)]
-pub struct Model {
+pub struct DefaultModel {
     pub(crate) model: HashMap<String, AssertionMap>,
 }
 
-impl Model {
-    pub async fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
+impl DefaultModel {
+    pub fn new() -> Box<dyn Model> {
+        Box::new(DefaultModel::default()) as Box<dyn Model>
+    }
+}
+
+impl DefaultModel {
+    pub async fn from_file<P: AsRef<Path>>(p: P) -> Result<Box<dyn Model>> {
         let cfg = Config::from_file(p).await?;
 
-        let mut model = Model::default();
+        let mut model = DefaultModel::default();
 
         model.load_section(&cfg, "r")?;
         model.load_section(&cfg, "p")?;
@@ -112,13 +36,13 @@ impl Model {
 
         model.load_section(&cfg, "g")?;
 
-        Ok(model)
+        Ok(Box::new(model) as Box<dyn Model>)
     }
 
-    pub async fn from_str(&mut self, s: &str) -> Result<Self> {
+    pub async fn from_str(&mut self, s: &str) -> Result<Box<dyn Model>> {
         let cfg = Config::from_str(s).await?;
 
-        let mut model = Model::default();
+        let mut model = DefaultModel::default();
 
         model.load_section(&cfg, "r")?;
         model.load_section(&cfg, "p")?;
@@ -127,10 +51,51 @@ impl Model {
 
         model.load_section(&cfg, "g")?;
 
-        Ok(model)
+        Ok(Box::new(model) as Box<dyn Model>)
     }
 
-    pub fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
+    fn load_section(&mut self, cfg: &Config, sec: &str) -> Result<()> {
+        let mut i = 1;
+
+        loop {
+            if !self.load_assertion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+                break Ok(());
+            } else {
+                i += 1;
+            }
+        }
+    }
+
+    fn load_assertion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
+        let sec_name = match sec {
+            "r" => "request_definition",
+            "p" => "policy_definition",
+            "g" => "role_definition",
+            "e" => "policy_effect",
+            "m" => "matchers",
+            _ => {
+                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
+            }
+        };
+
+        if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
+            Ok(self.add_def(sec, key, val))
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn get_key_suffix(&self, i: u64) -> String {
+        if i == 1 {
+            "".to_owned()
+        } else {
+            i.to_string()
+        }
+    }
+}
+
+impl Model for DefaultModel {
+    fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
         let mut ast = Assertion::default();
         ast.key = key.to_owned();
         ast.value = value.to_owned();
@@ -162,54 +127,15 @@ impl Model {
         true
     }
 
-    fn load_section(&mut self, cfg: &Config, sec: &str) -> Result<()> {
-        let mut i = 1;
-
-        loop {
-            if !self.load_assertion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
-                break Ok(());
-            } else {
-                i += 1;
-            }
-        }
-    }
-
-    pub fn get_model(&self) -> &HashMap<String, AssertionMap> {
+    fn get_model(&self) -> &HashMap<String, AssertionMap> {
         &self.model
     }
 
-    pub fn get_mut_model(&mut self) -> &mut HashMap<String, AssertionMap> {
+    fn get_mut_model(&mut self) -> &mut HashMap<String, AssertionMap> {
         &mut self.model
     }
 
-    fn load_assertion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
-        let sec_name = match sec {
-            "r" => "request_definition",
-            "p" => "policy_definition",
-            "g" => "role_definition",
-            "e" => "policy_effect",
-            "m" => "matchers",
-            _ => {
-                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
-            }
-        };
-
-        if let Some(val) = cfg.get_str(&format!("{}::{}", sec_name, key)) {
-            Ok(self.add_def(sec, key, val))
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn get_key_suffix(&self, i: u64) -> String {
-        if i == 1 {
-            "".to_owned()
-        } else {
-            i.to_string()
-        }
-    }
-
-    pub fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+    fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         if let Some(asts) = self.model.get_mut("g") {
             for ast in asts.values_mut() {
                 ast.build_role_links(Arc::clone(&rm))?;
@@ -218,7 +144,7 @@ impl Model {
         Ok(())
     }
 
-    pub fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
                 return t2
@@ -229,7 +155,26 @@ impl Model {
         false
     }
 
-    pub fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>> {
+    fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<&str>>) -> bool {
+        let mut all_added = true;
+        let mut rules_added = vec![];
+        for rule in rules {
+            if !self.add_policy(sec, ptype, rule.clone()) {
+                all_added = false;
+                break;
+            } else {
+                rules_added.push(rule);
+            }
+        }
+        if !all_added && !rules_added.is_empty() {
+            for rule in rules_added {
+                self.remove_policy(sec, ptype, rule);
+            }
+        }
+        all_added
+    }
+
+    fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>> {
         if let Some(t1) = self.model.get(sec) {
             if let Some(t2) = t1.get(ptype) {
                 return t2.policy.iter().map(|x| x.to_owned()).collect();
@@ -238,7 +183,7 @@ impl Model {
         vec![]
     }
 
-    pub fn get_filtered_policy(
+    fn get_filtered_policy(
         &self,
         sec: &str,
         ptype: &str,
@@ -265,7 +210,7 @@ impl Model {
         res
     }
 
-    pub fn has_policy(&self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn has_policy(&self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
         let policy = self.get_policy(sec, ptype);
         for r in policy {
             if r == rule {
@@ -275,7 +220,7 @@ impl Model {
         false
     }
 
-    pub fn get_values_for_field_in_policy(
+    fn get_values_for_field_in_policy(
         &self,
         sec: &str,
         ptype: &str,
@@ -291,7 +236,7 @@ impl Model {
             .collect()
     }
 
-    pub fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
                 let rule: Vec<String> = rule.iter().map(|&x| String::from(x)).collect();
@@ -301,7 +246,26 @@ impl Model {
         false
     }
 
-    pub fn clear_policy(&mut self) {
+    fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<&str>>) -> bool {
+        let mut all_removed = true;
+        let mut rules_removed = vec![];
+        for rule in rules {
+            if !self.remove_policy(sec, ptype, rule.clone()) {
+                all_removed = false;
+                break;
+            } else {
+                rules_removed.push(rule);
+            }
+        }
+        if !all_removed && !rules_removed.is_empty() {
+            for rule in rules_removed {
+                self.add_policy(sec, ptype, rule);
+            }
+        }
+        all_removed
+    }
+
+    fn clear_policy(&mut self) {
         if let Some(model_p) = self.model.get_mut("p") {
             for ast in model_p.values_mut() {
                 ast.policy.clear();
@@ -315,7 +279,7 @@ impl Model {
         }
     }
 
-    pub fn remove_filtered_policy(
+    fn remove_filtered_policy(
         &mut self,
         sec: &str,
         ptype: &str,
@@ -347,226 +311,9 @@ impl Model {
     }
 }
 
-pub struct FunctionMap {
-    pub(crate) fm: HashMap<String, fn(String, String) -> bool>,
-}
-
-impl Default for FunctionMap {
-    fn default() -> FunctionMap {
-        let mut fm: HashMap<String, fn(String, String) -> bool> = HashMap::new();
-        fm.insert("keyMatch".to_owned(), key_match);
-        fm.insert("keyMatch2".to_owned(), key_match2);
-        fm.insert("keyMatch3".to_owned(), key_match3);
-        fm.insert("regexMatch".to_owned(), regex_match);
-        fm.insert("ipMatch".to_owned(), ip_match);
-
-        FunctionMap { fm }
-    }
-}
-
-impl FunctionMap {
-    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
-        self.fm.insert(fname.to_owned(), f);
-    }
-}
-
-pub fn key_match(key1: String, key2: String) -> bool {
-    if let Some(i) = key2.find('*') {
-        if key1.len() > i {
-            return key1[..i] == key2[..i];
-        }
-        key1[..] == key2[..i]
-    } else {
-        key1 == key2
-    }
-}
-
-fn key_match2(key1: String, key2: String) -> bool {
-    let mut key2 = key2.replace("/*", "/.*");
-    let re = Regex::new("(.*):[^/]+(.*)").unwrap();
-    loop {
-        if !key2.contains("/:") {
-            break;
-        }
-        key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
-    }
-    regex_match(key1, format!("^{}$", key2))
-}
-
-fn key_match3(key1: String, key2: String) -> bool {
-    let mut key2 = key2.replace("/*", "/.*");
-    let re = Regex::new(r"(.*)\{[^/]+\}(.*)").unwrap();
-    loop {
-        if !key2.contains("/{") {
-            break;
-        }
-        key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
-    }
-    regex_match(key1, format!("^{}$", key2))
-}
-
-pub fn in_match(k1: String, k2: Vec<Box<dyn Any>>) -> bool {
-    let r = k2
-        .into_iter()
-        .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
-        .collect::<Vec<String>>();
-    r.contains(&k1)
-}
-
-pub fn regex_match(key1: String, key2: String) -> bool {
-    Regex::new(key2.as_str()).unwrap().is_match(key1.as_str())
-}
-
-pub fn ip_match(key1: String, key2: String) -> bool {
-    let key2_split = key2.splitn(2, '/').collect::<Vec<&str>>();
-    let ip_addr2 = key2_split[0];
-
-    if let (Ok(ip_addr1), Ok(ip_addr2)) = (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>()) {
-        if key2_split.len() == 2 {
-            match key2_split[1].parse::<u8>() {
-                Ok(ip_netmask) => match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
-                    Ok(ip_network) => ip_network.contains(ip_addr1),
-                    Err(err) => panic!("invalid ip network {}", err),
-                },
-                _ => panic!("invalid netmask {}", key2_split[1]),
-            }
-        } else {
-            if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) = (ip_addr1, ip_addr2) {
-                if let Some(ip_addr2_new) = ip_addr2_new.to_ipv4() {
-                    return ip_addr2_new == ip_addr1_new;
-                }
-            }
-
-            ip_addr1 == ip_addr2
-        }
-    } else {
-        panic!("invalid argument {} {}", key1, key2)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_key_match() {
-        assert!(key_match("/foo/bar".to_owned(), "/foo/*".to_owned()));
-        assert!(!key_match("/bar/foo".to_owned(), "/foo/*".to_owned()));
-    }
-
-    #[test]
-    fn test_key_match2() {
-        assert!(key_match2("/foo/bar".to_owned(), "/foo/*".to_owned()));
-        assert!(key_match2("/foo/baz".to_owned(), "/foo/:bar".to_owned()));
-        assert!(key_match2(
-            "/foo/baz/foo".to_owned(),
-            "/foo/:bar/foo".to_owned()
-        ));
-        assert!(!key_match2("/baz".to_owned(), "/foo".to_owned()));
-    }
-
-    #[test]
-    fn test_regex_match() {
-        assert!(regex_match("foobar".to_owned(), "^foo*".to_owned()));
-        assert!(!regex_match("barfoo".to_owned(), "^foo*".to_owned()));
-    }
-
-    #[test]
-    fn test_key_match3() {
-        assert!(key_match3("/foo/bar".to_owned(), "/foo/*".to_owned()));
-        assert!(key_match3("/foo/baz".to_owned(), "/foo/{bar}".to_owned()));
-        assert!(key_match3(
-            "/foo/baz/foo".to_owned(),
-            "/foo/{bar}/foo".to_owned()
-        ));
-        assert!(!key_match3("/baz".to_owned(), "/foo".to_owned()));
-    }
-
-    #[test]
-    fn test_ip_match() {
-        assert!(ip_match("::1".to_owned(), "::0:1".to_owned()));
-        assert!(ip_match("192.168.1.1".to_owned(), "192.168.1.1".to_owned()));
-        assert!(ip_match(
-            "127.0.0.1".to_owned(),
-            "::ffff:127.0.0.1".to_owned()
-        ));
-        assert!(ip_match(
-            "192.168.2.123".to_owned(),
-            "192.168.2.0/24".to_owned()
-        ));
-        assert!(!ip_match("::1".to_owned(), "127.0.0.2".to_owned()));
-        assert!(!ip_match(
-            "192.168.2.189".to_owned(),
-            "192.168.1.134/26".to_owned()
-        ));
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_ip_match_panic_1() {
-        assert!(ip_match("I am alice".to_owned(), "127.0.0.1".to_owned()));
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_ip_match_panic_2() {
-        assert!(ip_match("127.0.0.1".to_owned(), "I am alice".to_owned()));
-    }
-
-    #[test]
-    fn test_escape_g_function() {
-        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp = "g([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp, escape_g_function(s.to_owned()));
-
-        let s1 = "g2(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp1 = "g2([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp1, escape_g_function(s1.to_owned()));
-
-        let s2 = "g3(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp2 = "g3([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp2, escape_g_function(s2.to_owned()));
-    }
-
-    #[test]
-    fn test_escape_in_operator() {
-        let s1 = r#"g(r.sub, p.sub) && r.act in ["a","b","c"] && r.sub in ["alice","bob"] && r.obj in ["data1","data2"]"#;
-        let exp1 = r#"g(r.sub, p.sub) && inMatch(r.act, ["a","b","c"]) && inMatch(r.sub, ["alice","bob"]) && inMatch(r.obj, ["data1","data2"])"#;
-
-        assert_eq!(exp1, escape_in_operator(s1.to_owned()));
-
-        let s2 = r#"g(r.sub, p.sub) && p.act in ["a","b","c"] && p.sub in ["alice","bob"] && p.obj in ["data1","data2"]"#;
-        let exp2 = r#"g(r.sub, p.sub) && inMatch(p.act, ["a","b","c"]) && inMatch(p.sub, ["alice","bob"]) && inMatch(p.obj, ["data1","data2"])"#;
-
-        assert_eq!(exp2, escape_in_operator(s2.to_owned()));
-
-        let s3 =
-            r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.obj in ('data2', 'data3')"#;
-        let exp3 = r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || inMatch(r.obj, ["data2", "data3"])"#;
-
-        assert_eq!(exp3, escape_in_operator(s3.to_owned()));
-
-        let s4 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act || r.tenant in ('alice', 'bob')"#;
-        let exp4 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act || inMatch(r.tenant, ["alice", "bob"])"#;
-
-        assert_eq!(exp4, escape_in_operator(s4.to_owned()));
-
-        let s5 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act && p2.sub in ('alice', 'bob') || r.obj in ('data2', 'data3')"#;
-        let exp5 = r#"g(r.tenant, p.tenant) && r.obj == p.obj && r.act == p.act && inMatch(p2.sub, ["alice", "bob"]) || inMatch(r.obj, ["data2", "data3"])"#;
-
-        assert_eq!(exp5, escape_in_operator(s5.to_owned()));
-    }
-
-    #[test]
-    fn test_escape_assertion() {
-        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp = "g(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
-
-        assert_eq!(exp, escape_assertion(s.to_owned()));
-    }
 
     use crate::adapter::{FileAdapter, MemoryAdapter};
     use crate::enforcer::Enforcer;
@@ -574,10 +321,12 @@ mod tests {
     fn test_basic_model() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -594,10 +343,12 @@ mod tests {
     fn test_basic_model_no_policy() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/basic_model.conf")
+                .await
+                .unwrap();
 
-            let adapter = MemoryAdapter::default();
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert!(!e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -614,12 +365,12 @@ mod tests {
     fn test_basic_model_with_root() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_with_root_model.conf")
+            let m = DefaultModel::from_file("examples/basic_with_root_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert!(e.enforce(vec!["bob", "data2", "write"]).unwrap());
@@ -640,12 +391,12 @@ mod tests {
     fn test_basic_model_with_root_no_policy() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_with_root_model.conf")
+            let m = DefaultModel::from_file("examples/basic_with_root_model.conf")
                 .await
                 .unwrap();
 
-            let adapter = MemoryAdapter::default();
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(!e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert!(!e.enforce(vec!["bob", "data2", "write"]).unwrap());
@@ -666,12 +417,12 @@ mod tests {
     fn test_basic_model_without_users() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_without_users_model.conf")
+            let m = DefaultModel::from_file("examples/basic_without_users_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_without_users_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(e.enforce(vec!["data1", "read"]).unwrap());
             assert!(!e.enforce(vec!["data1", "write"]).unwrap());
@@ -684,12 +435,12 @@ mod tests {
     fn test_basic_model_without_resources() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/basic_without_resources_model.conf")
+            let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert!(e.enforce(vec!["alice", "read"]).unwrap());
             assert!(e.enforce(vec!["bob", "write"]).unwrap());
@@ -702,10 +453,12 @@ mod tests {
     fn test_rbac_model() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -722,12 +475,12 @@ mod tests {
     fn test_rbac_model_with_resource_roles() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_resource_roles_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_resource_roles_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(true, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -744,12 +497,12 @@ mod tests {
     fn test_rbac_model_with_domains() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_domains_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(
                 true,
@@ -795,12 +548,12 @@ mod tests {
     fn test_rbac_model_with_domains_at_runtime() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_domains_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
                 .await
                 .unwrap();
 
-            let adapter = MemoryAdapter::default();
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let adapter = MemoryAdapter::new();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
             e.add_policy(vec!["admin", "domain1", "data1", "read"])
                 .await
                 .unwrap();
@@ -946,12 +699,12 @@ mod tests {
     fn test_rbac_model_with_domains_at_runtime_mock_adapter() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_domains_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             e.add_policy(vec!["admin", "domain3", "data1", "read"])
                 .await
@@ -998,12 +751,12 @@ mod tests {
     fn test_rbac_model_with_deny() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_deny_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_deny_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -1020,12 +773,12 @@ mod tests {
     fn test_rbac_model_with_not_deny() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_with_not_deny_model.conf")
+            let m = DefaultModel::from_file("examples/rbac_with_not_deny_model.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(false, e.enforce(vec!["alice", "data2", "write"]).unwrap());
         });
@@ -1035,10 +788,12 @@ mod tests {
     fn test_rbac_model_with_custom_data() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model.conf").await.unwrap();
+            let m = DefaultModel::from_file("examples/rbac_model.conf")
+                .await
+                .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let mut e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let mut e = Enforcer::new(m, adapter).await.unwrap();
 
             e.add_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
                 .await
@@ -1072,12 +827,12 @@ mod tests {
     fn test_rbac_model_using_in_op() {
         use async_std::task;
         task::block_on(async {
-            let m = Model::from_file("examples/rbac_model_matcher_using_in_op.conf")
+            let m = DefaultModel::from_file("examples/rbac_model_matcher_using_in_op.conf")
                 .await
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let e = Enforcer::new(m, Box::new(adapter)).await.unwrap();
+            let e = Enforcer::new(m, adapter).await.unwrap();
 
             assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
             assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
