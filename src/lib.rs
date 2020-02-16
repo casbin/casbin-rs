@@ -1,4 +1,5 @@
 mod adapter;
+mod cache;
 mod cached_enforcer;
 mod config;
 mod effector;
@@ -16,6 +17,7 @@ pub mod error;
 pub mod prelude;
 
 pub use adapter::{Adapter, FileAdapter};
+pub use cache::Cache;
 pub use cached_enforcer::CachedEnforcer;
 pub use enforcer::Enforcer;
 pub use internal_api::InternalApi;

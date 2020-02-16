@@ -1,76 +1,63 @@
 use crate::adapter::Adapter;
+use crate::cache::{Cache, DefaultCache};
 use crate::emitter::{Event, CACHED_EMITTER};
 use crate::enforcer::Enforcer;
 use crate::model::Model;
 use crate::Result;
 
+use async_std::task;
 use emitbrown::Events;
-use ttl_cache::TtlCache;
 
 use std::ops::{Deref, DerefMut};
 use std::time::Duration;
 
 pub struct CachedEnforcer {
-    pub(crate) ttl: Duration,
-    pub(crate) max_cached_items: usize,
     pub(crate) enforcer: Enforcer,
-    pub(crate) cache: Option<TtlCache<Vec<String>, bool>>,
+    pub(crate) cache: Box<dyn Cache<Vec<String>, bool>>,
 }
 
 impl CachedEnforcer {
     pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
-            ttl: Duration::from_secs(120),
-            max_cached_items: 1000,
             enforcer: Enforcer::new(m, a).await?,
-            cache: None,
+            cache: DefaultCache::new(1000),
         };
 
         CACHED_EMITTER.lock().unwrap().on(
             Event::PolicyChange,
+            // Todo: Move to async closure when it's stable
+            // https://github.com/rust-lang/rfcs/blob/master/text/2394-async_await.md
             Box::new(|ce: &mut CachedEnforcer| {
-                if let Some(ref mut cache) = ce.cache {
-                    cache.clear();
-                }
+                task::block_on(async {
+                    ce.cache.clear().await;
+                });
             }),
         );
 
         Ok(cached_enforcer)
     }
 
+    pub fn set_cache(&mut self, cache: Box<dyn Cache<Vec<String>, bool>>) {
+        self.cache = cache;
+    }
+
     pub fn set_ttl(&mut self, ttl: Duration) {
-        self.ttl = ttl;
+        self.cache.set_ttl(ttl);
     }
 
-    pub fn set_max_cached_items(&mut self, max_cached_items: usize) {
-        self.max_cached_items = max_cached_items;
+    pub fn set_capacity(&mut self, cap: usize) {
+        self.cache.set_capacity(cap);
     }
 
-    pub fn enable_cache(&mut self) {
-        if self.cache.is_none() {
-            self.cache = Some(TtlCache::new(self.max_cached_items));
-        }
-    }
+    pub async fn enforce(&mut self, rvals: Vec<&str>) -> Result<bool> {
+        let key: Vec<String> = rvals.iter().map(|&x| String::from(x)).collect();
 
-    pub fn disable_cache(&mut self) {
-        if self.cache.is_some() {
-            self.cache = None;
-        }
-    }
-
-    pub fn enforce(&mut self, rvals: Vec<&str>) -> Result<bool> {
-        if let Some(ref mut cache) = self.cache {
-            let key: Vec<String> = rvals.iter().map(|&x| String::from(x)).collect();
-
-            if let Some(result) = cache.get(&key) {
-                Ok(*result)
-            } else {
-                let result = self.enforcer.enforce(rvals)?;
-                cache.insert(key, result, self.ttl);
-                Ok(result)
-            }
+        if let Some(result) = self.cache.get(&key).await {
+            Ok(*result)
         } else {
-            self.enforcer.enforce(rvals)
+            let result = self.enforcer.enforce(rvals)?;
+            self.cache.set(key, result).await;
+            Ok(result)
         }
     }
 }

@@ -498,9 +498,7 @@ mod tests {
                 .unwrap();
 
             let adapter = FileAdapter::new("examples/rbac_policy.csv");
-            let e = Arc::new(RwLock::new(
-                Enforcer::new(m, adapter).await.unwrap(),
-            ));
+            let e = Arc::new(RwLock::new(Enforcer::new(m, adapter).await.unwrap()));
             let ee = e.clone();
 
             assert_eq!(
