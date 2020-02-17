@@ -5,6 +5,7 @@ use crate::Result;
 
 use async_trait::async_trait;
 use emitbrown::Events;
+use log::error;
 
 #[async_trait]
 pub trait InternalApi {
@@ -14,11 +15,23 @@ pub trait InternalApi {
         ptype: &str,
         rule: Vec<&str>,
     ) -> Result<bool>;
+    async fn add_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
+    ) -> Result<bool>;
     async fn remove_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
         rule: Vec<&str>,
+    ) -> Result<bool>;
+    async fn remove_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
     ) -> Result<bool>;
     async fn remove_filtered_policy_internal(
         &mut self,
@@ -43,14 +56,44 @@ impl InternalApi for Enforcer {
         }
 
         if self.auto_save {
-            return self.adapter.add_policy(sec, ptype, rule).await;
+            if self.adapter.add_policy(sec, ptype, rule).await? {
+                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            } else {
+                error!("policy was added to model but not adapter");
+            }
+
+            return Ok(rule_added);
         }
 
-        if rule_added {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-        }
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
 
         Ok(rule_added)
+    }
+
+    async fn add_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        let all_added = self.model.add_policies(sec, ptype, rules.clone());
+        if !all_added {
+            return Ok(false);
+        }
+
+        if self.auto_save {
+            if self.adapter.add_policies(sec, ptype, rules).await? {
+                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            } else {
+                error!("policies were added to model but not adapter");
+            }
+
+            return Ok(all_added);
+        }
+
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+
+        Ok(all_added)
     }
 
     async fn remove_policy_internal(
@@ -65,14 +108,44 @@ impl InternalApi for Enforcer {
         }
 
         if self.auto_save {
-            return self.adapter.remove_policy(sec, ptype, rule).await;
+            if self.adapter.remove_policy(sec, ptype, rule).await? {
+                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            } else {
+                error!("policy was added to model but not adapter");
+            }
+
+            return Ok(rule_removed);
         }
 
-        if rule_removed {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-        }
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
 
         Ok(rule_removed)
+    }
+
+    async fn remove_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        let all_removed = self.model.remove_policies(sec, ptype, rules.clone());
+        if !all_removed {
+            return Ok(false);
+        }
+
+        if self.auto_save {
+            if self.adapter.remove_policies(sec, ptype, rules).await? {
+                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            } else {
+                error!("policies were added to model but not adapter");
+            }
+
+            return Ok(all_removed);
+        }
+
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+
+        Ok(all_removed)
     }
 
     async fn remove_filtered_policy_internal(
@@ -85,21 +158,25 @@ impl InternalApi for Enforcer {
         let rule_removed =
             self.model
                 .remove_filtered_policy(sec, ptype, field_index, field_values.clone());
-
         if !rule_removed {
             return Ok(false);
         }
 
         if self.auto_save {
-            return self
+            if self
                 .adapter
                 .remove_filtered_policy(sec, ptype, field_index, field_values)
-                .await;
+                .await?
+            {
+                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            } else {
+                error!("policy was added to model but not adapter");
+            }
+
+            return Ok(rule_removed);
         }
 
-        if rule_removed {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-        }
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
 
         Ok(rule_removed)
     }
@@ -113,16 +190,61 @@ impl InternalApi for CachedEnforcer {
         ptype: &str,
         rule: Vec<&str>,
     ) -> Result<bool> {
-        let result = self.enforcer.add_policy_internal(sec, ptype, rule).await;
-
-        if let Ok(true) = result {
-            CACHED_EMITTER
-                .lock()
-                .unwrap()
-                .emit(Event::PolicyChange, self);
+        let rule_added = self.enforcer.add_policy_internal(sec, ptype, rule).await?;
+        if !rule_added {
+            return Ok(false);
         }
 
-        result
+        CACHED_EMITTER
+            .lock()
+            .unwrap()
+            .emit(Event::PolicyChange, self);
+
+        Ok(rule_added)
+    }
+
+    async fn add_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        let all_added = self
+            .enforcer
+            .add_policies_internal(sec, ptype, rules)
+            .await?;
+        if !all_added {
+            return Ok(false);
+        }
+
+        CACHED_EMITTER
+            .lock()
+            .unwrap()
+            .emit(Event::PolicyChange, self);
+
+        Ok(all_added)
+    }
+
+    async fn remove_policies_internal(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<&str>>,
+    ) -> Result<bool> {
+        let all_removed = self
+            .enforcer
+            .remove_policies_internal(sec, ptype, rules)
+            .await?;
+        if !all_removed {
+            return Ok(false);
+        }
+
+        CACHED_EMITTER
+            .lock()
+            .unwrap()
+            .emit(Event::PolicyChange, self);
+
+        Ok(all_removed)
     }
 
     async fn remove_policy_internal(
@@ -131,16 +253,20 @@ impl InternalApi for CachedEnforcer {
         ptype: &str,
         rule: Vec<&str>,
     ) -> Result<bool> {
-        let result = self.enforcer.remove_policy_internal(sec, ptype, rule).await;
-
-        if let Ok(true) = result {
-            CACHED_EMITTER
-                .lock()
-                .unwrap()
-                .emit(Event::PolicyChange, self);
+        let rule_removed = self
+            .enforcer
+            .remove_policy_internal(sec, ptype, rule)
+            .await?;
+        if !rule_removed {
+            return Ok(false);
         }
 
-        result
+        CACHED_EMITTER
+            .lock()
+            .unwrap()
+            .emit(Event::PolicyChange, self);
+
+        Ok(rule_removed)
     }
 
     async fn remove_filtered_policy_internal(
@@ -150,18 +276,19 @@ impl InternalApi for CachedEnforcer {
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool> {
-        let result = self
+        let rule_removed = self
             .enforcer
             .remove_filtered_policy_internal(sec, ptype, field_index, field_values)
-            .await;
-
-        if let Ok(true) = result {
-            CACHED_EMITTER
-                .lock()
-                .unwrap()
-                .emit(Event::PolicyChange, self)
+            .await?;
+        if !rule_removed {
+            return Ok(false);
         }
 
-        result
+        CACHED_EMITTER
+            .lock()
+            .unwrap()
+            .emit(Event::PolicyChange, self);
+
+        Ok(rule_removed)
     }
 }

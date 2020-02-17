@@ -25,24 +25,26 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.2.0"
+casbin = "0.3.0"
+async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
 ## Get started
 
 1. New a Casbin enforcer with a model file and a policy file:
 
-    ```rust
-    use casbin::prelude::*;
-    use async_std::task;
+```rust
 
-    task::block_on(async {
-        let model = Model::from_file("path/to/model.conf")?;
-        let adapter = Box::new(FileAdapter::new("path/to/policy.csv"));
+use casbin::prelude::*;
 
-        let e = Enforcer::new(model, adapter).await?;
-    });
-    ```
+#[async_std::main]
+async fn main() {
+    let model = Model::from_file("path/to/model.conf")?;
+    let adapter = FileAdapter::new("path/to/policy.csv");
+
+    let e = Enforcer::new(Box::new(model),Box::new(adapter)).await?;
+}
+```
 
 2. Add an enforcement hook into your code right before the access happens:
 

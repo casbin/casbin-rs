@@ -4,10 +4,21 @@ use crate::Result;
 use std::collections::HashMap;
 use std::convert::AsRef;
 
-use async_std::fs::File;
-use async_std::io::prelude::*;
-use async_std::io::{BufReader, Cursor, Error as IoError, ErrorKind};
-use async_std::path::Path;
+#[cfg(feature = "runtime-async-std")]
+use async_std::{
+    fs::File,
+    io::prelude::*,
+    io::{BufReader, Cursor, Error as IoError, ErrorKind},
+    path::Path,
+};
+
+#[cfg(feature = "runtime-tokio")]
+use std::{io::Cursor, path::Path};
+#[cfg(feature = "runtime-tokio")]
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind},
+};
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";
@@ -203,59 +214,54 @@ impl Config {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_get() {
-        use async_std::task;
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_get() {
+        let mut config = Config::from_file("examples/testini.ini").await.unwrap();
 
-        task::block_on(async {
-            let mut config = Config::from_file("examples/testini.ini").await.unwrap();
+        assert_eq!(Some(true), config.get_bool("debug"));
+        assert_eq!(Some(64), config.get_int("math::math.i64"));
+        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+        assert_eq!(
+            Some("10.0.0.1".to_owned()),
+            config.get_string("mysql::mysql.master.host")
+        );
 
-            assert_eq!(Some(true), config.get_bool("debug"));
-            assert_eq!(Some(64), config.get_int("math::math.i64"));
-            assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-            assert_eq!(
-                Some("10.0.0.1".to_owned()),
-                config.get_string("mysql::mysql.master.host")
-            );
+        config.set("other::key1", "new test key");
+        assert_eq!(
+            Some("new test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
-            config.set("other::key1", "new test key");
-            assert_eq!(
-                Some("new test key".to_owned()),
-                config.get_string("other::key1")
-            );
+        config.set("other::key1", "test key");
+        assert_eq!(
+            Some("test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
-            config.set("other::key1", "test key");
-            assert_eq!(
-                Some("test key".to_owned()),
-                config.get_string("other::key1")
-            );
-
-            assert_eq!(
-                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-                config.get_string("multi1::name")
-            );
-            assert_eq!(
-                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-                config.get_string("multi2::name")
-            );
-            assert_eq!(
-                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-                config.get_string("multi3::name")
-            );
-            assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
-            assert_eq!(
-                Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
-                config.get_string("multi5::name")
-            );
-        });
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi1::name")
+        );
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi2::name")
+        );
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi3::name")
+        );
+        assert_eq!(Some("".to_owned()), config.get_string("multi4::name"));
+        assert_eq!(
+            Some("r.sub==p.sub&&r.obj==p.obj".to_owned()),
+            config.get_string("multi5::name")
+        );
     }
 
-    #[test]
-    fn test_from_text() {
-        use async_std::task;
-
-        task::block_on(async {
-            let text: &str = r#"
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_from_text() {
+        let text: &str = r#"
                 # test config
                 debug = true
                 url = act.wiki
@@ -282,27 +288,26 @@ mod tests {
                 math.f64 = 64.1
             "#;
 
-            let mut config = Config::from_str(text).await.unwrap();
+        let mut config = Config::from_str(text).await.unwrap();
 
-            assert_eq!(Some(true), config.get_bool("debug"));
-            assert_eq!(Some(64), config.get_int("math::math.i64"));
-            assert_eq!(Some(64.1), config.get_float("math::math.f64"));
-            assert_eq!(
-                Some("10.0.0.1".to_owned()),
-                config.get_string("mysql::mysql.master.host")
-            );
+        assert_eq!(Some(true), config.get_bool("debug"));
+        assert_eq!(Some(64), config.get_int("math::math.i64"));
+        assert_eq!(Some(64.1), config.get_float("math::math.f64"));
+        assert_eq!(
+            Some("10.0.0.1".to_owned()),
+            config.get_string("mysql::mysql.master.host")
+        );
 
-            config.set("other::key1", "new test key");
-            assert_eq!(
-                Some("new test key".to_owned()),
-                config.get_string("other::key1")
-            );
+        config.set("other::key1", "new test key");
+        assert_eq!(
+            Some("new test key".to_owned()),
+            config.get_string("other::key1")
+        );
 
-            config.set("other::key1", "test key");
-            assert_eq!(
-                Some("test key".to_owned()),
-                config.get_string("other::key1")
-            );
-        });
+        config.set("other::key1", "test key");
+        assert_eq!(
+            Some("test key".to_owned()),
+            config.get_string("other::key1")
+        );
     }
 }
