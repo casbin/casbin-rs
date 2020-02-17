@@ -1,9 +1,13 @@
+#[cfg(feature = "runtime-async-std")]
 use async_std::net::IpAddr;
+
 use ip_network::IpNetwork;
 use regex::Regex;
 use rhai::Any;
 
 use std::collections::HashMap;
+#[cfg(feature = "runtime-tokio")]
+use std::net::IpAddr;
 
 pub struct FunctionMap {
     pub(crate) fm: HashMap<String, fn(String, String) -> bool>,

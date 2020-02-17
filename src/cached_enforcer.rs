@@ -5,6 +5,7 @@ use crate::enforcer::Enforcer;
 use crate::model::Model;
 use crate::Result;
 
+#[cfg(feature = "runtime-async-std")]
 use async_std::task;
 use emitbrown::Events;
 
@@ -17,6 +18,7 @@ pub struct CachedEnforcer {
 }
 
 impl CachedEnforcer {
+    #[cfg(feature = "runtime-async-std")]
     pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
@@ -31,6 +33,33 @@ impl CachedEnforcer {
                 task::block_on(async {
                     ce.cache.clear().await;
                 });
+            }),
+        );
+
+        Ok(cached_enforcer)
+    }
+
+    #[cfg(feature = "runtime-tokio")]
+    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+        let cached_enforcer = CachedEnforcer {
+            enforcer: Enforcer::new(m, a).await?,
+            cache: DefaultCache::new(1000),
+        };
+
+        CACHED_EMITTER.lock().unwrap().on(
+            Event::PolicyChange,
+            // Todo: Move to async closure when it's stable
+            // https://github.com/rust-lang/rfcs/blob/master/text/2394-async_await.md
+            Box::new(|ce: &mut CachedEnforcer| {
+                tokio::runtime::Builder::new()
+                    .basic_scheduler()
+                    .threaded_scheduler()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(async {
+                        ce.cache.clear().await;
+                    });
             }),
         );
 

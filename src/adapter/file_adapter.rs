@@ -4,13 +4,27 @@ use crate::model::Model;
 use crate::Result;
 
 use std::convert::AsRef;
-use std::io::{Error as IoError, ErrorKind};
 
-use async_std::fs::File;
-use async_std::io::prelude::*;
-use async_std::io::BufReader;
-use async_std::path::Path;
-use async_std::prelude::*;
+#[cfg(feature = "runtime-async-std")]
+use async_std::{
+    fs::File,
+    io::prelude::*,
+    io::{BufReader, Error as IoError, ErrorKind},
+    path::Path,
+    prelude::*,
+};
+
+#[cfg(feature = "runtime-tokio")]
+use std::{
+    io::{Error as IoError, ErrorKind},
+    path::Path,
+};
+#[cfg(feature = "runtime-tokio")]
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    stream::StreamExt,
+};
 
 use async_trait::async_trait;
 
