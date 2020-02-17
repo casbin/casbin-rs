@@ -569,7 +569,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -647,7 +647,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
         assert_eq!(
             vec![
@@ -698,7 +698,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
         assert_eq!(
             vec![
@@ -808,7 +808,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
         assert_eq!(
             vec!["alice", "bob", "data2_admin"],

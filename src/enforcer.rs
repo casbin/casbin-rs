@@ -335,7 +335,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
@@ -446,7 +446,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         assert_eq!(
             true,
             e.enforce(vec!["alice", "/alice_data/resource2", "POST"])
@@ -470,7 +470,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.add_permission_for_user("alice", vec!["data1", "invalid"])
             .await
             .unwrap();
@@ -492,7 +492,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.add_permission_for_user("alice", vec!["data1", "read"])
             .await
             .unwrap();
@@ -534,7 +534,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.add_permission_for_user("alice", vec!["data1", "read"])
             .await
             .unwrap();
@@ -560,7 +560,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
-        let e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
         assert!(e.enforce(vec!["192.168.2.123", "data1", "read"]).unwrap());
 
@@ -594,7 +594,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.enable_auto_save(false);
         e.remove_policy(vec!["alice", "data1", "read"])
             .await
@@ -633,7 +633,7 @@ mod tests {
             .unwrap();
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m),Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
         assert_eq!(false, e.enforce(vec!["user501", "data9", "read"]).unwrap());
@@ -646,7 +646,9 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1),Box::new(adapter1)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
+            .await
+            .unwrap();
 
         assert_eq!(false, e.enforce(vec!["root", "data1", "read"]).unwrap());
 
@@ -654,7 +656,9 @@ mod tests {
             .await
             .unwrap();
         let adapter2 = FileAdapter::new("examples/basic_policy.csv");
-        let e2 = Enforcer::new(Box::new(m2),Box::new(adapter2)).await.unwrap();
+        let e2 = Enforcer::new(Box::new(m2), Box::new(adapter2))
+            .await
+            .unwrap();
 
         e.model = e2.model;
         assert_eq!(true, e.enforce(vec!["root", "data1", "read"]).unwrap());
@@ -667,7 +671,9 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1),Box::new(adapter1)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
+            .await
+            .unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -676,7 +682,9 @@ mod tests {
             .await
             .unwrap();
         let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
-        let e2 = Enforcer::new(Box::new(m2),Box::new(adapter2)).await.unwrap();
+        let e2 = Enforcer::new(Box::new(m2), Box::new(adapter2))
+            .await
+            .unwrap();
 
         e.adapter = e2.adapter;
         e.load_policy().await.unwrap();
@@ -693,7 +701,9 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1),Box::new(adapter1)).await.unwrap();
+        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
+            .await
+            .unwrap();
 
         e.add_function("keyMatchCustom", key_match);
 
