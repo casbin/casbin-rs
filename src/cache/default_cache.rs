@@ -65,61 +65,56 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_std::task;
     use std::thread::sleep;
 
-    #[test]
-    fn test_set_and_get() {
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_set_and_get() {
         let mut cache = DefaultCache::new(1);
 
-        task::block_on(async move {
-            cache.set(vec!["alice", "/data1", "read"], false).await;
-            assert!(cache.get(&vec!["alice", "/data1", "read"]).await == Some(&false));
-        });
+        cache.set(vec!["alice", "/data1", "read"], false).await;
+        assert!(cache.get(&vec!["alice", "/data1", "read"]).await == Some(&false));
     }
 
-    #[test]
-    fn test_set_ttl() {
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_set_ttl() {
         let mut cache = DefaultCache::new(1);
         cache.set_ttl(Duration::from_secs(2));
 
-        task::block_on(async move {
-            cache.set(vec!["alice", "/data1", "read"], false).await;
+        cache.set(vec!["alice", "/data1", "read"], false).await;
 
-            sleep(Duration::from_secs(1));
-            assert!(cache.get(&vec!["alice", "/data1", "read"]).await == Some(&false));
+        sleep(Duration::from_secs(1));
+        assert!(cache.get(&vec!["alice", "/data1", "read"]).await == Some(&false));
 
-            sleep(Duration::from_secs(2));
-            assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
-        });
+        sleep(Duration::from_secs(2));
+        assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
     }
 
-    #[test]
-    fn test_capacity() {
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_capacity() {
         let mut cache = DefaultCache::new(1);
 
-        task::block_on(async move {
-            cache.set(vec!["alice", "/data1", "read"], false).await;
-            cache.set(vec!["bob", "/data2", "write"], false).await;
-            assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
-            assert!(cache.has(&vec!["bob", "/data2", "write"]).await);
-        });
+        cache.set(vec!["alice", "/data1", "read"], false).await;
+        cache.set(vec!["bob", "/data2", "write"], false).await;
+        assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
+        assert!(cache.has(&vec!["bob", "/data2", "write"]).await);
     }
 
-    #[test]
-    fn test_set_capacity() {
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_set_capacity() {
         let mut cache = DefaultCache::new(1);
         cache.set_capacity(2);
 
-        task::block_on(async move {
-            cache.set(vec!["alice", "/data1", "read"], false).await;
-            cache.set(vec!["bob", "/data2", "write"], false).await;
-            cache
-                .set(vec!["unknow", "/data3", "read_write"], false)
-                .await;
-            assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
-            assert!(cache.has(&vec!["bob", "/data2", "write"]).await);
-            assert!(cache.has(&vec!["unknow", "/data3", "read_write"]).await);
-        });
+        cache.set(vec!["alice", "/data1", "read"], false).await;
+        cache.set(vec!["bob", "/data2", "write"], false).await;
+        cache
+            .set(vec!["unknow", "/data3", "read_write"], false)
+            .await;
+        assert!(!cache.has(&vec!["alice", "/data1", "read"]).await);
+        assert!(cache.has(&vec!["bob", "/data2", "write"]).await);
+        assert!(cache.has(&vec!["unknow", "/data3", "read_write"]).await);
     }
 }
