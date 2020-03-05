@@ -459,7 +459,7 @@ mod tests {
             vec!["data1_admin", "data2_admin"],
             e.get_roles_for_user("bob", None)
         );
-        
+
         e.delete_roles_for_user("bob", None).await.unwrap();
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -569,7 +569,7 @@ mod tests {
                             vec![String::new(); 0],
                             ee.write().unwrap().get_roles_for_user("data2_admin", None)
                         );
-                        
+
                         ee.write()
                         .unwrap()
                         .add_roles_for_user("bob",vec!["data2_admin"], None)
@@ -615,13 +615,13 @@ mod tests {
                                 vec![String::new(); 0],
                                 ee.write().unwrap().get_roles_for_user("data2_admin", None)
                             );
-                        
+
                             ee.write()
                             .unwrap()
                             .add_roles_for_user("bob",vec!["data2_admin"], None)
                             .await
                             .unwrap();
-    
+
                             assert_eq!(
                                 vec!["data2_admin", "data1_admin"],
                                 ee.write().unwrap().get_roles_for_user("alice", None)
@@ -633,7 +633,7 @@ mod tests {
                             assert_eq!(
                                 vec![String::new(); 0],
                                 ee.write().unwrap().get_roles_for_user("data2_admin", None)
-                            );    
+                            );
                         });
                 }
             }

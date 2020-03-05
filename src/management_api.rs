@@ -818,13 +818,13 @@ mod tests {
         assert_eq!(vec!["read", "write"], sort_unstable(e.get_all_actions()));
         assert_eq!(vec!["data2_admin"], e.get_all_roles());
     }
-    
+
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_modify_policies_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
-        .await
-        .unwrap();
+            .await
+            .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
@@ -839,20 +839,32 @@ mod tests {
             sort_unstable(e.get_policy())
         );
 
-        e.remove_policies(vec![vec!["alice", "data1", "read"], vec!["bob", "data2", "write"]])
-            .await
-            .unwrap();
+        e.remove_policies(vec![
+            vec!["alice", "data1", "read"],
+            vec!["bob", "data2", "write"],
+        ])
+        .await
+        .unwrap();
         e.remove_policies(vec![vec!["alice", "data1", "read"]])
             .await
             .unwrap();
-        e.add_policies(vec![vec!["eve", "data3", "read"]]).await.unwrap();
-        e.add_policies(vec![vec!["eve", "data3", "read"], vec!["eve", "data3", "read"]]).await.unwrap();
+        e.add_policies(vec![vec!["eve", "data3", "read"]])
+            .await
+            .unwrap();
+        e.add_policies(vec![
+            vec!["eve", "data3", "read"],
+            vec!["eve", "data3", "read"],
+        ])
+        .await
+        .unwrap();
 
         let named_policy = vec!["eve", "data3", "read"];
         e.remove_named_policies("p", vec![named_policy.clone()])
             .await
             .unwrap();
-        e.add_named_policies("p", vec![named_policy.clone()]).await.unwrap();
+        e.add_named_policies("p", vec![named_policy.clone()])
+            .await
+            .unwrap();
 
         assert_eq!(
             vec![
@@ -905,10 +917,10 @@ mod tests {
         e.remove_grouping_policies(vec![vec!["alice", "data2_admin"]])
             .await
             .unwrap();
-        e.add_grouping_policies(vec![vec!["bob", "data1_admin"],vec!["eve", "data3_admin"]])
+
+        e.add_grouping_policies(vec![vec!["bob", "data1_admin"], vec!["eve", "data3_admin"]])
             .await
             .unwrap();
-
 
         assert_eq!(vec!["bob"], e.get_users_for_role("data1_admin", None));
         assert_eq!(
