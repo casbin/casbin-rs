@@ -451,6 +451,19 @@ mod tests {
             e.get_roles_for_user("data2_admin", None)
         );
 
+        e.add_roles_for_user("bob", vec!["data1_admin", "data2_admin"], None)
+            .await
+            .unwrap();
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+        assert_eq!(
+            vec!["data1_admin", "data2_admin"],
+            e.get_roles_for_user("bob", None)
+        );
+        
+        e.delete_roles_for_user("bob", None).await.unwrap();
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
+
         e.add_role_for_user("alice", "data1_admin", None)
             .await
             .unwrap();
@@ -556,6 +569,25 @@ mod tests {
                             vec![String::new(); 0],
                             ee.write().unwrap().get_roles_for_user("data2_admin", None)
                         );
+                        
+                        ee.write()
+                        .unwrap()
+                        .add_roles_for_user("bob",vec!["data2_admin"], None)
+                        .await
+                        .unwrap();
+
+                        assert_eq!(
+                            vec!["data2_admin", "data1_admin"],
+                            ee.write().unwrap().get_roles_for_user("alice", None)
+                        );
+                        assert_eq!(
+                            vec!["data2_admin"],
+                            ee.write().unwrap().get_roles_for_user("bob", None)
+                        );
+                        assert_eq!(
+                            vec![String::new(); 0],
+                            ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                        );
                     });
                 } else if #[cfg(feature = "runtime-tokio")] {
                     tokio::runtime::Builder::new()
@@ -583,6 +615,25 @@ mod tests {
                                 vec![String::new(); 0],
                                 ee.write().unwrap().get_roles_for_user("data2_admin", None)
                             );
+                        
+                            ee.write()
+                            .unwrap()
+                            .add_roles_for_user("bob",vec!["data2_admin"], None)
+                            .await
+                            .unwrap();
+    
+                            assert_eq!(
+                                vec!["data2_admin", "data1_admin"],
+                                ee.write().unwrap().get_roles_for_user("alice", None)
+                            );
+                            assert_eq!(
+                                vec!["data2_admin"],
+                                ee.write().unwrap().get_roles_for_user("bob", None)
+                            );
+                            assert_eq!(
+                                vec![String::new(); 0],
+                                ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                            );    
                         });
                 }
             }
@@ -593,6 +644,11 @@ mod tests {
         e.write()
             .unwrap()
             .delete_role_for_user("alice", "data1_admin", None)
+            .await
+            .unwrap();
+        e.write()
+            .unwrap()
+            .delete_roles_for_user("bob", None)
             .await
             .unwrap();
         assert_eq!(
@@ -805,11 +861,16 @@ mod tests {
         e.add_permission_for_user("bob", vec!["read"])
             .await
             .unwrap();
+        e.add_permissions_for_user("eve", vec![vec!["read"], vec!["write"]])
+            .await
+            .unwrap();
 
         assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
         assert_eq!(true, e.enforce(vec!["bob", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["eve", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["eve", "write"]).unwrap());
 
         e.delete_permission_for_user("bob", vec!["read"])
             .await
@@ -819,13 +880,18 @@ mod tests {
         assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
         assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["bob", "write"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["eve", "read"]).unwrap());
+        assert_eq!(true, e.enforce(vec!["eve", "write"]).unwrap());
 
         e.delete_permissions_for_user("bob").await.unwrap();
+        e.delete_permissions_for_user("eve").await.unwrap();
 
         assert_eq!(false, e.enforce(vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "write"]).unwrap());
         assert_eq!(false, e.enforce(vec!["bob", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["bob", "write"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["eve", "read"]).unwrap());
+        assert_eq!(false, e.enforce(vec!["eve", "write"]).unwrap());
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
