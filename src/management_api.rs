@@ -848,6 +848,10 @@ mod tests {
         e.remove_policies(vec![vec!["alice", "data1", "read"]])
             .await
             .unwrap();
+        assert_eq!(false, e.has_policy(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.has_policy(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.has_policy(vec!["data2_admin", "data2", "read"]));
+        assert_eq!(true, e.has_policy(vec!["data2_admin", "data2", "write"]));
         e.add_policies(vec![vec!["eve", "data3", "read"]])
             .await
             .unwrap();
@@ -857,6 +861,11 @@ mod tests {
         ])
         .await
         .unwrap();
+        assert_eq!(false, e.has_policy(vec!["alice", "data1", "read"]));
+        assert_eq!(false, e.has_policy(vec!["bob", "data2", "write"]));
+        assert_eq!(true, e.has_policy(vec!["eve", "data3", "read"]));
+        assert_eq!(true, e.has_policy(vec!["data2_admin", "data2", "read"]));
+        assert_eq!(true, e.has_policy(vec!["data2_admin", "data2", "write"]));
 
         let named_policy = vec!["eve", "data3", "read"];
         e.remove_named_policies("p", vec![named_policy.clone()])
@@ -903,6 +912,9 @@ mod tests {
         e.add_grouping_policies(vec![vec!["bob", "data1_admin"], vec!["eve", "data3_admin"]])
             .await
             .unwrap();
+        assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
+        assert_eq!(vec!["data1_admin"], e.get_roles_for_user("bob", None));
+        assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve", None));
 
         let named_grouping_policy = vec!["alice", "data2_admin"];
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
