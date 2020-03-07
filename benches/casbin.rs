@@ -1,6 +1,6 @@
+use async_std::task;
 use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
-use async_std::task;
 
 // To save a new baseline to compare against run
 // `cargo bench -- --save-baseline <baseline name>`
@@ -70,10 +70,8 @@ fn enforcer_enforce(b: &mut Criterion) {
         let e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
-                .unwrap();
-            e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
-                .unwrap();
+            e.enforce(vec!["alice", "/alice_data/resource1", "GET"]).unwrap();
+            e.enforce(vec!["alice", "/alice_data/resource1", "POST"]).unwrap();
         })
     });
 }
@@ -95,7 +93,7 @@ fn enforcer_add_permission(b: &mut Criterion) {
         let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            task::block_on(e.add_permission_for_user("alice", vec!["data1", "read"]))
+            task::block_on(e.add_permission_for_user("alice", vec!["data1", "read"])).unwrap();
         })
     });
 }
