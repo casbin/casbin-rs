@@ -1,7 +1,6 @@
 use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
-// needed so we can call async fn's inside non async blocks
-use futures::executor::block_on;
+use async_std::task;
 
 // To save a new baseline to compare against run
 // `cargo bench -- --save-baseline <baseline name>`
@@ -51,7 +50,7 @@ fn enforcer_create(b: &mut Criterion) {
             let adpt = FileAdapter::new("examples/basic_model.conf");
 
             // what we want to measure
-            let _e = block_on(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
+            let _e = task::block_on(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
         });
     });
 }
@@ -68,7 +67,7 @@ fn enforcer_enforce(b: &mut Criterion) {
             "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
         );
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
             e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
@@ -93,10 +92,10 @@ fn enforcer_add_permission(b: &mut Criterion) {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            block_on(e.add_permission_for_user("alice", vec!["data1", "read"]))
+            task::block_on(e.add_permission_for_user("alice", vec!["data1", "read"]))
         })
     });
 }
