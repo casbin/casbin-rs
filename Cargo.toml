@@ -38,3 +38,13 @@ opt-level = 0
 async-std = { version = "1.5.0", features = [ "attributes" ] }
 tokio = { version = "0.2.11", features = [ "full" ] }
 cfg-if = "0.1.10"
+criterion = "0.3"
+futures = "0.3"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "casbin"
+harness = false
+path = "./benches/casbin.rs"
