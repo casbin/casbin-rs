@@ -2,7 +2,7 @@ use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi}
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(feature = "runtime-async-std")]
-fn await_future<F, T>(future: F) -> T 
+fn await_future<F, T>(future: F) -> T
 where
     F: std::future::Future<Output = T>,
 {
@@ -10,7 +10,7 @@ where
 }
 
 #[cfg(feature = "runtime-tokio")]
-fn await_future<F, T>(future: F) -> T 
+fn await_future<F, T>(future: F) -> T
 where
     F: std::future::Future<Output = T>,
 {
@@ -84,8 +84,10 @@ fn enforcer_enforce(b: &mut Criterion) {
         let e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            e.enforce(vec!["alice", "/alice_data/resource1", "GET"]).unwrap();
-            e.enforce(vec!["alice", "/alice_data/resource1", "POST"]).unwrap();
+            e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
+                .unwrap();
+            e.enforce(vec!["alice", "/alice_data/resource1", "POST"])
+                .unwrap();
         })
     });
 }
@@ -122,23 +124,24 @@ criterion_group!(
 );
 criterion_main!(benches);
 
+#[allow(dead_code)]
 mod task {
-    use std::ptr;
     use std::future::Future;
-    use std::task::{RawWaker, RawWakerVTable, Waker, Poll, Context};
     use std::pin::Pin;
+    use std::ptr;
+    use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 
     const RAW_WAKER: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
     const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
-    
+
     unsafe fn clone(_: *const ()) -> RawWaker {
         RAW_WAKER
     }
-    
+
     unsafe fn wake(_: *const ()) {}
-    
+
     unsafe fn wake_by_ref(_: *const ()) {}
-    
+
     unsafe fn drop(_: *const ()) {}
 
     pub fn create() -> Waker {
@@ -147,7 +150,7 @@ mod task {
         unsafe { Waker::from_raw(RAW_WAKER) }
     }
 
-    pub fn block_on<F, T>(mut future: F) -> T 
+    pub fn block_on<F, T>(mut future: F) -> T
     where
         F: Future<Output = T>,
     {
@@ -165,5 +168,3 @@ mod task {
         }
     }
 }
-
-
