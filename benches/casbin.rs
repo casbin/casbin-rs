@@ -1,7 +1,21 @@
-use async_std::task;
 use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
 
+#[cfg(feature = "runtime-async-std")]
+fn await_future<F, T>(future: F) -> T 
+where
+    F: std::future::Future<Output = T>,
+{
+    async_std::task::block_on(future)
+}
+
+#[cfg(feature = "runtime-tokio")]
+fn await_future<F, T>(future: F) -> T 
+where
+    F: std::future::Future<Output = T>,
+{
+    tokio::runtime::Runtime::new().unwrap().block_on(future)
+}
 // To save a new baseline to compare against run
 // `cargo bench -- --save-baseline <baseline name>`
 // on the master branch.
@@ -50,7 +64,7 @@ fn enforcer_create(b: &mut Criterion) {
             let adpt = FileAdapter::new("examples/basic_model.conf");
 
             // what we want to measure
-            let _e = task::block_on(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
+            let _e = await_future(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
         });
     });
 }
@@ -67,7 +81,7 @@ fn enforcer_enforce(b: &mut Criterion) {
             "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
         );
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
             e.enforce(vec!["alice", "/alice_data/resource1", "GET"]).unwrap();
@@ -90,10 +104,10 @@ fn enforcer_add_permission(b: &mut Criterion) {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let mut e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            task::block_on(e.add_permission_for_user("alice", vec!["data1", "read"])).unwrap();
+            await_future(e.add_permission_for_user("alice", vec!["data1", "read"])).unwrap();
         })
     });
 }
@@ -107,3 +121,49 @@ criterion_group!(
     default_model
 );
 criterion_main!(benches);
+
+mod task {
+    use std::ptr;
+    use std::future::Future;
+    use std::task::{RawWaker, RawWakerVTable, Waker, Poll, Context};
+    use std::pin::Pin;
+
+    const RAW_WAKER: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
+    const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
+    
+    unsafe fn clone(_: *const ()) -> RawWaker {
+        RAW_WAKER
+    }
+    
+    unsafe fn wake(_: *const ()) {}
+    
+    unsafe fn wake_by_ref(_: *const ()) {}
+    
+    unsafe fn drop(_: *const ()) {}
+
+    pub fn create() -> Waker {
+        // Safety: The waker points to a vtable with functions that do nothing. Doing
+        // is always safe.
+        unsafe { Waker::from_raw(RAW_WAKER) }
+    }
+
+    pub fn block_on<F, T>(mut future: F) -> T 
+    where
+        F: Future<Output = T>,
+    {
+        // Safety: since we own the future no one can move any part of it but us, and we won't.
+        let mut fut = unsafe { Pin::new_unchecked(&mut future) };
+        let waker = create();
+        let mut ctx = Context::from_waker(&waker);
+        loop {
+            if let Poll::Ready(res) = fut.as_mut().poll(&mut ctx) {
+                return res;
+            }
+            // TODO since criterion is single threaded simply looping seems ok
+            // burning cpu for a simpler function seems fair
+            // possible `std::sync::atomic::spin_loop_hint` here.
+        }
+    }
+}
+
+
