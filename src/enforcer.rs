@@ -250,11 +250,7 @@ impl Enforcer {
                     policy_effects[i] = EffectKind::Indeterminate;
                     continue;
                 }
-                if let Some(j) = p_ast
-                    .tokens
-                    .iter()
-                    .position(|x| x == "p_eft")
-                {
+                if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
                     let eft = &pvals[j];
                     if eft == "allow" {
                         policy_effects[i] = EffectKind::Allow;
@@ -328,7 +324,7 @@ impl Enforcer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{FileAdapter, MemoryAdapter, AdapterType};
+    use crate::adapter::{AdapterType, FileAdapter, MemoryAdapter};
     use crate::model::DefaultModel;
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]

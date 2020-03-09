@@ -64,7 +64,7 @@ where
 }
 
 #[async_trait]
-impl<P> Adapter for FileAdapter<P> 
+impl<P> Adapter for FileAdapter<P>
 where
     P: AsRef<Path> + Send + Sync,
 {
