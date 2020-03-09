@@ -1,4 +1,4 @@
-use crate::adapter::Adapter;
+use crate::adapter::{Adapter, AdapterType};
 use crate::error::{Error, ModelError};
 use crate::model::Model;
 use crate::Result;
@@ -28,13 +28,16 @@ use tokio::{
 
 use async_trait::async_trait;
 
-pub struct FileAdapter<P: AsRef<Path>> {
+pub struct FileAdapter<P> {
     pub file_path: P,
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);
 
-impl<P: AsRef<Path> + Send + Sync + 'static> FileAdapter<P> {
+impl<P> FileAdapter<P>
+where
+    P: AsRef<Path>,
+{
     pub fn new(p: P) -> FileAdapter<P> {
         FileAdapter { file_path: p }
     }
@@ -61,7 +64,10 @@ impl<P: AsRef<Path> + Send + Sync + 'static> FileAdapter<P> {
 }
 
 #[async_trait]
-impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
+impl<P> Adapter for FileAdapter<P> 
+where
+    P: AsRef<Path> + Send + Sync,
+{
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
         self.load_policy_file(m, load_policy_line).await?;
         Ok(())
@@ -103,7 +109,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
     }
 
     async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
+        // this api shouldn't implement, just for convenience
         Ok(false)
     }
 
@@ -113,12 +119,12 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _ptype: &str,
         _rules: Vec<Vec<&str>>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
+        // this api shouldn't implement, just for convenience
         Ok(false)
     }
 
     async fn remove_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
+        // this api shouldn't implement, just for convenience
         Ok(false)
     }
 
@@ -128,7 +134,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _ptype: &str,
         _rule: Vec<Vec<&str>>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
+        // this api shouldn't implement, just for convenience
         Ok(false)
     }
 
@@ -139,8 +145,12 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _field_index: usize,
         _field_values: Vec<&str>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
+        // this api shouldn't implement, just for convenience
         Ok(false)
+    }
+
+    fn adapter_type(&self) -> AdapterType {
+        AdapterType::File
     }
 }
 

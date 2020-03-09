@@ -1,4 +1,4 @@
-use crate::adapter::Adapter;
+use crate::adapter::{Adapter, AdapterType};
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError};
@@ -13,26 +13,28 @@ use rhai::{Any, Engine, RegisterFn, Scope};
 
 use std::sync::{Arc, RwLock};
 
-pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone>;
-}
+pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 
-impl<T> MatchFnClone for T
-where
-    T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
-{
-    fn clone_box(&self) -> Box<dyn MatchFnClone> {
-        Box::new(self.clone())
-    }
-}
+// pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
+//     fn clone_box(&self) -> Box<dyn MatchFnClone>;
+// }
 
-impl Clone for Box<dyn MatchFnClone> {
-    fn clone(&self) -> Self {
-        (**self).clone_box()
-    }
-}
+// impl<T> MatchFnClone for T
+// where
+//     T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
+// {
+//     fn clone_box(&self) -> Box<dyn MatchFnClone> {
+//         Box::new(self.clone())
+//     }
+// }
 
-pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> Box<dyn MatchFnClone> {
+// impl Clone for Box<dyn MatchFnClone> {
+//     fn clone(&self) -> Self {
+//         (**self).clone_box()
+//     }
+// }
+
+pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
     let cb = move |args: Vec<Box<dyn Any>>| -> bool {
         let args = args
             .into_iter()
@@ -154,7 +156,7 @@ impl Enforcer {
             .get("r")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::R(
-                    "Missing request secion in conf file".to_owned(),
+                    "Missing request section in conf file".to_owned(),
                 ))
             })?;
         let p_ast = self
@@ -205,26 +207,26 @@ impl Enforcer {
 
         for (i, token) in r_ast.tokens.iter().enumerate() {
             let scope_exp = format!("let {} = \"{}\";", token, rvals[i]);
-            engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
+            engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
         }
 
         for (key, func) in self.fm.fm.iter() {
-            engine.register_fn(key.as_str(), func.clone());
+            engine.register_fn(key.as_str(), *func);
         }
         engine.register_fn("inMatch", in_match);
 
         if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
                 if key == "g" {
-                    let g = generate_g_function(ast.rm.clone());
-                    engine.register_fn("g", g.clone());
+                    let g = generate_g_function(Arc::clone(&ast.rm));
+                    engine.register_fn("g", g);
                 } else {
-                    let gn = generate_g_function(ast.rm.clone());
-                    engine.register_fn(key, gn.clone());
+                    let gn = generate_g_function(Arc::clone(&ast.rm));
+                    engine.register_fn(key, gn);
                 }
             }
         }
-        let expstring = m_ast.value.clone();
+        let expstring = &m_ast.value;
         let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = self.model.get_policy("p", "p");
         let policy_len = policies.len();
@@ -239,11 +241,11 @@ impl Enforcer {
                 }
                 for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
                     // let p_sub = "alice"; or let p_obj = "resource1"; or let p_sub = "GET";
-                    let scope_exp = format!("let {} = \"{}\";", ptoken.clone(), pvals[pi]);
-                    engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
+                    let scope_exp = format!("let {} = \"{}\";", ptoken, pvals[pi]);
+                    engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
                 }
 
-                let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring.as_str())?;
+                let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
                     continue;
@@ -251,7 +253,7 @@ impl Enforcer {
                 if let Some(j) = p_ast
                     .tokens
                     .iter()
-                    .position(|x| x == &String::from("p_eft"))
+                    .position(|x| x == "p_eft")
                 {
                     let eft = &pvals[j];
                     if eft == "allow" {
@@ -271,9 +273,9 @@ impl Enforcer {
         } else {
             for token in p_ast.tokens.iter() {
                 let scope_exp = format!("let {} = \"{}\";", token, "");
-                engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
+                engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             }
-            let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring.as_str())?;
+            let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
             if eval_result {
                 policy_effects.push(EffectKind::Allow);
             } else {
@@ -313,13 +315,33 @@ impl Enforcer {
     pub fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
         self.auto_build_role_links = auto_build_role_links;
     }
+
+    pub fn set_adapter(&mut self, a: Box<dyn Adapter>) {
+        self.adapter = a;
+    }
+
+    pub fn adapter_type(&self) -> AdapterType {
+        self.adapter.adapter_type()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{FileAdapter, MemoryAdapter};
+    use crate::adapter::{FileAdapter, MemoryAdapter, AdapterType};
     use crate::model::DefaultModel;
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_enforcer_swap_adapter_type() {
+        let m = DefaultModel::default();
+        let file = FileAdapter::new("examples/basic_policy.csv");
+        let mem = MemoryAdapter::default();
+        let mut e = Enforcer::new(Box::new(m), Box::new(file)).await.unwrap();
+        assert_eq!(e.adapter_type(), AdapterType::File);
+        e.set_adapter(Box::new(mem));
+        assert_eq!(e.adapter_type(), AdapterType::Memory);
+    }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
