@@ -13,6 +13,8 @@ use crate::Result;
 pub enum AdapterType {
     File,
     Memory,
+    // relates to TODO in `Enforcer::new`
+    Filter,
     Diesel,
 }
 

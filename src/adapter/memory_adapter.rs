@@ -116,7 +116,6 @@ impl Adapter for MemoryAdapter {
 
     async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
         let rule = vec![ptype, sec].into_iter().chain(rule).map(String::from).collect();
-        // TODO is this supposed to insert?
         Ok(self.policy.insert(rule))
     }
 
