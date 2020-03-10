@@ -150,7 +150,7 @@ impl Enforcer {
             .get("r")
             .ok_or_else(|| {
                 Error::ModelError(ModelError::R(
-                    "Missing request definition in co file".to_owned(),
+                    "Missing request definition in conf file".to_owned(),
                 ))
             })?
             .get("r")
@@ -159,6 +159,7 @@ impl Enforcer {
                     "Missing request section in conf file".to_owned(),
                 ))
             })?;
+
         let p_ast = self
             .model
             .get_model()
@@ -174,6 +175,7 @@ impl Enforcer {
                     "Missing policy section in conf file".to_owned(),
                 ))
             })?;
+
         let m_ast = self
             .model
             .get_model()
@@ -189,6 +191,7 @@ impl Enforcer {
                     "Missing matcher section in conf file".to_owned(),
                 ))
             })?;
+            
         let e_ast = self
             .model
             .get_model()

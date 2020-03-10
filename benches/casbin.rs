@@ -1,4 +1,4 @@
-use casbin::{Adapter, DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
+use casbin::{Adapter, DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, MgmtApi, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[allow(dead_code)]
@@ -141,11 +141,24 @@ fn enforcer_add_permission(b: &mut Criterion) {
     });
 }
 
+fn enforcer_add_policy(b: &mut Criterion) {
+    b.bench_function("adds policy for user MemoryAdapter", |b| {
+        let mut m = DefaultModel::default();
+        let adapter = MemoryAdapter::default();
+        let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+
+        b.iter(|| {
+            task::block_on(e.add_policy(vec!["alice", "data1", "read"])).unwrap();
+        })
+    });
+}
+
 criterion_group!(
     benches,
     enforcer_create,
     enforcer_enforce,
     enforcer_add_permission,
+    enforcer_add_policy,
     file_adapter,
     default_model
 );
