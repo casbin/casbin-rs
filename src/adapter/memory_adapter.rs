@@ -32,11 +32,12 @@ impl Adapter for MemoryAdapter {
 
         if let Some(ast_map) = m.get_model().get("p") {
             for (ptype, ast) in ast_map {
-                if let Some(sec) = ptype.chars().next().map(|x| x.to_string()) {
+                if let Some(sec) = ptype.chars().next() {
                     for policy in ast.get_policy() {
-                        let mut rule = policy.clone();
-                        rule.insert(0, ptype.clone());
-                        rule.insert(0, sec.clone());
+                        let rule = vec![ptype.clone(), sec.to_string()].into_iter()
+                            .chain(policy.clone())
+                            .collect();
+
                         self.policy.insert(rule);
                     }
                 }
@@ -45,11 +46,12 @@ impl Adapter for MemoryAdapter {
 
         if let Some(ast_map) = m.get_model().get("g") {
             for (ptype, ast) in ast_map {
-                if let Some(sec) = ptype.chars().next().map(|x| x.to_string()) {
+                if let Some(sec) = ptype.chars().next() {
                     for policy in ast.get_policy() {
-                        let mut rule = policy.clone();
-                        rule.insert(0, ptype.clone());
-                        rule.insert(0, sec.clone());
+                        let rule = vec![ptype.clone(), sec.to_string()].into_iter()
+                            .chain(policy.clone())
+                            .collect();
+
                         self.policy.insert(rule);
                     }
                 }
@@ -60,10 +62,7 @@ impl Adapter for MemoryAdapter {
     }
 
     async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
-        let mut line: Vec<String> = rule.into_iter().map(String::from).collect();
-        line.insert(0, ptype.to_owned());
-        line.insert(0, sec.to_owned());
-
+        let line = vec![ptype, sec].into_iter().chain(rule).map(String::from).collect();
         Ok(self.policy.insert(line))
     }
 
@@ -116,10 +115,8 @@ impl Adapter for MemoryAdapter {
     }
 
     async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
-        let mut rule: Vec<String> = rule.into_iter().map(String::from).collect();
-        rule.insert(0, ptype.to_owned());
-        rule.insert(0, sec.to_owned());
-
+        let rule = vec![ptype, sec].into_iter().chain(rule).map(String::from).collect();
+        // TODO is this supposed to insert?
         Ok(self.policy.insert(rule))
     }
 

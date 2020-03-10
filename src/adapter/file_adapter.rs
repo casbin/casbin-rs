@@ -29,7 +29,7 @@ use tokio::{
 use async_trait::async_trait;
 
 pub struct FileAdapter<P> {
-    pub file_path: P,
+    file_path: P,
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);

@@ -16,12 +16,24 @@ where
 {
     tokio::runtime::Runtime::new().unwrap().block_on(future)
 }
-// To save a new baseline to compare against run
-// `cargo bench -- --save-baseline <baseline name>`
-// on the master branch.
-//
-// then to compare your changes switch to your branch and run
-// `cargo bench -- --baseline <baseline name>`
+
+///////////////////////////////////////////////////////////////
+///                                                         ///
+///                                                         ///
+///////////////////////////////////////////////////////////////
+/// 
+/// To save a new baseline to compare against run
+/// `cargo bench -- --save-baseline <baseline name>`
+/// on the master branch.
+///
+/// then to compare your changes switch to your branch and run
+/// `cargo bench -- --baseline <baseline name>`
+/// 
+///////////////////////////////////////////////////////////////
+///                                                         ///
+///                                                         ///
+///////////////////////////////////////////////////////////////
+ 
 
 fn default_model(b: &mut Criterion) {
     b.bench_function("crate instance of DefaultModel", |b| {
@@ -64,7 +76,7 @@ fn enforcer_create(b: &mut Criterion) {
             let adpt = FileAdapter::new("examples/basic_model.conf");
 
             // what we want to measure
-            let _e = await_future(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
+            let _e = task::block_on(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
         });
     });
 }
@@ -81,7 +93,7 @@ fn enforcer_enforce(b: &mut Criterion) {
             "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
         );
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
             e.enforce(vec!["alice", "/alice_data/resource1", "GET"])
@@ -106,10 +118,10 @@ fn enforcer_add_permission(b: &mut Criterion) {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
         b.iter(|| {
-            await_future(e.add_permission_for_user("alice", vec!["data1", "read"])).unwrap();
+            task::block_on(e.add_permission_for_user("alice", vec!["data1", "read"])).unwrap();
         })
     });
 }
@@ -124,6 +136,10 @@ criterion_group!(
 );
 criterion_main!(benches);
 
+/// Use `task::block_on` if you want to test just the performance of the code
+/// written and not the added time for `async-std` or `tokio` runtime executor polling.
+/// There is a difference for some operations but using `async-std` or `tokio` is
+/// closer to a "real world" test case as this is what is used.
 #[allow(dead_code)]
 mod task {
     use std::future::Future;
@@ -162,7 +178,7 @@ mod task {
             if let Poll::Ready(res) = fut.as_mut().poll(&mut ctx) {
                 return res;
             }
-            // TODO since criterion is single threaded simply looping seems ok
+            // since criterion is single threaded simply looping seems ok
             // burning cpu for a simpler function seems fair
             // possible `std::sync::atomic::spin_loop_hint` here.
         }
