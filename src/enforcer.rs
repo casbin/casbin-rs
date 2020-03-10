@@ -34,6 +34,26 @@ pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 //     }
 // }
 
+macro_rules! get_or_err {
+    ($this:ident, $key:expr, $err:expr, $msg:expr) => ({
+        $this
+            .model
+            .get_model()
+            .get($key)
+            .ok_or_else(|| {
+                Error::ModelError($err(
+                    format!("Missing {} definition in conf file", $msg),
+                ))
+            })?
+            .get("r")
+            .ok_or_else(|| {
+                Error::ModelError($err(
+                    format!("Missing {} section in conf file", $msg),
+                ))
+            })?
+    });
+}
+
 pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
     let cb = move |args: Vec<Box<dyn Any>>| -> bool {
         let args = args
@@ -144,69 +164,11 @@ impl Enforcer {
     pub fn enforce(&self, rvals: Vec<&str>) -> Result<bool> {
         let mut engine = Engine::new();
         let mut scope: Scope = Vec::new();
-        let r_ast = self
-            .model
-            .get_model()
-            .get("r")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::R(
-                    "Missing request definition in conf file".to_owned(),
-                ))
-            })?
-            .get("r")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::R(
-                    "Missing request section in conf file".to_owned(),
-                ))
-            })?;
 
-        let p_ast = self
-            .model
-            .get_model()
-            .get("p")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::P(
-                    "Missing policy definition in conf file".to_owned(),
-                ))
-            })?
-            .get("p")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::P(
-                    "Missing policy section in conf file".to_owned(),
-                ))
-            })?;
-
-        let m_ast = self
-            .model
-            .get_model()
-            .get("m")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::M(
-                    "Missing matcher definition in conf file".to_owned(),
-                ))
-            })?
-            .get("m")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::M(
-                    "Missing matcher section in conf file".to_owned(),
-                ))
-            })?;
-            
-        let e_ast = self
-            .model
-            .get_model()
-            .get("e")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::E(
-                    "Missing effector definition in conf file".to_owned(),
-                ))
-            })?
-            .get("e")
-            .ok_or_else(|| {
-                Error::ModelError(ModelError::E(
-                    "Missing effector section in conf file".to_owned(),
-                ))
-            })?;
+        let r_ast = get_or_err!(self, "r", ModelError::R, "request");
+        let p_ast = get_or_err!(self, "p", ModelError::P, "policy");
+        let m_ast = get_or_err!(self, "m", ModelError::M, "matcher");
+        let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
 
         for (i, token) in r_ast.tokens.iter().enumerate() {
             let scope_exp = format!("let {} = \"{}\";", token, rvals[i]);
@@ -214,7 +176,7 @@ impl Enforcer {
         }
 
         for (key, func) in self.fm.fm.iter() {
-            engine.register_fn(key.as_str(), *func);
+            engine.register_fn(key, *func);
         }
         engine.register_fn("inMatch", in_match);
 
