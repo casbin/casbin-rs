@@ -1,6 +1,7 @@
 use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
 
+#[allow(dead_code)]
 #[cfg(feature = "runtime-async-std")]
 fn await_future<F, T>(future: F) -> T
 where
@@ -28,6 +29,10 @@ where
 ///
 /// then to compare your changes switch to your branch and run
 /// `cargo bench -- --baseline <baseline name>`
+/// 
+/// Check out
+/// https://bheisler.github.io/criterion.rs/book/getting_started.html
+/// for more information about criterion
 /// 
 ///////////////////////////////////////////////////////////////
 ///                                                         ///
