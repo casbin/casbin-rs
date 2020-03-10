@@ -1,4 +1,4 @@
-use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
+use casbin::{Adapter, DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[allow(dead_code)]
@@ -57,9 +57,19 @@ fn default_model(b: &mut Criterion) {
 }
 
 fn file_adapter(b: &mut Criterion) {
-    b.bench_function("crate instance of FileAdapter", |b| {
+    b.bench_function("crate instance of FileAdapter load policy", |b| {
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def(
+            "m",
+            "m",
+            "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+        );
         b.iter(|| {
-            let _ = FileAdapter::new("examples/basic_model.conf");
+            let f = FileAdapter::new("examples/basic_model.conf");
+            f.load_policy(&mut m);
         });
     });
 }
