@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 
 lazy_static!{
     static ref IN_OP: Regex =
-        Regex::new(r#"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)"#).unwrap();
+    Regex::new(r#"((?:r\d*|p\d*)\.(?:[^\s]+))\s+in\s+(?:\[|\()([^\)\]]*)(?:\]|\))"#).unwrap();
 }
 
 lazy_static!{

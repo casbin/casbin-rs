@@ -13,26 +13,26 @@ use rhai::{Any, Engine, RegisterFn, Scope};
 
 use std::sync::{Arc, RwLock};
 
-// pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
+pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 
-pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
-    fn clone_box(&self) -> Box<dyn MatchFnClone>;
-}
+// pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
+//     fn clone_box(&self) -> Box<dyn MatchFnClone>;
+// }
 
-impl<T> MatchFnClone for T
-where
-    T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
-{
-    fn clone_box(&self) -> Box<dyn MatchFnClone> {
-        Box::new(self.clone())
-    }
-}
+// impl<T> MatchFnClone for T
+// where
+//     T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
+// {
+//     fn clone_box(&self) -> Box<dyn MatchFnClone> {
+//         Box::new(self.clone())
+//     }
+// }
 
-impl Clone for Box<dyn MatchFnClone> {
-    fn clone(&self) -> Self {
-        (**self).clone_box()
-    }
-}
+// impl Clone for Box<dyn MatchFnClone> {
+//     fn clone(&self) -> Self {
+//         (**self).clone_box()
+//     }
+// }
 
 macro_rules! get_or_err {
     ($this:ident, $key:expr, $err:expr, $msg:expr) => ({
@@ -54,7 +54,7 @@ macro_rules! get_or_err {
     });
 }
 
-pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> Box<MatchFnClone> {
+pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
     let cb = move |args: Vec<Box<dyn Any>>| -> bool {
         let args = args
             .into_iter()
@@ -182,13 +182,8 @@ impl Enforcer {
 
         if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
-                if key == "g" {
-                    let g = generate_g_function(Arc::clone(&ast.rm));
-                    engine.register_fn("g", g.clone());
-                } else {
-                    let gn = generate_g_function(Arc::clone(&ast.rm));
-                    engine.register_fn(key, gn.clone());
-                }
+                let gn = generate_g_function(Arc::clone(&ast.rm));
+                engine.register_fn(key, gn);
             }
         }
 
