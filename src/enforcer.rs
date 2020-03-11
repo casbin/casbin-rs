@@ -35,23 +35,19 @@ pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 // }
 
 macro_rules! get_or_err {
-    ($this:ident, $key:expr, $err:expr, $msg:expr) => ({
+    ($this:ident, $key:expr, $err:expr, $msg:expr) => {{
         $this
             .model
             .get_model()
             .get($key)
             .ok_or_else(|| {
-                Error::ModelError($err(
-                    format!("Missing {} definition in conf file", $msg),
-                ))
+                Error::ModelError($err(format!("Missing {} definition in conf file", $msg)))
             })?
             .get($key)
             .ok_or_else(|| {
-                Error::ModelError($err(
-                    format!("Missing {} section in conf file", $msg),
-                ))
+                Error::ModelError($err(format!("Missing {} section in conf file", $msg)))
             })?
-    });
+    }};
 }
 
 pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
@@ -61,7 +57,7 @@ pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
             .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
             .collect::<Vec<String>>();
 
-            if args.len() == 3 {
+        if args.len() == 3 {
             rm.write()
                 .unwrap()
                 .has_link(&args[0], &args[1], Some(&args[2]))

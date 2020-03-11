@@ -1,4 +1,6 @@
-use casbin::{Adapter, DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, MgmtApi, RbacApi};
+use casbin::{
+    Adapter, DefaultModel, Enforcer, FileAdapter, MemoryAdapter, MgmtApi, Model, RbacApi,
+};
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[allow(dead_code)]
@@ -22,23 +24,22 @@ where
 ///                                                         ///
 ///                                                         ///
 ///////////////////////////////////////////////////////////////
-/// 
+///
 /// To save a new baseline to compare against run
 /// `cargo bench -- --save-baseline <baseline name>`
 /// on the master branch.
 ///
 /// then to compare your changes switch to your branch and run
 /// `cargo bench -- --baseline <baseline name>`
-/// 
+///
 /// Check out
 /// https://bheisler.github.io/criterion.rs/book/getting_started.html
 /// for more information about criterion
-/// 
+///
 ///////////////////////////////////////////////////////////////
 ///                                                         ///
 ///                                                         ///
 ///////////////////////////////////////////////////////////////
- 
 
 fn default_model(b: &mut Criterion) {
     b.bench_function("crate instance of DefaultModel", |b| {
@@ -143,7 +144,7 @@ fn enforcer_add_permission(b: &mut Criterion) {
 
 fn enforcer_add_policy(b: &mut Criterion) {
     b.bench_function("adds policy for user MemoryAdapter", |b| {
-        let mut m = DefaultModel::default();
+        let m = DefaultModel::default();
         let adapter = MemoryAdapter::default();
         let mut e = task::block_on(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
 
