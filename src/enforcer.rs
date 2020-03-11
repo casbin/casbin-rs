@@ -13,26 +13,26 @@ use rhai::{Any, Engine, RegisterFn, Scope};
 
 use std::sync::{Arc, RwLock};
 
-pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
+// pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 
-// pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
-//     fn clone_box(&self) -> Box<dyn MatchFnClone>;
-// }
+pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
+    fn clone_box(&self) -> Box<dyn MatchFnClone>;
+}
 
-// impl<T> MatchFnClone for T
-// where
-//     T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
-// {
-//     fn clone_box(&self) -> Box<dyn MatchFnClone> {
-//         Box::new(self.clone())
-//     }
-// }
+impl<T> MatchFnClone for T
+where
+    T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
+{
+    fn clone_box(&self) -> Box<dyn MatchFnClone> {
+        Box::new(self.clone())
+    }
+}
 
-// impl Clone for Box<dyn MatchFnClone> {
-//     fn clone(&self) -> Self {
-//         (**self).clone_box()
-//     }
-// }
+impl Clone for Box<dyn MatchFnClone> {
+    fn clone(&self) -> Self {
+        (**self).clone_box()
+    }
+}
 
 macro_rules! get_or_err {
     ($this:ident, $key:expr, $err:expr, $msg:expr) => ({
@@ -45,7 +45,7 @@ macro_rules! get_or_err {
                     format!("Missing {} definition in conf file", $msg),
                 ))
             })?
-            .get("r")
+            .get($key)
             .ok_or_else(|| {
                 Error::ModelError($err(
                     format!("Missing {} section in conf file", $msg),
@@ -54,14 +54,14 @@ macro_rules! get_or_err {
     });
 }
 
-pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
+pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> Box<MatchFnClone> {
     let cb = move |args: Vec<Box<dyn Any>>| -> bool {
         let args = args
             .into_iter()
             .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
             .collect::<Vec<String>>();
 
-        if args.len() == 3 {
+            if args.len() == 3 {
             rm.write()
                 .unwrap()
                 .has_link(&args[0], &args[1], Some(&args[2]))
@@ -184,13 +184,14 @@ impl Enforcer {
             for (key, ast) in g_result.iter() {
                 if key == "g" {
                     let g = generate_g_function(Arc::clone(&ast.rm));
-                    engine.register_fn("g", g);
+                    engine.register_fn("g", g.clone());
                 } else {
                     let gn = generate_g_function(Arc::clone(&ast.rm));
-                    engine.register_fn(key, gn);
+                    engine.register_fn(key, gn.clone());
                 }
             }
         }
+
         let expstring = &m_ast.value;
         let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = self.model.get_policy("p", "p");

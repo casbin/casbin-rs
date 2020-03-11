@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::error::{Error, ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
@@ -16,6 +18,17 @@ pub struct Assertion {
     pub(crate) tokens: Vec<String>,
     pub(crate) policy: IndexSet<Vec<String>>,
     pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
+}
+
+impl fmt::Debug for Assertion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Assertion")
+            .field("key", &self.key)
+            .field("value", &self.value)
+            .field("tokens", &self.tokens)
+            .field("policy", &self.policy)
+            .finish()
+    }
 }
 
 impl Default for Assertion {
