@@ -261,8 +261,8 @@ mod tests {
     use super::*;
     use crate::adapter::{FileAdapter, MemoryAdapter};
     use crate::model::DefaultModel;
-    use crate::RbacApi;
     use crate::MgmtApi;
+    use crate::RbacApi;
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
@@ -281,10 +281,18 @@ mod tests {
         let mem = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(file)).await.unwrap();
         // this should fail since FileAdapter has basically add_policy
-        assert!(!e.adapter.add_policy("p", "p", vec!["alice", "data", "read"]).await.unwrap());
+        assert!(!e
+            .adapter
+            .add_policy("p", "p", vec!["alice", "data", "read"])
+            .await
+            .unwrap());
         e.set_adapter(Box::new(mem)).await.unwrap();
         // this passes since our MemoryAdapter has a working add_policy method
-        assert!(e.adapter.add_policy("p", "p", vec!["alice", "data", "read"]).await.unwrap())
+        assert!(e
+            .adapter
+            .add_policy("p", "p", vec!["alice", "data", "read"])
+            .await
+            .unwrap())
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
