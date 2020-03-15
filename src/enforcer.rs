@@ -1,4 +1,4 @@
-use crate::adapter::{Adapter, AdapterType};
+use crate::adapter::Adapter;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError};
@@ -14,25 +14,6 @@ use rhai::{Any, Engine, RegisterFn, Scope};
 use std::sync::{Arc, RwLock};
 
 pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
-
-// pub trait MatchFnClone: Fn(Vec<Box<dyn Any>>) -> bool {
-//     fn clone_box(&self) -> Box<dyn MatchFnClone>;
-// }
-
-// impl<T> MatchFnClone for T
-// where
-//     T: 'static + Fn(Vec<Box<dyn Any>>) -> bool + Clone,
-// {
-//     fn clone_box(&self) -> Box<dyn MatchFnClone> {
-//         Box::new(self.clone())
-//     }
-// }
-
-// impl Clone for Box<dyn MatchFnClone> {
-//     fn clone(&self) -> Self {
-//         (**self).clone_box()
-//     }
-// }
 
 macro_rules! get_or_err {
     ($this:ident, $key:expr, $err:expr, $msg:expr) => {{
@@ -269,31 +250,41 @@ impl Enforcer {
         self.auto_build_role_links = auto_build_role_links;
     }
 
-    pub fn set_adapter(&mut self, a: Box<dyn Adapter>) {
+    pub async fn set_adapter(&mut self, a: Box<dyn Adapter>) -> Result<()> {
         self.adapter = a;
-    }
-
-    pub fn adapter_type(&self) -> AdapterType {
-        self.adapter.adapter_type()
+        self.load_policy().await
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{AdapterType, FileAdapter, MemoryAdapter};
+    use crate::adapter::{FileAdapter, MemoryAdapter};
     use crate::model::DefaultModel;
+    use crate::RbacApi;
+    use crate::MgmtApi;
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_enforcer_swap_adapter_type() {
-        let m = DefaultModel::default();
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def(
+            "m",
+            "m",
+            "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+        );
+
         let file = FileAdapter::new("examples/basic_policy.csv");
         let mem = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(file)).await.unwrap();
-        assert_eq!(e.adapter_type(), AdapterType::File);
-        e.set_adapter(Box::new(mem));
-        assert_eq!(e.adapter_type(), AdapterType::Memory);
+        // this should fail since FileAdapter has basically add_policy
+        assert!(!e.adapter.add_policy("p", "p", vec!["alice", "data", "read"]).await.unwrap());
+        e.set_adapter(Box::new(mem)).await.unwrap();
+        // this passes since our MemoryAdapter has a working add_policy method
+        assert!(e.adapter.add_policy("p", "p", vec!["alice", "data", "read"]).await.unwrap())
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -429,7 +420,6 @@ mod tests {
         );
     }
 
-    use crate::RbacApi;
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_rbac_model_in_memory_indeterminate() {
@@ -560,7 +550,6 @@ mod tests {
         assert!(!e.enforce(vec!["192.168.0.1", "data2", "write"]).unwrap());
     }
 
-    use crate::MgmtApi;
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_enable_auto_save() {

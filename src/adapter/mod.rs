@@ -9,15 +9,6 @@ pub use memory_adapter::MemoryAdapter;
 use crate::model::Model;
 use crate::Result;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AdapterType {
-    File,
-    Memory,
-    // relates to TODO in `Enforcer::new`
-    Filter,
-    Diesel,
-}
-
 #[async_trait]
 pub trait Adapter: Send + Sync {
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()>;
@@ -39,5 +30,4 @@ pub trait Adapter: Send + Sync {
         field_index: usize,
         field_values: Vec<&str>,
     ) -> Result<bool>;
-    fn adapter_type(&self) -> AdapterType;
 }

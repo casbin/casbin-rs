@@ -1,4 +1,4 @@
-use crate::adapter::{Adapter, AdapterType};
+use crate::adapter::Adapter;
 use crate::error::{Error, ModelError};
 use crate::model::Model;
 use crate::Result;
@@ -147,10 +147,6 @@ where
     ) -> Result<bool> {
         // this api shouldn't implement, just for convenience
         Ok(false)
-    }
-
-    fn adapter_type(&self) -> AdapterType {
-        AdapterType::File
     }
 }
 

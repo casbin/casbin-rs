@@ -1,4 +1,4 @@
-use crate::adapter::{Adapter, AdapterType};
+use crate::adapter::Adapter;
 use crate::model::Model;
 use crate::Result;
 
@@ -154,9 +154,5 @@ impl Adapter for MemoryAdapter {
         self.policy = tmp;
 
         Ok(res)
-    }
-
-    fn adapter_type(&self) -> AdapterType {
-        AdapterType::Memory
     }
 }

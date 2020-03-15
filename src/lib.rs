@@ -16,7 +16,7 @@ mod watcher;
 pub mod error;
 pub mod prelude;
 
-pub use adapter::{Adapter, AdapterType, FileAdapter, MemoryAdapter};
+pub use adapter::{Adapter, FileAdapter, MemoryAdapter};
 pub use cache::Cache;
 pub use cached_enforcer::CachedEnforcer;
 pub use enforcer::Enforcer;
