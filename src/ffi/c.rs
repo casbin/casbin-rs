@@ -1,5 +1,5 @@
 use crate::{DefaultModel, Enforcer, FileAdapter};
-use futures::executor::block_on;
+use async_std::task::block_on;
 use std::ffi::CStr;
 use std::os::raw::c_char;
 
