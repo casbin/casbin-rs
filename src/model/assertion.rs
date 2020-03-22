@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::error::{Error, ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
