@@ -32,17 +32,6 @@ impl Default for Assertion {
     }
 }
 
-impl fmt::Debug for Assertion {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Assertion")
-            .field("key", &self.key)
-            .field("value", &self.value)
-            .field("tokens", &self.tokens)
-            .field("policy", &self.policy)
-            .finish()
-    }
-}
-
 impl Assertion {
     pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
         &self.policy
