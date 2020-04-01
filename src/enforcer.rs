@@ -471,9 +471,15 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "invalid"])
-            .await
-            .unwrap();
+        e.add_permission_for_user(
+            "alice",
+            vec!["data1", "invalid"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(false, e.enforce(vec!["alice", "data1", "read"]).unwrap());
     }
 
@@ -493,18 +499,42 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "read"])
-            .await
-            .unwrap();
-        e.add_permission_for_user("bob", vec!["data2", "write"])
-            .await
-            .unwrap();
-        e.add_permission_for_user("data2_admin", vec!["data2", "read"])
-            .await
-            .unwrap();
-        e.add_permission_for_user("data2_admin", vec!["data2", "write"])
-            .await
-            .unwrap();
+        e.add_permission_for_user(
+            "alice",
+            vec!["data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_permission_for_user(
+            "bob",
+            vec!["data2", "write"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_permission_for_user(
+            "data2_admin",
+            vec!["data2", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_permission_for_user(
+            "data2_admin",
+            vec!["data2", "write"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         e.add_role_for_user("alice", "data2_admin", None)
             .await
             .unwrap();
@@ -535,12 +565,24 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-        e.add_permission_for_user("alice", vec!["data1", "read"])
-            .await
-            .unwrap();
-        e.add_permission_for_user("bob", vec!["data2", "write"])
-            .await
-            .unwrap();
+        e.add_permission_for_user(
+            "alice",
+            vec!["data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_permission_for_user(
+            "bob",
+            vec!["data2", "write"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -596,9 +638,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
         e.enable_auto_save(false);
-        e.remove_policy(vec!["alice", "data1", "read"])
-            .await
-            .unwrap();
+        e.remove_policy(
+            vec!["alice", "data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         e.load_policy().await.unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
@@ -611,9 +658,14 @@ mod tests {
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
         e.enable_auto_save(true);
-        e.remove_policy(vec!["alice", "data1", "read"])
-            .await
-            .unwrap();
+        e.remove_policy(
+            vec!["alice", "data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         e.load_policy().await.unwrap();
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
