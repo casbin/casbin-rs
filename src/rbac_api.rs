@@ -97,10 +97,10 @@ impl RbacApi for Enforcer {
         self.add_grouping_policy(if let Some(domain) = domain {
             vec![user, role, domain]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect()
         } else {
-            vec![user, role].iter().map(|s| s.to_string()).collect()
+            vec![user, role].iter().map(|s| (*s).to_string()).collect()
         })
         .await
     }
@@ -116,9 +116,9 @@ impl RbacApi for Enforcer {
                 .into_iter()
                 .map(|role| {
                     if let Some(domain) = domain {
-                        vec![user.to_string(), role.to_string(), domain.to_string()]
+                        vec![user.to_string(), role, domain.to_string()]
                     } else {
-                        vec![user.to_string(), role.to_string()]
+                        vec![user.to_string(), role]
                     }
                 })
                 .collect(),
@@ -135,10 +135,10 @@ impl RbacApi for Enforcer {
         self.remove_grouping_policy(if let Some(domain) = domain {
             vec![user, role, domain]
                 .iter()
-                .map(|s| s.to_string())
+                .map(|s| (*s).to_string())
                 .collect()
         } else {
-            vec![user, role].iter().map(|s| s.to_string()).collect()
+            vec![user, role].iter().map(|s| (*s).to_string()).collect()
         })
         .await
     }
@@ -149,10 +149,10 @@ impl RbacApi for Enforcer {
             if let Some(domain) = domain {
                 vec![user, "", domain]
                     .iter()
-                    .map(|s| s.to_string())
+                    .map(|s| (*s).to_string())
                     .collect()
             } else {
-                vec![user].iter().map(|s| s.to_string()).collect()
+                vec![user].iter().map(|s| (*s).to_string()).collect()
             },
         )
         .await
@@ -191,16 +191,22 @@ impl RbacApi for Enforcer {
     }
 
     async fn delete_user(&mut self, name: &str) -> Result<bool> {
-        self.remove_filtered_grouping_policy(0, vec![name].iter().map(|s| s.to_string()).collect())
-            .await
+        self.remove_filtered_grouping_policy(
+            0,
+            vec![name].iter().map(|s| (*s).to_string()).collect(),
+        )
+        .await
     }
 
     async fn delete_role(&mut self, name: &str) -> Result<bool> {
         let res1 = self
-            .remove_filtered_grouping_policy(1, vec![name].iter().map(|s| s.to_string()).collect())
+            .remove_filtered_grouping_policy(
+                1,
+                vec![name].iter().map(|s| (*s).to_string()).collect(),
+            )
             .await?;
         let res2 = self
-            .remove_filtered_policy(0, vec![name].iter().map(|s| s.to_string()).collect())
+            .remove_filtered_policy(0, vec![name].iter().map(|s| (*s).to_string()).collect())
             .await?;
         Ok(res1 || res2)
     }
@@ -220,16 +226,19 @@ impl RbacApi for Enforcer {
     }
 
     async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
-        self.remove_filtered_policy(0, vec![user].iter().map(|s| s.to_string()).collect())
+        self.remove_filtered_policy(0, vec![user].iter().map(|s| (*s).to_string()).collect())
             .await
     }
 
     fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
         self.get_filtered_policy(0, {
             if let Some(domain) = domain {
-                vec![user, domain].iter().map(|s| s.to_string()).collect()
+                vec![user, domain]
+                    .iter()
+                    .map(|s| (*s).to_string())
+                    .collect()
             } else {
-                vec![user].iter().map(|s| s.to_string()).collect()
+                vec![user].iter().map(|s| (*s).to_string()).collect()
             }
         })
     }
