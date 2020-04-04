@@ -79,13 +79,13 @@ impl CachedEnforcer {
         self.cache.set_capacity(cap);
     }
 
-    pub async fn enforce(&mut self, rvals: Vec<&str>) -> Result<bool> {
-        let key: Vec<String> = rvals.iter().map(|&x| String::from(x)).collect();
+    pub async fn enforce<S: AsRef<str>>(&mut self, rvals: &[S]) -> Result<bool> {
+        let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
 
         if let Some(result) = self.cache.get(&key).await {
             Ok(*result)
         } else {
-            let result = self.enforcer.enforce(rvals)?;
+            let result = self.enforcer.enforce(&rvals)?;
             self.cache.set(key, result).await;
             Ok(result)
         }

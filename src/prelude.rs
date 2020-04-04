@@ -1,1 +1,3 @@
-pub use crate::{CachedEnforcer, Enforcer, FileAdapter, InternalApi, MgmtApi, Model, RbacApi};
+pub use crate::{
+    CachedEnforcer, DefaultModel, Enforcer, FileAdapter, InternalApi, MgmtApi, Model, RbacApi,
+};
