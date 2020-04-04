@@ -14,7 +14,6 @@ pub(crate) use assertion::{Assertion, AssertionMap};
 pub use default_model::DefaultModel;
 pub(crate) use function_map::*;
 
-// #[async_trait]
 pub trait Model: Send + Sync {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool;
     fn get_model(&self) -> &HashMap<String, AssertionMap>;
