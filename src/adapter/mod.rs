@@ -13,21 +13,25 @@ use crate::Result;
 pub trait Adapter: Send + Sync {
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()>;
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()>;
-    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;
-    async fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<&str>>)
-        -> Result<bool>;
-    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool>;
+    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool>;
+    async fn add_policies(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<String>>,
+    ) -> Result<bool>;
+    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool>;
     async fn remove_policies(
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool>;
     async fn remove_filtered_policy(
         &mut self,
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool>;
 }

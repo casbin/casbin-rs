@@ -141,7 +141,7 @@ impl Model for DefaultModel {
         Ok(())
     }
 
-    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
                 return t2
@@ -152,7 +152,7 @@ impl Model for DefaultModel {
         false
     }
 
-    fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<&str>>) -> bool {
+    fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
         let mut all_added = true;
         let mut rules_added = vec![];
         for rule in rules {
@@ -185,7 +185,7 @@ impl Model for DefaultModel {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Vec<Vec<String>> {
         let mut res = vec![];
         if let Some(t1) = self.model.get(sec) {
@@ -207,7 +207,7 @@ impl Model for DefaultModel {
         res
     }
 
-    fn has_policy(&self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn has_policy(&self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
         let policy = self.get_policy(sec, ptype);
         for r in policy {
             if r == rule {
@@ -233,17 +233,16 @@ impl Model for DefaultModel {
             .collect()
     }
 
-    fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> bool {
+    fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                let rule: Vec<String> = rule.iter().map(|&x| String::from(x)).collect();
                 return t2.policy.remove(&rule);
             }
         }
         false
     }
 
-    fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<&str>>) -> bool {
+    fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
         let mut all_removed = true;
         let mut rules_removed = vec![];
         for rule in rules {
@@ -281,7 +280,7 @@ impl Model for DefaultModel {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> bool {
         let mut res = false;
         if let Some(t1) = self.model.get_mut(sec) {
@@ -532,25 +531,55 @@ mod tests {
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-        e.add_policy(vec!["admin", "domain1", "data1", "read"])
-            .await
-            .unwrap();
-        e.add_policy(vec!["admin", "domain1", "data1", "write"])
-            .await
-            .unwrap();
-        e.add_policy(vec!["admin", "domain2", "data2", "read"])
-            .await
-            .unwrap();
-        e.add_policy(vec!["admin", "domain2", "data2", "write"])
-            .await
-            .unwrap();
+        e.add_policy(
+            vec!["admin", "domain1", "data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_policy(
+            vec!["admin", "domain1", "data1", "write"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_policy(
+            vec!["admin", "domain2", "data2", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_policy(
+            vec!["admin", "domain2", "data2", "write"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
-        e.add_grouping_policy(vec!["alice", "admin", "domain1"])
-            .await
-            .unwrap();
-        e.add_grouping_policy(vec!["bob", "admin", "domain2"])
-            .await
-            .unwrap();
+        e.add_grouping_policy(
+            vec!["alice", "admin", "domain1"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_grouping_policy(
+            vec!["bob", "admin", "domain2"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             true,
@@ -589,9 +618,15 @@ mod tests {
             e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
         );
 
-        e.remove_filtered_policy(1, vec!["domain1", "data1"])
-            .await
-            .unwrap();
+        e.remove_filtered_policy(
+            1,
+            vec!["domain1", "data1"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             false,
@@ -630,9 +665,14 @@ mod tests {
             e.enforce(vec!["bob", "domain2", "data2", "write"]).unwrap()
         );
 
-        e.remove_policy(vec!["admin", "domain2", "data2", "read"])
-            .await
-            .unwrap();
+        e.remove_policy(
+            vec!["admin", "domain2", "data2", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             false,
@@ -682,12 +722,22 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
-        e.add_policy(vec!["admin", "domain3", "data1", "read"])
-            .await
-            .unwrap();
-        e.add_grouping_policy(vec!["alice", "admin", "domain3"])
-            .await
-            .unwrap();
+        e.add_policy(
+            vec!["admin", "domain3", "data1", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+        e.add_grouping_policy(
+            vec!["alice", "admin", "domain3"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(
             true,
@@ -700,9 +750,15 @@ mod tests {
                 .unwrap()
         );
 
-        e.remove_filtered_policy(1, vec!["domain1", "data1"])
-            .await
-            .unwrap();
+        e.remove_filtered_policy(
+            1,
+            vec!["domain1", "data1"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             false,
             e.enforce(vec!["alice", "domain1", "data1", "read"])
@@ -713,9 +769,14 @@ mod tests {
             e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
         );
 
-        e.remove_policy(vec!["admin", "domain2", "data2", "read"])
-            .await
-            .unwrap();
+        e.remove_policy(
+            vec!["admin", "domain2", "data2", "read"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(
             false,
             e.enforce(vec!["bob", "domain2", "data2", "read"]).unwrap()
@@ -765,9 +826,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
 
-        e.add_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
-            .await
-            .unwrap();
+        e.add_grouping_policy(
+            vec!["bob", "data2_admin", "custom_data"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());
@@ -778,9 +844,14 @@ mod tests {
         assert_eq!(true, e.enforce(vec!["bob", "data2", "read"]).unwrap());
         assert_eq!(true, e.enforce(vec!["bob", "data2", "write"]).unwrap());
 
-        e.remove_grouping_policy(vec!["bob", "data2_admin", "custom_data"])
-            .await
-            .unwrap();
+        e.remove_grouping_policy(
+            vec!["bob", "data2_admin", "custom_data"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(true, e.enforce(vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(vec!["alice", "data1", "write"]).unwrap());

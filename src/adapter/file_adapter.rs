@@ -102,7 +102,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         Ok(())
     }
 
-    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<String>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(false)
     }
@@ -111,13 +111,18 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         &mut self,
         _sec: &str,
         _ptype: &str,
-        _rules: Vec<Vec<&str>>,
+        _rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(false)
     }
 
-    async fn remove_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
+    async fn remove_policy(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<String>,
+    ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(false)
     }
@@ -126,7 +131,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         &mut self,
         _sec: &str,
         _ptype: &str,
-        _rule: Vec<Vec<&str>>,
+        _rule: Vec<Vec<String>>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(false)
@@ -137,7 +142,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _sec: &str,
         _ptype: &str,
         _field_index: usize,
-        _field_values: Vec<&str>,
+        _field_values: Vec<String>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
         Ok(false)

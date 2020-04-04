@@ -59,7 +59,7 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
         let mut line: Vec<String> = rule.into_iter().map(String::from).collect();
         line.insert(0, ptype.to_owned());
         line.insert(0, sec.to_owned());
@@ -71,7 +71,7 @@ impl Adapter for MemoryAdapter {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let mut all_added = true;
         let mut rules_added = vec![];
@@ -95,7 +95,7 @@ impl Adapter for MemoryAdapter {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let mut all_removed = true;
         let mut rules_removed = vec![];
@@ -115,7 +115,7 @@ impl Adapter for MemoryAdapter {
         Ok(all_removed)
     }
 
-    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
         let mut rule: Vec<String> = rule.into_iter().map(String::from).collect();
         rule.insert(0, ptype.to_owned());
         rule.insert(0, sec.to_owned());
@@ -128,7 +128,7 @@ impl Adapter for MemoryAdapter {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
         let mut tmp = IndexSet::new();
         let mut res = false;

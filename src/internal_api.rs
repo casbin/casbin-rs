@@ -13,32 +13,32 @@ pub trait InternalApi {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool>;
     async fn add_policies_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool>;
     async fn remove_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool>;
     async fn remove_policies_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool>;
     async fn remove_filtered_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool>;
 }
 
@@ -48,7 +48,7 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_added = self.model.add_policy(sec, ptype, rule.clone());
         if !rule_added {
@@ -74,7 +74,7 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_added = self.model.add_policies(sec, ptype, rules.clone());
         if !all_added {
@@ -100,7 +100,7 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_removed = self.model.remove_policy(sec, ptype, rule.clone());
         if !rule_removed {
@@ -126,7 +126,7 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_removed = self.model.remove_policies(sec, ptype, rules.clone());
         if !all_removed {
@@ -153,7 +153,7 @@ impl InternalApi for Enforcer {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
         let rule_removed =
             self.model
@@ -188,7 +188,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_added = self.enforcer.add_policy_internal(sec, ptype, rule).await?;
         if !rule_added {
@@ -207,7 +207,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_added = self
             .enforcer
@@ -229,7 +229,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_removed = self
             .enforcer
@@ -251,7 +251,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_removed = self
             .enforcer
@@ -274,7 +274,7 @@ impl InternalApi for CachedEnforcer {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
         let rule_removed = self
             .enforcer
