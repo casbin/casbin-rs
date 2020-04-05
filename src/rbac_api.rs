@@ -661,7 +661,7 @@ mod tests {
 
                             ee.write()
                             .unwrap()
-                            .add_roles_for_user("bob",vec!["data2_admin"], None)
+                            .add_roles_for_user("bob",vec!["data2_admin".to_owned()], None)
                             .await
                             .unwrap();
 

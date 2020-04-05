@@ -59,6 +59,7 @@ pub struct Enforcer {
     pub(crate) fm: FunctionMap,
     pub(crate) eft: Box<dyn Effector>,
     pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
+    pub(crate) enabled: bool,
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
@@ -78,6 +79,7 @@ impl Enforcer {
             fm,
             eft,
             rm,
+            enabled: true,
             auto_save: true,
             auto_build_role_links: true,
             watcher: None,
@@ -113,10 +115,20 @@ impl Enforcer {
         self.watcher = Some(w);
     }
 
+    pub async fn set_model(&mut self, m: Box<dyn Model>) -> Result<()> {
+        self.model = m;
+        self.load_policy().await?;
+        Ok(())
+    }
+
     pub async fn set_adapter(&mut self, a: Box<dyn Adapter>) -> Result<()> {
         self.adapter = a;
         self.load_policy().await?;
         Ok(())
+    }
+
+    pub fn set_effector(&mut self, e: Box<dyn Effector>) {
+        self.eft = e;
     }
 
     /// Enforce decides whether a "subject" can access a "object" with the operation "action",
@@ -131,7 +143,7 @@ impl Enforcer {
     ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
     ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
     ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-    ///     assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
@@ -140,14 +152,19 @@ impl Enforcer {
     ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
     ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
     ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
-    ///     assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
     pub fn enforce<S: AsRef<str>>(&self, rvals: &[S]) -> Result<bool> {
+        if !self.enabled {
+            return Ok(true);
+        }
+
         let mut engine = Engine::new();
         let mut scope: Scope = Vec::new();
+
         let r_ast = self
             .model
             .get_model()
@@ -230,22 +247,25 @@ impl Enforcer {
                 }
             }
         }
-        let expstring = m_ast.value.clone();
+
+        let expstring = &m_ast.value;
         let mut policy_effects: Vec<EffectKind> = vec![];
+
         let policies = self.model.get_policy("p", "p");
         let policy_len = policies.len();
         if policy_len != 0 {
-            policy_effects = vec![EffectKind::Allow; policy_len];
+            policy_effects = vec![EffectKind::Deny; policy_len];
             if r_ast.tokens.len() != rvals.len() {
                 return Ok(false);
             }
+
             for (i, pvals) in policies.iter().enumerate() {
                 if p_ast.tokens.len() != pvals.len() {
                     return Ok(false);
                 }
+
                 for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
-                    // let p_sub = "alice"; or let p_obj = "resource1"; or let p_sub = "GET";
-                    let scope_exp = format!("let {} = \"{}\";", ptoken.clone(), pvals[pi]);
+                    let scope_exp = format!("let {} = \"{}\";", ptoken, pvals[pi]);
                     engine.eval_with_scope::<()>(&mut scope, scope_exp.as_str())?;
                 }
 
@@ -254,6 +274,7 @@ impl Enforcer {
                     policy_effects[i] = EffectKind::Indeterminate;
                     continue;
                 }
+
                 if let Some(j) = p_ast
                     .tokens
                     .iter()
@@ -287,9 +308,7 @@ impl Enforcer {
             }
         }
 
-        let ee = e_ast.value.clone();
-
-        Ok(self.eft.merge_effects(ee, policy_effects))
+        Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
     }
 
     pub fn build_role_links(&mut self) -> Result<()> {
@@ -310,6 +329,10 @@ impl Enforcer {
 
     pub fn clear_policy(&mut self) {
         self.model.clear_policy();
+    }
+
+    pub fn enable_enforce(&mut self, enabled: bool) {
+        self.enabled = enabled;
     }
 
     pub fn enable_auto_save(&mut self, auto_save: bool) {

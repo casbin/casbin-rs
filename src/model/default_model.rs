@@ -526,7 +526,7 @@ mod tests {
     use crate::MgmtApi;
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
-    async fn test_rbac_model_with_domains_at_runtime() {
+    async fn test_rbac_model_with_domains_runtime() {
         let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
             .await
             .unwrap();
@@ -622,15 +622,18 @@ mod tests {
                 .unwrap()
         );
 
-        e.remove_filtered_policy(
-            1,
-            vec!["domain1", "data1"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-        )
-        .await
-        .unwrap();
+        assert_eq!(
+            true,
+            e.remove_filtered_policy(
+                1,
+                vec!["domain1", "data1"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            )
+            .await
+            .unwrap()
+        );
 
         assert_eq!(
             false,
@@ -671,14 +674,17 @@ mod tests {
                 .unwrap()
         );
 
-        e.remove_policy(
-            vec!["admin", "domain2", "data2", "read"]
-                .iter()
-                .map(|s| s.to_string())
-                .collect(),
-        )
-        .await
-        .unwrap();
+        assert_eq!(
+            true,
+            e.remove_policy(
+                vec!["admin", "domain2", "data2", "read"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            )
+            .await
+            .unwrap()
+        );
 
         assert_eq!(
             false,
