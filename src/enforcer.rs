@@ -1,4 +1,5 @@
 use crate::adapter::Adapter;
+use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError};
@@ -67,15 +68,16 @@ pub struct Enforcer {
 
 impl Enforcer {
     /// Enforcer::new creates an enforcer via file or DB.
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<Self> {
-        let m = m;
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+        let model = m.try_into_model().await?;
+        let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
         let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
 
         let mut e = Self {
-            model: m,
-            adapter: a,
+            model,
+            adapter,
             fm,
             eft,
             rm,
@@ -140,18 +142,14 @@ impl Enforcer {
     /// #[cfg(feature = "runtime-async-std")]
     /// #[async_std::main]
     /// async fn main() {
-    ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
-    ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
-    ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
     ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
     /// #[tokio::main]
     /// async fn main() {
-    ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
-    ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
-    ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
     ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
@@ -364,7 +362,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])
@@ -475,7 +473,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
@@ -499,7 +497,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.add_permission_for_user(
             "alice",
             vec!["data1", "invalid"]
@@ -527,7 +525,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.add_permission_for_user(
             "alice",
             vec!["data1", "read"]
@@ -593,7 +591,7 @@ mod tests {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.add_permission_for_user(
             "alice",
             vec!["data1", "read"]
@@ -631,7 +629,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
-        let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert!(e.enforce(&vec!["192.168.2.123", "data1", "read"]).unwrap());
 
@@ -665,7 +663,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.enable_auto_save(false);
         e.remove_policy(
             vec!["alice", "data1", "read"]
@@ -714,7 +712,7 @@ mod tests {
             .unwrap();
 
         let adapter = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
         assert_eq!(false, e.enforce(&vec!["user501", "data9", "read"]).unwrap());
@@ -727,9 +725,7 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
-            .await
-            .unwrap();
+        let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
         assert_eq!(false, e.enforce(&vec!["root", "data1", "read"]).unwrap());
 
@@ -737,9 +733,7 @@ mod tests {
             .await
             .unwrap();
         let adapter2 = FileAdapter::new("examples/basic_policy.csv");
-        let e2 = Enforcer::new(Box::new(m2), Box::new(adapter2))
-            .await
-            .unwrap();
+        let e2 = Enforcer::new(m2, adapter2).await.unwrap();
 
         e.model = e2.model;
         assert_eq!(true, e.enforce(&vec!["root", "data1", "read"]).unwrap());
@@ -752,9 +746,7 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
-            .await
-            .unwrap();
+        let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
         assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
         assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
@@ -763,9 +755,7 @@ mod tests {
             .await
             .unwrap();
         let adapter2 = FileAdapter::new("examples/basic_inverse_policy.csv");
-        let e2 = Enforcer::new(Box::new(m2), Box::new(adapter2))
-            .await
-            .unwrap();
+        let e2 = Enforcer::new(m2, adapter2).await.unwrap();
 
         e.adapter = e2.adapter;
         e.load_policy().await.unwrap();
@@ -782,9 +772,7 @@ mod tests {
             .await
             .unwrap();
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
-        let mut e = Enforcer::new(Box::new(m1), Box::new(adapter1))
-            .await
-            .unwrap();
+        let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
         e.add_function("keyMatchCustom", key_match);
 

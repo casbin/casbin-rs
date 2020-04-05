@@ -1,6 +1,6 @@
 [package]
 name = "casbin"
-version = "0.4.1"
+version = "0.4.2"
 authors = ["Joey <joey.xf@gmail.com>", "Cheng JIANG <jiang.cheng@vip.163.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -27,7 +27,7 @@ tokio = { version = "0.2.11", optional = true, default-features = false }
 globset = "0.4.5"
 
 [features]
-default = ["runtime-tokio", "logging"]
+default = ["runtime-async-std", "logging"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util", "tokio/stream", "tokio/rt-threaded", "tokio/blocking"]
 runtime-async-std = ["async-std"]

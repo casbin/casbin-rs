@@ -1,8 +1,7 @@
-use crate::adapter::Adapter;
 use crate::cache::{Cache, DefaultCache};
+use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::emitter::{Event, CACHED_EMITTER};
 use crate::enforcer::Enforcer;
-use crate::model::Model;
 use crate::Result;
 
 #[cfg(feature = "runtime-async-std")]
@@ -20,7 +19,7 @@ pub struct CachedEnforcer {
 
 impl CachedEnforcer {
     #[cfg(feature = "runtime-async-std")]
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
             cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
@@ -41,7 +40,7 @@ impl CachedEnforcer {
     }
 
     #[cfg(feature = "runtime-tokio")]
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
             cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
