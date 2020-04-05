@@ -19,7 +19,7 @@ pub struct CachedEnforcer {
 
 impl CachedEnforcer {
     #[cfg(feature = "runtime-async-std")]
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
             cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
