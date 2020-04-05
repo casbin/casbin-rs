@@ -1,4 +1,5 @@
 use crate::adapter::Adapter;
+use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError};
@@ -67,15 +68,16 @@ pub struct Enforcer {
 
 impl Enforcer {
     /// Enforcer::new creates an enforcer via file or DB.
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<Self> {
-        let m = m;
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+        let model = m.try_into_model().await?;
+        let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
         let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
 
         let mut e = Self {
-            model: m,
-            adapter: a,
+            model,
+            adapter,
             fm,
             eft,
             rm,
@@ -140,18 +142,14 @@ impl Enforcer {
     /// #[cfg(feature = "runtime-async-std")]
     /// #[async_std::main]
     /// async fn main() {
-    ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
-    ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
-    ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
     ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
     /// #[tokio::main]
     /// async fn main() {
-    ///     let m = DefaultModel::from_file("examples/basic_model.conf").await.unwrap();
-    ///     let adapter = FileAdapter::new("examples/basic_policy.csv");
-    ///     let e = Enforcer::new(Box::new(m), Box::new(adapter)).await.unwrap();
+    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
     ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
