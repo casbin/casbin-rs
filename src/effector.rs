@@ -1,5 +1,5 @@
 pub trait Effector: Send + Sync {
-    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>) -> bool;
+    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool;
 }
 
 #[derive(PartialEq, Clone)]
@@ -13,7 +13,7 @@ pub enum EffectKind {
 pub struct DefaultEffector {}
 
 impl Effector for DefaultEffector {
-    fn merge_effects(&self, expr: String, effects: Vec<EffectKind>) -> bool {
+    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool {
         if expr == "some(where (p_eft == allow))" {
             let mut result = false;
             for eft in effects {

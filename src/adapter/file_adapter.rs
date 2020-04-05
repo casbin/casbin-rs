@@ -104,7 +104,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
 
     async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<String>) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(false)
+        Ok(true)
     }
 
     async fn add_policies(
@@ -114,7 +114,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(false)
+        Ok(true)
     }
 
     async fn remove_policy(
@@ -124,7 +124,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _rule: Vec<String>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(false)
+        Ok(true)
     }
 
     async fn remove_policies(
@@ -134,7 +134,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _rule: Vec<Vec<String>>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(false)
+        Ok(true)
     }
 
     async fn remove_filtered_policy(
@@ -145,7 +145,7 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _field_values: Vec<String>,
     ) -> Result<bool> {
         // this api shouldn't implement, just for convinent
-        Ok(false)
+        Ok(true)
     }
 }
 

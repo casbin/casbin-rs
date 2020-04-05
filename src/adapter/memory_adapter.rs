@@ -120,7 +120,7 @@ impl Adapter for MemoryAdapter {
         rule.insert(0, ptype.to_owned());
         rule.insert(0, sec.to_owned());
 
-        Ok(self.policy.insert(rule))
+        Ok(self.policy.remove(&rule))
     }
 
     async fn remove_filtered_policy(
@@ -136,7 +136,7 @@ impl Adapter for MemoryAdapter {
             if sec == rule[0] && ptype == rule[1] {
                 let mut matched = true;
                 for (i, field_value) in field_values.iter().enumerate() {
-                    if !field_value.is_empty() && &rule[field_index + i] != field_value {
+                    if !field_value.is_empty() && &rule[field_index + i + 2] != field_value {
                         matched = false;
                         break;
                     }
@@ -147,6 +147,8 @@ impl Adapter for MemoryAdapter {
                 } else {
                     tmp.insert(rule.clone());
                 }
+            } else {
+                tmp.insert(rule.clone());
             }
         }
         self.policy = tmp;
