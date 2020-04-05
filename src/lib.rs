@@ -14,6 +14,7 @@ mod util;
 mod watcher;
 
 pub mod error;
+pub mod ffi;
 pub mod prelude;
 
 pub use adapter::{Adapter, FileAdapter, MemoryAdapter};
