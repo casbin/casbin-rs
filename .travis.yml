@@ -37,11 +37,11 @@ after_success: |
       cd ${TRAVIS_BUILD_DIR}/.. && \
       git clone ${REMOTE_URL} "${TRAVIS_REPO_SLUG}-bench" && \
       cd  "${TRAVIS_REPO_SLUG}-bench" && \
+      git fetch origin +refs/pull/${TRAVIS_PULL_REQUEST}/merge
       # Bench master
-      git checkout master && \
       cargo bench -- --save-baseline before && \
-      # Bench variable
-      git checkout ${TRAVIS_COMMIT} && \
+      # Bench PR
+      git checkout FETCH_HEAD && \
       cargo bench -- --save-baseline after && \
       cargo install critcmp --force && \
       critcmp before after
