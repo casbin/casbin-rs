@@ -4,7 +4,7 @@ use globset::GlobBuilder;
 
 use ip_network::IpNetwork;
 use regex::Regex;
-use rhai::Any;
+use rhai::Array;
 
 use std::collections::HashMap;
 #[cfg(feature = "runtime-tokio")]
@@ -78,7 +78,7 @@ fn key_match3(key1: String, key2: String) -> bool {
 // in_match determines whether key1 matches any element in key2
 // For example, in_match("alice", ["bob", "alice"]) returns true
 // Todo: add in operator in rhai and remove this
-pub fn in_match(k1: String, k2: Vec<Box<dyn Any>>) -> bool {
+pub fn in_match(k1: String, k2: Array) -> bool {
     let r = k2
         .into_iter()
         .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
