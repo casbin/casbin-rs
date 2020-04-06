@@ -1,4 +1,3 @@
-use crate::error::Error;
 use crate::Result;
 
 use std::collections::HashMap;
@@ -112,10 +111,10 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    return Err(Error::IoError(IoError::new(
+                    return Err(IoError::new(
                         ErrorKind::Other,
                         format!("parse content error, line={}", line),
-                    ))
+                    )
                     .into());
                 }
 
