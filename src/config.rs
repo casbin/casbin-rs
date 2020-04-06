@@ -132,8 +132,7 @@ impl Config {
         }
     }
 
-    pub(crate) fn add_config(&mut self, section: String, option: String, value: String) {
-        let mut section = section;
+    pub(crate) fn add_config(&mut self, mut section: String, option: String, value: String) {
         if section.is_empty() {
             section = DEFAULT_SECTION.to_owned();
         }
