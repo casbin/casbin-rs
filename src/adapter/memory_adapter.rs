@@ -8,7 +8,7 @@ use async_trait::async_trait;
 
 #[derive(Default)]
 pub struct MemoryAdapter {
-    pub policy: IndexSet<Vec<String>>,
+    policy: IndexSet<Vec<String>>,
 }
 
 #[async_trait]
