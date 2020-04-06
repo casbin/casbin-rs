@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::error::{Error, ModelError};
+use crate::error::ModelError;
 use crate::model::{Assertion, AssertionMap, Model};
 use crate::rbac::RoleManager;
 use crate::util::*;
@@ -71,7 +71,7 @@ impl DefaultModel {
             "e" => "policy_effect",
             "m" => "matchers",
             _ => {
-                return Err(Error::ModelError(ModelError::Other(sec.to_owned())).into());
+                return Err(ModelError::Other(format!("Unknown section: `{}`", sec)).into());
             }
         };
 

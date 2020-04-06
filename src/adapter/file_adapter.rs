@@ -1,5 +1,5 @@
 use crate::adapter::Adapter;
-use crate::error::{Error, ModelError};
+use crate::error::ModelError;
 use crate::model::Model;
 use crate::Result;
 
@@ -75,19 +75,17 @@ where
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(Error::IoError(IoError::new(
-                ErrorKind::Other,
-                "save policy failed, file path is empty",
-            ))
-            .into());
+            return Err(
+                IoError::new(ErrorKind::Other, "save policy failed, file path is empty").into(),
+            );
         }
 
         let mut tmp = String::new();
-        let ast_map1 = m.get_model().get("p").ok_or_else(|| {
-            Error::ModelError(ModelError::P(
-                "Missing policy definition in conf file".to_owned(),
-            ))
-        })?;
+        let ast_map1 = m
+            .get_model()
+            .get("p")
+            .ok_or_else(|| ModelError::P("Missing policy definition in conf file".to_owned()))?;
+
         for (ptype, ast) in ast_map1 {
             for rule in ast.get_policy() {
                 let s1 = format!("{}, {}\n", ptype, rule.join(","));

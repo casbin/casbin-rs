@@ -22,10 +22,11 @@ pub use cache::Cache;
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use enforcer::Enforcer;
+pub use error::Error;
 pub use internal_api::InternalApi;
 pub use management_api::MgmtApi;
 pub use model::{DefaultModel, Model};
 pub use rbac_api::RbacApi;
 pub use watcher::Watcher;
 
-pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type Result<T> = std::result::Result<T, Error>;

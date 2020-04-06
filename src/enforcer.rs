@@ -2,7 +2,7 @@ use crate::adapter::Adapter;
 use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
-use crate::error::{Error, ModelError};
+use crate::error::{Error, ModelError, PolicyError, RequestError};
 use crate::model::Model;
 use crate::model::{in_match, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
@@ -20,13 +20,9 @@ macro_rules! get_or_err {
             .model
             .get_model()
             .get($key)
-            .ok_or_else(|| {
-                Error::ModelError($err(format!("Missing {} definition in conf file", $msg)))
-            })?
+            .ok_or_else(|| Error::from($err(format!("Missing {} definition in conf file", $msg))))?
             .get($key)
-            .ok_or_else(|| {
-                Error::ModelError($err(format!("Missing {} section in conf file", $msg)))
-            })?
+            .ok_or_else(|| Error::from($err(format!("Missing {} section in conf file", $msg))))?
     }};
 }
 
@@ -199,14 +195,21 @@ impl Enforcer {
         if policy_len != 0 {
             policy_effects = vec![EffectKind::Deny; policy_len];
             if r_ast.tokens.len() != rvals.len() {
-                return Ok(false);
+                return Err(RequestError::UnmatchRequestDefinition(
+                    r_ast.tokens.len(),
+                    rvals.len(),
+                )
+                .into());
             }
             for (i, pvals) in policies.iter().enumerate() {
                 if p_ast.tokens.len() != pvals.len() {
-                    return Ok(false);
+                    return Err(PolicyError::UnmatchPolicyDefinition(
+                        p_ast.tokens.len(),
+                        pvals.len(),
+                    )
+                    .into());
                 }
                 for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
-                    // let p_sub = "alice"; or let p_obj = "resource1"; or let p_sub = "GET";
                     let scope_exp = format!("let {} = \"{}\";", ptoken, pvals[pi]);
                     engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
                 }
