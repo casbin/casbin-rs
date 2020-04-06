@@ -30,7 +30,7 @@ after_success: |
     docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin sh -c "cargo tarpaulin --out Xml"
     bash <(curl -s https://codecov.io/bash)
 
-    if [[ "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}" != "master" ]]; then
+    if [[ "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}" != "master" ]] && [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
       REMOTE_URL="$(git config --get remote.origin.url)";
       # Clone the repository fresh..for some reason checking out master fails
       # from a normal PR build's provided directory

@@ -104,3 +104,22 @@ impl DerefMut for CachedEnforcer {
         &mut self.enforcer
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() -> bool {
+        true
+    }
+
+    fn is_sync<T: Sync>() -> bool {
+        true
+    }
+
+    #[test]
+    fn test_send_sync() {
+        assert!(is_send::<CachedEnforcer>());
+        assert!(is_sync::<CachedEnforcer>());
+    }
+}

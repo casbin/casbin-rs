@@ -10,11 +10,9 @@ use crate::watcher::Watcher;
 use crate::Result;
 
 use emitbrown::Events;
-use rhai::{Any, Engine, RegisterFn, Scope};
+use rhai::{Array, Engine, RegisterFn, Scope};
 
 use std::sync::{Arc, RwLock};
-
-pub type MatcherFn = Box<(dyn Fn(Vec<Box<dyn Any>>) -> bool)>;
 
 macro_rules! get_or_err {
     ($this:ident, $key:expr, $err:expr, $msg:expr) => {{
@@ -32,24 +30,26 @@ macro_rules! get_or_err {
     }};
 }
 
-pub fn generate_g_function(rm: Arc<RwLock<dyn RoleManager>>) -> MatcherFn {
-    let cb = move |args: Vec<Box<dyn Any>>| -> bool {
-        let args = args
-            .into_iter()
-            .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
-            .collect::<Vec<String>>();
+macro_rules! generate_g_function {
+    ($rm:ident) => {{
+        let cb = move |args: Array| -> bool {
+            let args = args
+                .into_iter()
+                .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
+                .collect::<Vec<String>>();
 
-        if args.len() == 3 {
-            rm.write()
-                .unwrap()
-                .has_link(&args[0], &args[1], Some(&args[2]))
-        } else if args.len() == 2 {
-            rm.write().unwrap().has_link(&args[0], &args[1], None)
-        } else {
-            unreachable!()
-        }
-    };
-    Box::new(cb)
+            if args.len() == 3 {
+                $rm.write()
+                    .unwrap()
+                    .has_link(&args[0], &args[1], Some(&args[2]))
+            } else if args.len() == 2 {
+                $rm.write().unwrap().has_link(&args[0], &args[1], None)
+            } else {
+                unreachable!()
+            }
+        };
+        Box::new(cb)
+    }};
 }
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
@@ -112,18 +112,26 @@ impl Enforcer {
         &mut *self.model
     }
 
+    pub fn get_adapter(&self) -> &dyn Adapter {
+        &*self.adapter
+    }
+
+    pub fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+        &mut *self.adapter
+    }
+
     pub fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
     }
 
-    pub async fn set_model(&mut self, m: Box<dyn Model>) -> Result<()> {
-        self.model = m;
+    pub async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
+        self.model = m.try_into_model().await?;
         self.load_policy().await?;
         Ok(())
     }
 
-    pub async fn set_adapter(&mut self, a: Box<dyn Adapter>) -> Result<()> {
-        self.adapter = a;
+    pub async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
+        self.adapter = a.try_into_adapter().await?;
         self.load_policy().await?;
         Ok(())
     }
@@ -160,7 +168,7 @@ impl Enforcer {
         }
 
         let mut engine = Engine::new();
-        let mut scope: Scope = Vec::new();
+        let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
         let p_ast = get_or_err!(self, "p", ModelError::P, "policy");
@@ -179,8 +187,8 @@ impl Enforcer {
 
         if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
-                let gn = generate_g_function(Arc::clone(&ast.rm));
-                engine.register_fn(key, gn);
+                let rm = Arc::clone(&ast.rm);
+                engine.register_fn(key, generate_g_function!(rm));
             }
         }
 
@@ -256,6 +264,10 @@ impl Enforcer {
         Ok(())
     }
 
+    pub async fn save_policy(&mut self) -> Result<()> {
+        self.adapter.save_policy(&mut *self.model).await
+    }
+
     pub fn clear_policy(&mut self) {
         self.model.clear_policy();
     }
@@ -279,6 +291,20 @@ mod tests {
     use crate::adapter::{FileAdapter, MemoryAdapter};
     use crate::model::DefaultModel;
 
+    fn is_send<T: Send>() -> bool {
+        true
+    }
+
+    fn is_sync<T: Sync>() -> bool {
+        true
+    }
+
+    #[test]
+    fn test_send_sync() {
+        assert!(is_send::<Enforcer>());
+        assert!(is_sync::<Enforcer>());
+    }
+
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_enforcer_swap_adapter_type() {
@@ -294,14 +320,14 @@ mod tests {
 
         let file = FileAdapter::new("examples/basic_policy.csv");
         let mem = MemoryAdapter::default();
-        let mut e = Enforcer::new(Box::new(m), Box::new(file)).await.unwrap();
+        let mut e = Enforcer::new(m, file).await.unwrap();
         // this should fail since FileAdapter has basically no add_policy
         assert!(e
             .adapter
             .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
             .await
             .unwrap());
-        e.set_adapter(Box::new(mem)).await.unwrap();
+        e.set_adapter(mem).await.unwrap();
         // this passes since our MemoryAdapter has a working add_policy method
         assert!(e
             .adapter
