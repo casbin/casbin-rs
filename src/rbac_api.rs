@@ -1,5 +1,6 @@
 use crate::cached_enforcer::CachedEnforcer;
 use crate::enforcer::Enforcer;
+use crate::CoreApi;
 use crate::MgmtApi;
 use crate::Result;
 
@@ -8,7 +9,7 @@ use async_trait::async_trait;
 use std::collections::HashSet;
 
 #[async_trait]
-pub trait RbacApi {
+pub trait RbacApi: MgmtApi + CoreApi {
     async fn add_permission_for_user(
         &mut self,
         user: &str,
@@ -58,7 +59,7 @@ pub trait RbacApi {
         name: &str,
         domain: Option<&str>,
     ) -> Vec<Vec<String>>;
-    fn get_implicit_users_for_permission(&self, permission: Vec<String>) -> Vec<String>;
+    async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String>;
 }
 
 #[async_trait]
@@ -278,7 +279,7 @@ impl RbacApi for Enforcer {
         res
     }
 
-    fn get_implicit_users_for_permission(&self, permission: Vec<String>) -> Vec<String> {
+    async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String> {
         let subjects = self.get_all_subjects();
         let roles = self.get_all_roles();
 
@@ -292,7 +293,7 @@ impl RbacApi for Enforcer {
         for user in users.iter() {
             let mut req = permission.clone();
             req.insert(0, user.to_string());
-            if let Ok(r) = self.enforce(&req) {
+            if let Ok(r) = self.enforce(&req).await {
                 if r {
                     res.push(user.to_owned());
                 }
@@ -414,8 +415,10 @@ impl RbacApi for CachedEnforcer {
             .get_implicit_permissions_for_user(name, domain)
     }
 
-    fn get_implicit_users_for_permission(&self, permission: Vec<String>) -> Vec<String> {
-        self.enforcer.get_implicit_users_for_permission(permission)
+    async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String> {
+        self.enforcer
+            .get_implicit_users_for_permission(permission)
+            .await
     }
 }
 

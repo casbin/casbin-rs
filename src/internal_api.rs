@@ -1,4 +1,5 @@
 use crate::cached_enforcer::CachedEnforcer;
+use crate::core_api::CoreApi;
 use crate::emitter::{Event, CACHED_EMITTER, EMITTER};
 use crate::enforcer::Enforcer;
 use crate::Result;
@@ -7,7 +8,7 @@ use async_trait::async_trait;
 use emitbrown::Events;
 
 #[async_trait]
-pub trait InternalApi {
+pub trait InternalApi: CoreApi {
     async fn add_policy_internal(
         &mut self,
         sec: &str,

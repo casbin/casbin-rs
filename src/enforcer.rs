@@ -1,5 +1,6 @@
 use crate::adapter::Adapter;
 use crate::convert::{TryIntoAdapter, TryIntoModel};
+use crate::core_api::CoreApi;
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError, PolicyError, RequestError};
@@ -9,6 +10,7 @@ use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::watcher::Watcher;
 use crate::Result;
 
+use async_trait::async_trait;
 use emitbrown::Events;
 use rhai::{Array, Engine, RegisterFn, Scope};
 
@@ -61,9 +63,9 @@ pub struct Enforcer {
     pub(crate) watcher: Option<Box<dyn Watcher>>,
 }
 
-impl Enforcer {
-    /// Enforcer::new creates an enforcer via file or DB.
-    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+#[async_trait]
+impl CoreApi for Enforcer {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
@@ -96,52 +98,52 @@ impl Enforcer {
         Ok(e)
     }
 
-    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.add_function(fname, f);
     }
 
-    pub fn get_model(&self) -> &dyn Model {
+    fn get_model(&self) -> &dyn Model {
         &*self.model
     }
 
-    pub fn get_mut_model(&mut self) -> &mut dyn Model {
+    fn get_mut_model(&mut self) -> &mut dyn Model {
         &mut *self.model
     }
 
-    pub fn get_adapter(&self) -> &dyn Adapter {
+    fn get_adapter(&self) -> &dyn Adapter {
         &*self.adapter
     }
 
-    pub fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+    fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
         &mut *self.adapter
     }
 
-    pub fn set_watcher(&mut self, w: Box<dyn Watcher>) {
+    fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
     }
 
-    pub fn get_role_manager(&mut self) -> Arc<RwLock<dyn RoleManager>> {
+    fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>> {
         Arc::clone(&self.rm)
     }
 
-    pub fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
         self.rm.write().unwrap().add_matching_fn(f);
         self.build_role_links()
     }
 
-    pub async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
+    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;
         self.load_policy().await?;
         Ok(())
     }
 
-    pub async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
+    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
         self.adapter = a.try_into_adapter().await?;
         self.load_policy().await?;
         Ok(())
     }
 
-    pub fn set_effector(&mut self, e: Box<dyn Effector>) {
+    fn set_effector(&mut self, e: Box<dyn Effector>) {
         self.eft = e;
     }
 
@@ -167,7 +169,7 @@ impl Enforcer {
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    pub fn enforce<S: AsRef<str>>(&self, rvals: &[S]) -> Result<bool> {
+    async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         if !self.enabled {
             return Ok(true);
         }
@@ -259,13 +261,13 @@ impl Enforcer {
         Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
     }
 
-    pub fn build_role_links(&mut self) -> Result<()> {
+    fn build_role_links(&mut self) -> Result<()> {
         self.rm.write().unwrap().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
         Ok(())
     }
 
-    pub async fn load_policy(&mut self) -> Result<()> {
+    async fn load_policy(&mut self) -> Result<()> {
         self.model.clear_policy();
         self.adapter.load_policy(&mut *self.model).await?;
 
@@ -275,23 +277,23 @@ impl Enforcer {
         Ok(())
     }
 
-    pub async fn save_policy(&mut self) -> Result<()> {
+    async fn save_policy(&mut self) -> Result<()> {
         self.adapter.save_policy(&mut *self.model).await
     }
 
-    pub fn clear_policy(&mut self) {
+    fn clear_policy(&mut self) {
         self.model.clear_policy();
     }
 
-    pub fn enable_enforce(&mut self, enabled: bool) {
+    fn enable_enforce(&mut self, enabled: bool) {
         self.enabled = enabled;
     }
 
-    pub fn enable_auto_save(&mut self, auto_save: bool) {
+    fn enable_auto_save(&mut self, auto_save: bool) {
         self.auto_save = auto_save;
     }
 
-    pub fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
+    fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
         self.auto_build_role_links = auto_build_role_links;
     }
 }

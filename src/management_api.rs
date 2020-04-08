@@ -1,12 +1,13 @@
 use crate::cached_enforcer::CachedEnforcer;
 use crate::enforcer::Enforcer;
+use crate::CoreApi;
 use crate::InternalApi;
 use crate::Result;
 
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait MgmtApi {
+pub trait MgmtApi: InternalApi + CoreApi {
     async fn add_policy(&mut self, params: Vec<String>) -> Result<bool>;
     async fn add_policies(&mut self, paramss: Vec<Vec<String>>) -> Result<bool>;
     async fn remove_policy(&mut self, params: Vec<String>) -> Result<bool>;
