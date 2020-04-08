@@ -1,21 +1,31 @@
+use lazy_static::lazy_static;
 use regex::Regex;
 
 pub fn escape_assertion(s: String) -> String {
-    let re = Regex::new(r#"(r|p)\."#).unwrap();
-    re.replace_all(&s, "${1}_").to_string()
+    lazy_static! {
+        static ref ASSERT: Regex = Regex::new(r#"(r|p)\."#).unwrap();
+    }
+    ASSERT.replace_all(&s, "${1}_").to_string()
 }
 
 pub fn escape_g_function(s: String) -> String {
-    let re = Regex::new(r#"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)"#).unwrap();
-    re.replace_all(&s, "${1}([${2}])").to_string()
+    lazy_static! {
+        static ref ESC_G: Regex =
+            Regex::new(r#"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)"#).unwrap();
+    }
+    ESC_G.replace_all(&s, "${1}([${2}])").to_string()
 }
 
 pub fn escape_in_operator(s: String) -> String {
-    let re =
-        Regex::new(r#"((?:r\d*|p\d*)\.(?:[^\s]+))\s+in\s+(?:\[|\()([^\)\]]*)(?:\]|\))"#).unwrap();
-
-    re.replace_all(&s, "inMatch($1, [$2])").replace("'", r#"""#)
+    lazy_static! {
+        static ref IN_OP: Regex =
+            Regex::new(r#"((?:r\d*|p\d*)\.(?:[^\s]+))\s+in\s+(?:\[|\()([^\)\]]*)(?:\]|\))"#).unwrap();
+    }
+    IN_OP
+        .replace_all(&s, "inMatch($1, [$2])")
+        .replace("'", r#"""#)
 }
+
 
 #[cfg(test)]
 mod tests {
