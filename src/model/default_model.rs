@@ -95,7 +95,7 @@ impl Model for DefaultModel {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
         let mut ast = Assertion::default();
         ast.key = key.to_owned();
-        ast.value = value.to_owned();
+        ast.value = remove_comments(value.to_owned());
 
         if ast.value.is_empty() {
             return false;
@@ -108,7 +108,6 @@ impl Model for DefaultModel {
                 .map(|x| format!("{}_{}", key, x.trim()))
                 .collect();
         } else {
-            ast.value = escape_in_operator(ast.value);
             ast.value = escape_g_function(ast.value);
             ast.value = escape_assertion(ast.value);
         }
