@@ -3,8 +3,8 @@ use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::effector::{DefaultEffector, EffectKind, Effector};
 use crate::emitter::{Event, EMITTER};
 use crate::error::{Error, ModelError, PolicyError, RequestError};
+use crate::model::FunctionMap;
 use crate::model::Model;
-use crate::model::{in_match, FunctionMap};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::watcher::Watcher;
 use crate::Result;
@@ -188,7 +188,6 @@ impl Enforcer {
         for (key, func) in self.fm.fm.iter() {
             engine.register_fn(key, *func);
         }
-        engine.register_fn("inMatch", in_match);
 
         if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
