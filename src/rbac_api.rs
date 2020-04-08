@@ -1094,4 +1094,40 @@ mod tests {
             sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
         );
     }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_pattern_matching_fn() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_pattern_model.conf",
+            "examples/rbac_with_pattern_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        use crate::model::key_match2;
+
+        e.add_matching_fn(key_match2).unwrap();
+
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/pen2/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/book/2", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/book/1", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
+
+        assert_eq!(
+            vec!["/book/:id", "book_group"],
+            sort_unstable(e.get_implicit_roles_for_user("/book/1", None))
+        );
+
+        assert_eq!(
+            vec!["/pen/:id", "pen_group"],
+            sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
+        );
+    }
 }

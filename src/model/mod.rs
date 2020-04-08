@@ -1,8 +1,6 @@
 use crate::rbac::RoleManager;
 use crate::Result;
 
-// use async_trait::async_trait;
-
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -12,7 +10,7 @@ mod function_map;
 
 pub(crate) use assertion::{Assertion, AssertionMap};
 pub use default_model::DefaultModel;
-pub(crate) use function_map::*;
+pub use function_map::*;
 
 pub trait Model: Send + Sync {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool;

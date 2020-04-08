@@ -49,7 +49,7 @@ pub fn key_match(key1: String, key2: String) -> bool {
 
 // key_match2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
-fn key_match2(key1: String, key2: String) -> bool {
+pub fn key_match2(key1: String, key2: String) -> bool {
     let mut key2 = key2.replace("/*", "/.*");
     let re = Regex::new("(.*):[^/]+(.*)").unwrap();
     loop {
@@ -63,7 +63,7 @@ fn key_match2(key1: String, key2: String) -> bool {
 
 // key_match3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
-fn key_match3(key1: String, key2: String) -> bool {
+pub fn key_match3(key1: String, key2: String) -> bool {
     let mut key2 = key2.replace("/*", "/.*");
     let re = Regex::new(r"(.*)\{[^/]+\}(.*)").unwrap();
     loop {
@@ -138,6 +138,7 @@ mod tests {
     fn test_key_match() {
         assert!(key_match("/foo/bar".to_owned(), "/foo/*".to_owned()));
         assert!(!key_match("/bar/foo".to_owned(), "/foo/*".to_owned()));
+        assert!(key_match("/bar".to_owned(), "/ba*".to_owned()));
     }
 
     #[test]

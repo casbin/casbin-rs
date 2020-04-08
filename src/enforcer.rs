@@ -120,6 +120,15 @@ impl Enforcer {
         self.watcher = Some(w);
     }
 
+    pub fn get_role_manager(&mut self) -> Arc<RwLock<dyn RoleManager>> {
+        Arc::clone(&self.rm)
+    }
+
+    pub fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+        self.rm.write().unwrap().add_matching_fn(f);
+        self.build_role_links()
+    }
+
     pub async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;
         self.load_policy().await?;
