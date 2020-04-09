@@ -43,3 +43,20 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
+          
+          
+      ## semantic-rs doesn't really support < 1.0 releases, 
+      ## see https://github.com/semantic-rs/semantic-rs/issues/137
+      # - name: Build Docker
+      #   run: docker build -t release .
+
+      # - name: Publish
+      #   run: > 
+      #     docker run 
+      #     --env GH_TOKEN="${{ secrets.GITHUB_TOKEN }}"
+      #     --env CARGO_TOKEN="${{ secrets.CARGO_TOKEN }}" 
+      #     --env GIT_COMMITTER_NAME="${{ secrets.GIT_COMMITTER_NAME }}" 
+      #     --env GIT_COMMITTER_EMAIL="${{ secrets.GIT_COMMITTER_EMAIL }}"
+      ## for actually run, add "-w=yes" after "semantic-rs"     
+      #     release /bin/bash -c "cargo install semantic-rs && semantic-rs"
+
