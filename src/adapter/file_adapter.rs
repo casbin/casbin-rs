@@ -1,5 +1,5 @@
 use crate::adapter::Adapter;
-use crate::error::{Error, ModelError};
+use crate::error::ModelError;
 use crate::model::Model;
 use crate::Result;
 
@@ -28,13 +28,16 @@ use tokio::{
 
 use async_trait::async_trait;
 
-pub struct FileAdapter<P: AsRef<Path>> {
-    pub file_path: P,
+pub struct FileAdapter<P> {
+    file_path: P,
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);
 
-impl<P: AsRef<Path> + Send + Sync + 'static> FileAdapter<P> {
+impl<P> FileAdapter<P>
+where
+    P: AsRef<Path> + Send + Sync,
+{
     pub fn new(p: P) -> FileAdapter<P> {
         FileAdapter { file_path: p }
     }
@@ -61,7 +64,10 @@ impl<P: AsRef<Path> + Send + Sync + 'static> FileAdapter<P> {
 }
 
 #[async_trait]
-impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
+impl<P> Adapter for FileAdapter<P>
+where
+    P: AsRef<Path> + Send + Sync,
+{
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
         self.load_policy_file(m, load_policy_line).await?;
         Ok(())
@@ -69,19 +75,17 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(Error::IoError(IoError::new(
-                ErrorKind::Other,
-                "save policy failed, file path is empty",
-            ))
-            .into());
+            return Err(
+                IoError::new(ErrorKind::Other, "save policy failed, file path is empty").into(),
+            );
         }
 
         let mut tmp = String::new();
-        let ast_map1 = m.get_model().get("p").ok_or_else(|| {
-            Error::ModelError(ModelError::P(
-                "Missing policy definition in conf file".to_owned(),
-            ))
-        })?;
+        let ast_map1 = m
+            .get_model()
+            .get("p")
+            .ok_or_else(|| ModelError::P("Missing policy definition in conf file".to_owned()))?;
+
         for (ptype, ast) in ast_map1 {
             for rule in ast.get_policy() {
                 let s1 = format!("{}, {}\n", ptype, rule.join(","));
@@ -102,34 +106,39 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         Ok(())
     }
 
-    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
-        Ok(false)
+    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<String>) -> Result<bool> {
+        // this api shouldn't implement, just for convenience
+        Ok(true)
     }
 
     async fn add_policies(
         &mut self,
         _sec: &str,
         _ptype: &str,
-        _rules: Vec<Vec<&str>>,
+        _rules: Vec<Vec<String>>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
-        Ok(false)
+        // this api shouldn't implement, just for convenience
+        Ok(true)
     }
 
-    async fn remove_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<&str>) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
-        Ok(false)
+    async fn remove_policy(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<String>,
+    ) -> Result<bool> {
+        // this api shouldn't implement, just for convenience
+        Ok(true)
     }
 
     async fn remove_policies(
         &mut self,
         _sec: &str,
         _ptype: &str,
-        _rule: Vec<Vec<&str>>,
+        _rule: Vec<Vec<String>>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
-        Ok(false)
+        // this api shouldn't implement, just for convenience
+        Ok(true)
     }
 
     async fn remove_filtered_policy(
@@ -137,10 +146,10 @@ impl<P: AsRef<Path> + Send + Sync + 'static> Adapter for FileAdapter<P> {
         _sec: &str,
         _ptype: &str,
         _field_index: usize,
-        _field_values: Vec<&str>,
+        _field_values: Vec<String>,
     ) -> Result<bool> {
-        // this api shouldn't implement, just for convinent
-        Ok(false)
+        // this api shouldn't implement, just for convenience
+        Ok(true)
     }
 }
 

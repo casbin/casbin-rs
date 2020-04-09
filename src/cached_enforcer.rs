@@ -1,8 +1,7 @@
-use crate::adapter::Adapter;
 use crate::cache::{Cache, DefaultCache};
+use crate::convert::{TryIntoAdapter, TryIntoModel};
 use crate::emitter::{Event, CACHED_EMITTER};
 use crate::enforcer::Enforcer;
-use crate::model::Model;
 use crate::Result;
 
 #[cfg(feature = "runtime-async-std")]
@@ -20,7 +19,7 @@ pub struct CachedEnforcer {
 
 impl CachedEnforcer {
     #[cfg(feature = "runtime-async-std")]
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
             cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
@@ -41,7 +40,7 @@ impl CachedEnforcer {
     }
 
     #[cfg(feature = "runtime-tokio")]
-    pub async fn new(m: Box<dyn Model>, a: Box<dyn Adapter>) -> Result<CachedEnforcer> {
+    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
             cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
@@ -79,13 +78,13 @@ impl CachedEnforcer {
         self.cache.set_capacity(cap);
     }
 
-    pub async fn enforce(&mut self, rvals: Vec<&str>) -> Result<bool> {
-        let key: Vec<String> = rvals.iter().map(|&x| String::from(x)).collect();
+    pub async fn enforce<S: AsRef<str>>(&mut self, rvals: &[S]) -> Result<bool> {
+        let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
 
         if let Some(result) = self.cache.get(&key).await {
             Ok(*result)
         } else {
-            let result = self.enforcer.enforce(rvals)?;
+            let result = self.enforcer.enforce(&rvals)?;
             self.cache.set(key, result).await;
             Ok(result)
         }
@@ -103,5 +102,24 @@ impl Deref for CachedEnforcer {
 impl DerefMut for CachedEnforcer {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.enforcer
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() -> bool {
+        true
+    }
+
+    fn is_sync<T: Sync>() -> bool {
+        true
+    }
+
+    #[test]
+    fn test_send_sync() {
+        assert!(is_send::<CachedEnforcer>());
+        assert!(is_sync::<CachedEnforcer>());
     }
 }

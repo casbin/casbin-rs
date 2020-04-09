@@ -5,7 +5,6 @@ use crate::Result;
 
 use async_trait::async_trait;
 use emitbrown::Events;
-use log::error;
 
 #[async_trait]
 pub trait InternalApi {
@@ -13,32 +12,32 @@ pub trait InternalApi {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool>;
     async fn add_policies_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool>;
     async fn remove_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool>;
     async fn remove_policies_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool>;
     async fn remove_filtered_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool>;
 }
 
@@ -48,24 +47,16 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
-        let rule_added = self.model.add_policy(sec, ptype, rule.clone());
-        if !rule_added {
+        if self.auto_save && !self.adapter.add_policy(sec, ptype, rule.clone()).await? {
             return Ok(false);
         }
 
-        if self.auto_save {
-            if self.adapter.add_policy(sec, ptype, rule).await? {
-                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-            } else {
-                error!("policy was added to model but not adapter");
-            }
-
-            return Ok(rule_added);
+        let rule_added = self.model.add_policy(sec, ptype, rule);
+        if rule_added {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
-
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
 
         Ok(rule_added)
     }
@@ -74,50 +65,34 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
-        let all_added = self.model.add_policies(sec, ptype, rules.clone());
-        if !all_added {
+        if self.auto_save && !self.adapter.add_policies(sec, ptype, rules.clone()).await? {
             return Ok(false);
         }
 
-        if self.auto_save {
-            if self.adapter.add_policies(sec, ptype, rules).await? {
-                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-            } else {
-                error!("policies were added to model but not adapter");
-            }
-
-            return Ok(all_added);
+        let rules_added = self.model.add_policies(sec, ptype, rules);
+        if rules_added {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
 
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-
-        Ok(all_added)
+        Ok(rules_added)
     }
 
     async fn remove_policy_internal(
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
-        let rule_removed = self.model.remove_policy(sec, ptype, rule.clone());
-        if !rule_removed {
+        if self.auto_save && !self.adapter.remove_policy(sec, ptype, rule.clone()).await? {
             return Ok(false);
         }
 
-        if self.auto_save {
-            if self.adapter.remove_policy(sec, ptype, rule).await? {
-                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-            } else {
-                error!("policy was added to model but not adapter");
-            }
-
-            return Ok(rule_removed);
+        let rule_removed = self.model.remove_policy(sec, ptype, rule);
+        if rule_removed {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
-
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
 
         Ok(rule_removed)
     }
@@ -126,26 +101,23 @@ impl InternalApi for Enforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
-        let all_removed = self.model.remove_policies(sec, ptype, rules.clone());
-        if !all_removed {
+        if self.auto_save
+            && !self
+                .adapter
+                .remove_policies(sec, ptype, rules.clone())
+                .await?
+        {
             return Ok(false);
         }
 
-        if self.auto_save {
-            if self.adapter.remove_policies(sec, ptype, rules).await? {
-                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-            } else {
-                error!("policies were added to model but not adapter");
-            }
-
-            return Ok(all_removed);
+        let rules_removed = self.model.remove_policies(sec, ptype, rules);
+        if rules_removed {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
 
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-
-        Ok(all_removed)
+        Ok(rules_removed)
     }
 
     async fn remove_filtered_policy_internal(
@@ -153,32 +125,25 @@ impl InternalApi for Enforcer {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
-        let rule_removed =
-            self.model
-                .remove_filtered_policy(sec, ptype, field_index, field_values.clone());
-        if !rule_removed {
+        if self.auto_save
+            && !self
+                .adapter
+                .remove_filtered_policy(sec, ptype, field_index, field_values.clone())
+                .await?
+        {
             return Ok(false);
         }
 
-        if self.auto_save {
-            if self
-                .adapter
-                .remove_filtered_policy(sec, ptype, field_index, field_values)
-                .await?
-            {
-                EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-            } else {
-                error!("policy was added to model but not adapter");
-            }
-
-            return Ok(rule_removed);
+        let rules_removed =
+            self.model
+                .remove_filtered_policy(sec, ptype, field_index, field_values);
+        if rules_removed {
+            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
 
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
-
-        Ok(rule_removed)
+        Ok(rules_removed)
     }
 }
 
@@ -188,7 +153,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_added = self.enforcer.add_policy_internal(sec, ptype, rule).await?;
         if !rule_added {
@@ -207,7 +172,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_added = self
             .enforcer
@@ -229,7 +194,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let all_removed = self
             .enforcer
@@ -251,7 +216,7 @@ impl InternalApi for CachedEnforcer {
         &mut self,
         sec: &str,
         ptype: &str,
-        rule: Vec<&str>,
+        rule: Vec<String>,
     ) -> Result<bool> {
         let rule_removed = self
             .enforcer
@@ -274,7 +239,7 @@ impl InternalApi for CachedEnforcer {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
         let rule_removed = self
             .enforcer

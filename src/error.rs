@@ -1,87 +1,88 @@
 use rhai::EvalAltResult;
+use thiserror::Error;
 
-use std::error::Error as StdError;
-use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::io::Error as IoError;
+use std::{error::Error as StdError, io::Error as IoError};
 
-/// ModelError represents any type of errors in model.conf
-#[derive(Debug)]
+/// ModelError represents any type of errors in model configuration
+#[derive(Error, Debug)]
 pub enum ModelError {
+    #[error("Invalid request definition: `{0}`")]
     R(String),
+    #[error("Invalid policy definition: `{0}`")]
     P(String),
+    #[error("Unsupported effect: `{0}`")]
     E(String),
+    #[error("Invalid matcher: `{0}`")]
     M(String),
+    #[error("Other: `{0}`")]
     Other(String),
 }
-impl Display for ModelError {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        use ModelError::*;
 
-        match self {
-            R(msg) => write!(f, "Invalid request definition: {}", msg),
-            P(msg) => write!(f, "Invalid policy definition: {}", msg),
-            E(msg) => write!(f, "Unsupported effect: {}", msg),
-            M(msg) => write!(f, "Invalid matcher: {}", msg),
-            Other(msg) => write!(f, "Invalid section: {}", msg),
-        }
-    }
+/// RequestError represents any type of errors in coming request
+#[derive(Error, Debug)]
+pub enum RequestError {
+    #[error("Request doesn't match request definition. expected length: {0}, found length {1}")]
+    UnmatchRequestDefinition(usize, usize),
 }
-impl StdError for ModelError {}
 
 /// PolicyError represents any type of errors in policy
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum PolicyError {
-    UnmatchPolicyDefinition,
+    #[error("Policy doesn't match policy definition. expected length: {0}, found length {1}")]
+    UnmatchPolicyDefinition(usize, usize),
 }
-impl Display for PolicyError {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        use PolicyError::*;
-        match self {
-            UnmatchPolicyDefinition => write!(f, "Policy doesn't match its definition"),
-        }
-    }
-}
-impl StdError for PolicyError {}
 
-/// RBAC error
-#[derive(Debug)]
+/// RBAC error represents any type of errors in RBAC role manager
+#[derive(Error, Debug)]
 pub enum RbacError {
+    #[error("Role `{0}` not found")]
     NotFound(String),
 }
-impl Display for RbacError {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        use RbacError::*;
-        match self {
-            NotFound(msg) => write!(f, r#"Role "{}" not found"#, msg),
-        }
-    }
-}
-impl StdError for RbacError {}
+/// AdapterError error represents any type of errors in adapter's execution
+#[derive(Error, Debug)]
+#[error("Adapter error: {0:?}")]
+pub struct AdapterError(pub Box<dyn StdError + Send + Sync>);
 
 /// General casbin error
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum Error {
-    IoError(IoError),
+    #[error(transparent)]
+    IoError(#[from] IoError),
 
-    ModelError(ModelError),
+    #[error(transparent)]
+    ModelError(#[from] ModelError),
 
-    PolicyError(PolicyError),
+    #[error(transparent)]
+    PolicyError(#[from] PolicyError),
 
-    RbacError(RbacError),
+    #[error(transparent)]
+    RbacError(#[from] RbacError),
 
-    RhaiError(EvalAltResult),
+    #[error(transparent)]
+    RhaiError(#[from] EvalAltResult),
+
+    #[error(transparent)]
+    RequestError(#[from] RequestError),
+
+    #[error(transparent)]
+    AdapterError(#[from] AdapterError),
 }
-impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        use Error::*;
 
-        match self {
-            IoError(i_err) => i_err.fmt(f),
-            ModelError(m_err) => m_err.fmt(f),
-            PolicyError(p_err) => p_err.fmt(f),
-            RbacError(r_err) => r_err.fmt(f),
-            RhaiError(e_err) => e_err.fmt(f),
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn is_send<T: Send>() -> bool {
+        true
+    }
+
+    fn is_sync<T: Sync>() -> bool {
+        true
+    }
+
+    #[test]
+    fn test_send_sync() {
+        assert!(is_send::<Error>());
+        assert!(is_sync::<Error>());
     }
 }
-impl StdError for Error {}

@@ -8,7 +8,7 @@ use async_trait::async_trait;
 
 #[derive(Default)]
 pub struct MemoryAdapter {
-    pub policy: IndexSet<Vec<String>>,
+    policy: IndexSet<Vec<String>>,
 }
 
 #[async_trait]
@@ -59,7 +59,7 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
         let mut line: Vec<String> = rule.into_iter().map(String::from).collect();
         line.insert(0, ptype.to_owned());
         line.insert(0, sec.to_owned());
@@ -71,7 +71,7 @@ impl Adapter for MemoryAdapter {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let mut all_added = true;
         let mut rules_added = vec![];
@@ -95,7 +95,7 @@ impl Adapter for MemoryAdapter {
         &mut self,
         sec: &str,
         ptype: &str,
-        rules: Vec<Vec<&str>>,
+        rules: Vec<Vec<String>>,
     ) -> Result<bool> {
         let mut all_removed = true;
         let mut rules_removed = vec![];
@@ -115,12 +115,12 @@ impl Adapter for MemoryAdapter {
         Ok(all_removed)
     }
 
-    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<&str>) -> Result<bool> {
+    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
         let mut rule: Vec<String> = rule.into_iter().map(String::from).collect();
         rule.insert(0, ptype.to_owned());
         rule.insert(0, sec.to_owned());
 
-        Ok(self.policy.insert(rule))
+        Ok(self.policy.remove(&rule))
     }
 
     async fn remove_filtered_policy(
@@ -128,7 +128,7 @@ impl Adapter for MemoryAdapter {
         sec: &str,
         ptype: &str,
         field_index: usize,
-        field_values: Vec<&str>,
+        field_values: Vec<String>,
     ) -> Result<bool> {
         let mut tmp = IndexSet::new();
         let mut res = false;
@@ -136,7 +136,7 @@ impl Adapter for MemoryAdapter {
             if sec == rule[0] && ptype == rule[1] {
                 let mut matched = true;
                 for (i, field_value) in field_values.iter().enumerate() {
-                    if !field_value.is_empty() && &rule[field_index + i] != field_value {
+                    if !field_value.is_empty() && &rule[field_index + i + 2] != field_value {
                         matched = false;
                         break;
                     }
@@ -147,6 +147,8 @@ impl Adapter for MemoryAdapter {
                 } else {
                     tmp.insert(rule.clone());
                 }
+            } else {
+                tmp.insert(rule.clone());
             }
         }
         self.policy = tmp;

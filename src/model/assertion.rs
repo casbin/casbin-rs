@@ -1,4 +1,4 @@
-use crate::error::{Error, ModelError, PolicyError};
+use crate::error::{ModelError, PolicyError};
 use crate::rbac::{DefaultRoleManager, RoleManager};
 use crate::Result;
 
@@ -43,13 +43,13 @@ impl Assertion {
         let count = self.value.chars().filter(|&c| c == '_').count();
         for rule in &self.policy {
             if count < 2 {
-                return Err(Error::ModelError(ModelError::P(
+                return Err(ModelError::P(
                     r#"the number of "_" in role definition should be at least 2"#.to_owned(),
-                ))
+                )
                 .into());
             }
             if rule.len() < count {
-                return Err(Error::PolicyError(PolicyError::UnmatchPolicyDefinition).into());
+                return Err(PolicyError::UnmatchPolicyDefinition(count, rule.len()).into());
             }
             if count == 2 {
                 rm.write().unwrap().add_link(&rule[0], &rule[1], None);
@@ -58,14 +58,10 @@ impl Assertion {
                     .unwrap()
                     .add_link(&rule[0], &rule[1], Some(&rule[2]));
             } else if count >= 4 {
-                return Err(Error::ModelError(ModelError::P(
-                    "Multiple domains are not supported".to_owned(),
-                ))
-                .into());
+                return Err(ModelError::P("Multiple domains are not supported".to_owned()).into());
             }
         }
         self.rm = Arc::clone(&rm);
-        // self.rm.print_roles();
         Ok(())
     }
 }

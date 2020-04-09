@@ -25,7 +25,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.3.0"
+casbin = "0.4.4"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
@@ -39,10 +39,7 @@ use casbin::prelude::*;
 
 #[async_std::main]
 async fn main() {
-    let model = Model::from_file("path/to/model.conf")?;
-    let adapter = FileAdapter::new("path/to/policy.csv");
-
-    let e = Enforcer::new(Box::new(model),Box::new(adapter)).await?;
+    let e = Enforcer::new("path/to/model.conf", "path/to/policy.csv").await?;
 }
 ```
 
@@ -53,7 +50,7 @@ async fn main() {
     obj = "data1"; // the resource that is going to be accessed.
     act = "read"; // the operation that the user performs on the resource.
 
-    if let Ok(authorized) = e.enforce(vec![sub, obj, act]) {
+    if let Ok(authorized) = e.enforce(&[sub, obj, act]) {
         if authorized {
             // permit alice to read data1
         } else {

@@ -1,4 +1,4 @@
-use crate::error::{Error, RbacError};
+use crate::error::RbacError;
 use crate::rbac::RoleManager;
 use crate::Result;
 use std::collections::HashMap;
@@ -6,15 +6,17 @@ use std::sync::{Arc, RwLock};
 
 #[derive(Clone)]
 pub struct DefaultRoleManager {
-    all_roles: Arc<RwLock<HashMap<String, Arc<RwLock<Role>>>>>,
+    all_roles: HashMap<String, Arc<RwLock<Role>>>,
     max_hierarchy_level: usize,
+    matching_fn: Option<fn(String, String) -> bool>,
 }
 
 impl Default for DefaultRoleManager {
     fn default() -> Self {
         DefaultRoleManager {
-            all_roles: Arc::new(RwLock::new(HashMap::new())),
+            all_roles: HashMap::new(),
             max_hierarchy_level: 0,
+            matching_fn: None,
         }
     }
 }
@@ -22,28 +24,48 @@ impl Default for DefaultRoleManager {
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
-            all_roles: Arc::new(RwLock::new(HashMap::new())),
+            all_roles: HashMap::new(),
             max_hierarchy_level,
+            matching_fn: None,
         }
     }
 
     fn create_role(&mut self, name: &str) -> Arc<RwLock<Role>> {
-        self.all_roles
-            .write()
-            .unwrap()
-            .entry(name.to_owned())
-            .or_insert_with(|| Arc::new(RwLock::new(Role::new(name.to_owned()))))
-            .clone()
+        let role = Arc::clone(
+            self.all_roles
+                .entry(name.to_owned())
+                .or_insert_with(|| Arc::new(RwLock::new(Role::new(name.to_owned())))),
+        );
+
+        if let Some(matching_fn) = self.matching_fn {
+            for (n, r) in &mut self
+                .all_roles
+                .iter()
+                .filter(|(key, _)| key.as_str() != name)
+            {
+                if matching_fn(name.to_owned(), n.to_owned()) {
+                    role.write().unwrap().add_role(Arc::clone(r));
+                }
+            }
+        }
+
+        role
     }
 
     fn has_role(&self, name: &str) -> bool {
-        self.all_roles.read().unwrap().contains_key(name)
+        if let Some(matching_fn) = self.matching_fn {
+            self.all_roles
+                .iter()
+                .any(|(r, _)| matching_fn(name.to_owned(), r.to_owned()))
+        } else {
+            self.all_roles.contains_key(name)
+        }
     }
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn clone_box(&self) -> Box<dyn RoleManager> {
-        Box::new(self.clone())
+    fn add_matching_fn(&mut self, matching_fn: fn(String, String) -> bool) {
+        self.matching_fn = Some(matching_fn);
     }
 
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
@@ -66,9 +88,7 @@ impl RoleManager for DefaultRoleManager {
             name2 = format!("{}::{}", domain, name2);
         }
         if !self.has_role(&name1) || !self.has_role(&name2) {
-            return Err(
-                Error::RbacError(RbacError::NotFound(format!("{} OR {}", name1, name2))).into(),
-            );
+            return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
@@ -127,7 +147,7 @@ impl RoleManager for DefaultRoleManager {
         }
 
         let mut names: Vec<String> = vec![];
-        for role in self.all_roles.read().unwrap().values() {
+        for role in self.all_roles.values() {
             if role.read().unwrap().has_direct_role(&name) {
                 names.push(role.read().unwrap().name.clone());
             }
@@ -142,12 +162,15 @@ impl RoleManager for DefaultRoleManager {
         names
     }
 
-    fn print_roles(&self) {
-        println!("current role manager roles: {:?}", self.all_roles);
+    fn clear(&mut self) {
+        self.all_roles.clear();
     }
 
-    fn clear(&mut self) {
-        self.all_roles.write().unwrap().clear();
+    fn print_roles(&self) {
+        #[cfg(feature = "logging")]
+        {
+            println!("{:?}", self.all_roles);
+        }
     }
 }
 

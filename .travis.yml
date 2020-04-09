@@ -18,7 +18,9 @@ before_script:
 script:
 - cargo clean
 - cargo build
-- cargo test
+# Todo: https://github.com/rust-lang/cargo/issues/2980
+- cargo test --no-default-features --features runtime-async-std,logging
+- cargo test --no-default-features --features runtime-tokio,logging
 - cargo clippy -- -D warnings
 - cargo fmt --all -- --check
 
@@ -27,4 +29,21 @@ after_success: |
     # upload report to codecov
     docker run --security-opt seccomp=unconfined -v "$PWD:/volume" xd009642/tarpaulin sh -c "cargo tarpaulin --out Xml"
     bash <(curl -s https://codecov.io/bash)
+
+    if [[ "${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}" != "master" ]] && [[ "$TRAVIS_PULL_REQUEST" != false ]]; then
+      REMOTE_URL="$(git config --get remote.origin.url)";
+      # Clone the repository fresh..for some reason checking out master fails
+      # from a normal PR build's provided directory
+      cd ${TRAVIS_BUILD_DIR}/.. && \
+      git clone ${REMOTE_URL} "${TRAVIS_REPO_SLUG}-bench" && \
+      cd  "${TRAVIS_REPO_SLUG}-bench" && \
+      git fetch origin +refs/pull/${TRAVIS_PULL_REQUEST}/merge
+      # Bench master
+      cargo bench -- --save-baseline before && \
+      # Bench PR
+      git checkout FETCH_HEAD && \
+      cargo bench -- --save-baseline after && \
+      cargo install critcmp --force && \
+      critcmp before after
+    fi
   fi
