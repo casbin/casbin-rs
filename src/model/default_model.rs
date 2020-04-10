@@ -1094,4 +1094,28 @@ mod tests {
             e.enforce(&vec!["bob", "data3", "read"]).await.unwrap()
         );
     }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_abac() {
+        let m = DefaultModel::from_file("examples/abac_model.conf")
+            .await
+            .unwrap();
+
+        let adapter = MemoryAdapter::default();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", r#"{"Owner":"bob"}"#, "read"])
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", r#"{"Owner":"alice"}"#, "read"])
+                .await
+                .unwrap()
+        );
+    }
 }
