@@ -1,6 +1,8 @@
 # casbin-rs
 
+![GitHub last commit](https://img.shields.io/github/last-commit/casbin/casbin-rs)
 [![Crates.io](https://img.shields.io/crates/v/casbin.svg)](https://crates.io/crates/casbin)
+![crates.io](https://img.shields.io/crates/d/casbin)
 [![Docs](https://docs.rs/casbin/badge.svg)](https://docs.rs/casbin)
 [![Build Status](https://travis-ci.org/casbin/casbin-rs.svg?branch=master)](https://travis-ci.org/casbin/casbin-rs)
 [![codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
