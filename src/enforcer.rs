@@ -1,14 +1,17 @@
-use crate::adapter::Adapter;
-use crate::convert::{TryIntoAdapter, TryIntoModel};
-use crate::effector::{DefaultEffector, EffectKind, Effector};
-use crate::emitter::{Event, EMITTER};
-use crate::error::{Error, ModelError, PolicyError, RequestError};
-use crate::model::FunctionMap;
-use crate::model::Model;
-use crate::rbac::{DefaultRoleManager, RoleManager};
-use crate::watcher::Watcher;
-use crate::Result;
+use crate::{
+    adapter::Adapter,
+    convert::{TryIntoAdapter, TryIntoModel},
+    core_api::CoreApi,
+    effector::{DefaultEffector, EffectKind, Effector},
+    emitter::{Event, EMITTER},
+    error::{Error, ModelError, PolicyError, RequestError},
+    model::{FunctionMap, Model},
+    rbac::{DefaultRoleManager, RoleManager},
+    watcher::Watcher,
+    Result,
+};
 
+use async_trait::async_trait;
 use emitbrown::Events;
 use rhai::{Array, Engine, RegisterFn, Scope};
 
@@ -61,9 +64,9 @@ pub struct Enforcer {
     pub(crate) watcher: Option<Box<dyn Watcher>>,
 }
 
-impl Enforcer {
-    /// Enforcer::new creates an enforcer via file or DB.
-    pub async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+#[async_trait]
+impl CoreApi for Enforcer {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
@@ -96,52 +99,64 @@ impl Enforcer {
         Ok(e)
     }
 
-    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.add_function(fname, f);
     }
 
-    pub fn get_model(&self) -> &dyn Model {
+    #[inline]
+    fn get_model(&self) -> &dyn Model {
         &*self.model
     }
 
-    pub fn get_mut_model(&mut self) -> &mut dyn Model {
+    #[inline]
+    fn get_mut_model(&mut self) -> &mut dyn Model {
         &mut *self.model
     }
 
-    pub fn get_adapter(&self) -> &dyn Adapter {
+    #[inline]
+    fn get_adapter(&self) -> &dyn Adapter {
         &*self.adapter
     }
 
-    pub fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+    #[inline]
+    fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
         &mut *self.adapter
     }
 
-    pub fn set_watcher(&mut self, w: Box<dyn Watcher>) {
+    #[inline]
+    fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
     }
 
-    pub fn get_role_manager(&mut self) -> Arc<RwLock<dyn RoleManager>> {
+    #[inline]
+    fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>> {
         Arc::clone(&self.rm)
     }
 
-    pub fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+    #[inline]
+    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) {
+        self.rm = rm;
+    }
+
+    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
         self.rm.write().unwrap().add_matching_fn(f);
         self.build_role_links()
     }
 
-    pub async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
+    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;
         self.load_policy().await?;
         Ok(())
     }
 
-    pub async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
+    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
         self.adapter = a.try_into_adapter().await?;
         self.load_policy().await?;
         Ok(())
     }
 
-    pub fn set_effector(&mut self, e: Box<dyn Effector>) {
+    #[inline]
+    fn set_effector(&mut self, e: Box<dyn Effector>) {
         self.eft = e;
     }
 
@@ -154,20 +169,20 @@ impl Enforcer {
     /// #[cfg(feature = "runtime-async-std")]
     /// #[async_std::main]
     /// async fn main() {
-    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await.unwrap());
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
     /// #[tokio::main]
     /// async fn main() {
-    ///     let e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await.unwrap());
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    pub fn enforce<S: AsRef<str>>(&self, rvals: &[S]) -> Result<bool> {
+    async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         if !self.enabled {
             return Ok(true);
         }
@@ -259,13 +274,13 @@ impl Enforcer {
         Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
     }
 
-    pub fn build_role_links(&mut self) -> Result<()> {
+    fn build_role_links(&mut self) -> Result<()> {
         self.rm.write().unwrap().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
         Ok(())
     }
 
-    pub async fn load_policy(&mut self) -> Result<()> {
+    async fn load_policy(&mut self) -> Result<()> {
         self.model.clear_policy();
         self.adapter.load_policy(&mut *self.model).await?;
 
@@ -275,32 +290,42 @@ impl Enforcer {
         Ok(())
     }
 
-    pub async fn save_policy(&mut self) -> Result<()> {
-        self.adapter.save_policy(&mut *self.model).await
+    async fn save_policy(&mut self) -> Result<()> {
+        self.adapter.save_policy(&mut *self.model).await?;
+        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+        Ok(())
     }
 
-    pub fn clear_policy(&mut self) {
+    #[inline]
+    fn clear_policy(&mut self) {
         self.model.clear_policy();
     }
 
-    pub fn enable_enforce(&mut self, enabled: bool) {
+    #[inline]
+    fn enable_enforce(&mut self, enabled: bool) {
         self.enabled = enabled;
     }
 
-    pub fn enable_auto_save(&mut self, auto_save: bool) {
+    #[inline]
+    fn enable_auto_save(&mut self, auto_save: bool) {
         self.auto_save = auto_save;
     }
 
-    pub fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
+    #[inline]
+    fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool) {
         self.auto_build_role_links = auto_build_role_links;
+    }
+
+    #[inline]
+    fn has_auto_save_enabled(&self) -> bool {
+        self.auto_save
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::adapter::{FileAdapter, MemoryAdapter};
-    use crate::model::DefaultModel;
+    use crate::prelude::*;
 
     fn is_send<T: Send>() -> bool {
         true
@@ -361,100 +386,122 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(m, adapter).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource2", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["alice", "/bob_data/resource1", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["alice", "/bob_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["alice", "/bob_data/resource2", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["alice", "/bob_data/resource2", "POST"])
+                .await
                 .unwrap()
         );
 
         assert_eq!(
             false,
             e.enforce(&vec!["bob", "/alice_data/resource1", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["bob", "/alice_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["bob", "/alice_data/resource2", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["bob", "/alice_data/resource2", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["bob", "/bob_data/resource1", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["bob", "/bob_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             false,
             e.enforce(&vec!["bob", "/bob_data/resource2", "GET"])
+                .await
                 .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["bob", "/bob_data/resource2", "POST"])
+                .await
                 .unwrap()
         );
 
         assert_eq!(
             true,
-            e.enforce(&vec!["cathy", "/cathy_data", "GET"]).unwrap()
+            e.enforce(&vec!["cathy", "/cathy_data", "GET"])
+                .await
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["cathy", "/cathy_data", "POST"]).unwrap()
+            e.enforce(&vec!["cathy", "/cathy_data", "POST"])
+                .await
+                .unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["cathy", "/cathy_data", "DELETE"]).unwrap()
+            e.enforce(&vec!["cathy", "/cathy_data", "DELETE"])
+                .await
+                .unwrap()
         );
     }
 
@@ -472,10 +519,11 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = Enforcer::new(m, adapter).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
+                .await
                 .unwrap()
         );
     }
@@ -506,7 +554,10 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -565,14 +616,38 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -610,14 +685,38 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -628,29 +727,71 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
-        let e = Enforcer::new(m, adapter).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&vec!["192.168.2.123", "data1", "read"]).unwrap());
+        assert!(e
+            .enforce(&vec!["192.168.2.123", "data1", "read"])
+            .await
+            .unwrap());
 
-        assert!(e.enforce(&vec!["10.0.0.5", "data2", "write"]).unwrap());
+        assert!(e
+            .enforce(&vec!["10.0.0.5", "data2", "write"])
+            .await
+            .unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.2.123", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.2.123", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.2.123", "data2", "write"]).unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.2.123", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.2.123", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.2.123", "data2", "write"])
+            .await
+            .unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.0.123", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data2", "write"]).unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.123", "data1", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.123", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.123", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.123", "data2", "write"])
+            .await
+            .unwrap());
 
-        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["10.0.0.5", "data2", "read"]).unwrap());
+        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "read"]).await.unwrap());
+        assert!(!e
+            .enforce(&vec!["10.0.0.5", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e.enforce(&vec!["10.0.0.5", "data2", "read"]).await.unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.0.1", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data2", "write"]).unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.1", "data1", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.1", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.1", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&vec!["192.168.0.1", "data2", "write"])
+            .await
+            .unwrap());
     }
 
     use crate::MgmtApi;
@@ -674,14 +815,38 @@ mod tests {
         .unwrap();
         e.load_policy().await.unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
+        );
 
         e.enable_auto_save(true);
         e.remove_policy(
@@ -693,14 +858,38 @@ mod tests {
         .await
         .unwrap();
         e.load_policy().await.unwrap();
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -714,7 +903,10 @@ mod tests {
         let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
-        assert_eq!(false, e.enforce(&vec!["user501", "data9", "read"]).unwrap());
+        assert_eq!(
+            false,
+            e.enforce(&vec!["user501", "data9", "read"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -726,7 +918,10 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["root", "data1", "read"]).unwrap());
+        assert_eq!(
+            false,
+            e.enforce(&vec!["root", "data1", "read"]).await.unwrap()
+        );
 
         let m2 = DefaultModel::from_file("examples/basic_with_root_model.conf")
             .await
@@ -735,7 +930,10 @@ mod tests {
         let e2 = Enforcer::new(m2, adapter2).await.unwrap();
 
         e.model = e2.model;
-        assert_eq!(true, e.enforce(&vec!["root", "data1", "read"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["root", "data1", "read"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -747,8 +945,14 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
 
         let m2 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -758,8 +962,14 @@ mod tests {
 
         e.adapter = e2.adapter;
         e.load_policy().await.unwrap();
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(
+            false,
+            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
+        );
+        assert_eq!(
+            true,
+            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
@@ -777,33 +987,42 @@ mod tests {
 
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/123", "GET"]).unwrap()
+            e.enforce(&vec!["alice", "/alice_data/123", "GET"])
+                .await
+                .unwrap()
         );
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
 
         assert_eq!(
             true,
             e.enforce(&vec!["bob", "/alice_data/resource2", "GET"])
+                .await
                 .unwrap()
         );
 
         assert_eq!(
             true,
             e.enforce(&vec!["bob", "/bob_data/resource1", "POST"])
+                .await
                 .unwrap()
         );
 
         assert_eq!(
             true,
-            e.enforce(&vec!["cathy", "/cathy_data", "GET"]).unwrap()
+            e.enforce(&vec!["cathy", "/cathy_data", "GET"])
+                .await
+                .unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["cathy", "/cathy_data", "POST"]).unwrap()
+            e.enforce(&vec!["cathy", "/cathy_data", "POST"])
+                .await
+                .unwrap()
         );
     }
 }

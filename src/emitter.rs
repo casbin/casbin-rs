@@ -1,5 +1,4 @@
-use crate::cached_enforcer::CachedEnforcer;
-use crate::enforcer::Enforcer;
+use crate::{cached_enforcer::CachedEnforcer, enforcer::Enforcer};
 
 use emitbrown::Emitter;
 use lazy_static::lazy_static;
