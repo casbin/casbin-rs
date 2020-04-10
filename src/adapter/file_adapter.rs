@@ -1,9 +1,4 @@
-use crate::adapter::Adapter;
-use crate::error::ModelError;
-use crate::model::Model;
-use crate::Result;
-
-use std::convert::AsRef;
+use crate::{adapter::Adapter, error::ModelError, model::Model, Result};
 
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
@@ -27,6 +22,8 @@ use tokio::{
 };
 
 use async_trait::async_trait;
+
+use std::convert::AsRef;
 
 pub struct FileAdapter<P> {
     file_path: P,

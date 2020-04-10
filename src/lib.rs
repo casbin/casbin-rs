@@ -13,7 +13,6 @@ mod management_api;
 mod model;
 mod rbac;
 mod rbac_api;
-mod synced_enforcer;
 mod util;
 mod watcher;
 
@@ -34,7 +33,6 @@ pub use management_api::MgmtApi;
 pub use model::{DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};
 pub use rbac_api::RbacApi;
-pub use synced_enforcer::SyncedEnforcer;
 pub use watcher::Watcher;
 
 pub type Result<T> = std::result::Result<T, Error>;

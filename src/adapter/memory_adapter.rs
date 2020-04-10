@@ -1,10 +1,7 @@
-use crate::adapter::Adapter;
-use crate::model::Model;
-use crate::Result;
-
-use indexmap::IndexSet;
+use crate::{adapter::Adapter, model::Model, Result};
 
 use async_trait::async_trait;
+use indexmap::IndexSet;
 
 #[derive(Default)]
 pub struct MemoryAdapter {

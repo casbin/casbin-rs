@@ -52,11 +52,16 @@ impl InternalApi for Enforcer {
         ptype: &str,
         rule: Vec<String>,
     ) -> Result<bool> {
-        if self.auto_save && !self.adapter.add_policy(sec, ptype, rule.clone()).await? {
+        if self.has_auto_save_enabled()
+            && !self
+                .get_mut_adapter()
+                .add_policy(sec, ptype, rule.clone())
+                .await?
+        {
             return Ok(false);
         }
 
-        let rule_added = self.model.add_policy(sec, ptype, rule);
+        let rule_added = self.get_mut_model().add_policy(sec, ptype, rule);
         if rule_added {
             EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
@@ -70,11 +75,16 @@ impl InternalApi for Enforcer {
         ptype: &str,
         rules: Vec<Vec<String>>,
     ) -> Result<bool> {
-        if self.auto_save && !self.adapter.add_policies(sec, ptype, rules.clone()).await? {
+        if self.has_auto_save_enabled()
+            && !self
+                .get_mut_adapter()
+                .add_policies(sec, ptype, rules.clone())
+                .await?
+        {
             return Ok(false);
         }
 
-        let rules_added = self.model.add_policies(sec, ptype, rules);
+        let rules_added = self.get_mut_model().add_policies(sec, ptype, rules);
         if rules_added {
             EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
@@ -88,11 +98,16 @@ impl InternalApi for Enforcer {
         ptype: &str,
         rule: Vec<String>,
     ) -> Result<bool> {
-        if self.auto_save && !self.adapter.remove_policy(sec, ptype, rule.clone()).await? {
+        if self.has_auto_save_enabled()
+            && !self
+                .get_mut_adapter()
+                .remove_policy(sec, ptype, rule.clone())
+                .await?
+        {
             return Ok(false);
         }
 
-        let rule_removed = self.model.remove_policy(sec, ptype, rule);
+        let rule_removed = self.get_mut_model().remove_policy(sec, ptype, rule);
         if rule_removed {
             EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
@@ -106,16 +121,16 @@ impl InternalApi for Enforcer {
         ptype: &str,
         rules: Vec<Vec<String>>,
     ) -> Result<bool> {
-        if self.auto_save
+        if self.has_auto_save_enabled()
             && !self
-                .adapter
+                .get_mut_adapter()
                 .remove_policies(sec, ptype, rules.clone())
                 .await?
         {
             return Ok(false);
         }
 
-        let rules_removed = self.model.remove_policies(sec, ptype, rules);
+        let rules_removed = self.get_mut_model().remove_policies(sec, ptype, rules);
         if rules_removed {
             EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
         }
@@ -130,9 +145,9 @@ impl InternalApi for Enforcer {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
-        if self.auto_save
+        if self.has_auto_save_enabled()
             && !self
-                .adapter
+                .get_mut_adapter()
                 .remove_filtered_policy(sec, ptype, field_index, field_values.clone())
                 .await?
         {
@@ -140,7 +155,7 @@ impl InternalApi for Enforcer {
         }
 
         let rules_removed =
-            self.model
+            self.get_mut_model()
                 .remove_filtered_policy(sec, ptype, field_index, field_values);
         if rules_removed {
             EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
