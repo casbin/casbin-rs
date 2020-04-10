@@ -14,6 +14,7 @@ pub trait CoreApi: Sized + Send + Sync {
     fn get_mut_adapter(&mut self) -> &mut dyn Adapter;
     fn set_watcher(&mut self, w: Box<dyn Watcher>);
     fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>>;
+    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>);
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()>;
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
@@ -26,4 +27,5 @@ pub trait CoreApi: Sized + Send + Sync {
     fn enable_auto_save(&mut self, auto_save: bool);
     fn enable_enforce(&mut self, enabled: bool);
     fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool);
+    fn has_auto_save_enabled(&self) -> bool;
 }

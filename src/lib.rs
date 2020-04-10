@@ -13,6 +13,7 @@ mod management_api;
 mod model;
 mod rbac;
 mod rbac_api;
+mod synced_enforcer;
 mod util;
 mod watcher;
 
@@ -21,6 +22,7 @@ pub mod prelude;
 
 pub use adapter::{Adapter, FileAdapter, MemoryAdapter};
 pub use cache::{Cache, DefaultCache};
+pub use cached_api::CachedApi;
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use core_api::CoreApi;
@@ -32,6 +34,7 @@ pub use management_api::MgmtApi;
 pub use model::{DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};
 pub use rbac_api::RbacApi;
+pub use synced_enforcer::SyncedEnforcer;
 pub use watcher::Watcher;
 
 pub type Result<T> = std::result::Result<T, Error>;

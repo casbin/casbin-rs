@@ -1,8 +1,10 @@
-use crate::cached_enforcer::CachedEnforcer;
-use crate::core_api::CoreApi;
-use crate::emitter::{Event, CACHED_EMITTER, EMITTER};
-use crate::enforcer::Enforcer;
-use crate::Result;
+use crate::{
+    cached_enforcer::CachedEnforcer,
+    core_api::CoreApi,
+    emitter::{Event, CACHED_EMITTER, EMITTER},
+    enforcer::Enforcer,
+    Result,
+};
 
 use async_trait::async_trait;
 use emitbrown::Events;
