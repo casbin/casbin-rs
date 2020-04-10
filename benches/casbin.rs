@@ -1,4 +1,4 @@
-use casbin::{DefaultModel, Enforcer, FileAdapter, MemoryAdapter, Model, RbacApi};
+use casbin::prelude::*;
 use criterion::{criterion_group, criterion_main, Criterion};
 
 #[cfg(feature = "runtime-async-std")]
@@ -64,7 +64,7 @@ fn enforcer_create(b: &mut Criterion) {
             let adpt = FileAdapter::new("examples/basic_model.conf");
 
             // what we want to measure
-            let _e = await_future(Enforcer::new(Box::new(m), Box::new(adpt))).unwrap();
+            let _e = await_future(Enforcer::new(m, adpt)).unwrap();
         });
     });
 }
@@ -81,13 +81,11 @@ fn enforcer_enforce(b: &mut Criterion) {
             "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
         );
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let mut e = await_future(Enforcer::new(m, adapter)).unwrap();
 
         b.iter(|| {
-            e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])
-                .unwrap();
-            e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])
-                .unwrap();
+            await_future(e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])).unwrap();
+            await_future(e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])).unwrap();
         })
     });
 }
@@ -106,7 +104,7 @@ fn enforcer_add_permission(b: &mut Criterion) {
         );
 
         let adapter = MemoryAdapter::default();
-        let mut e = await_future(Enforcer::new(Box::new(m), Box::new(adapter))).unwrap();
+        let mut e = await_future(Enforcer::new(m, adapter)).unwrap();
 
         b.iter(|| {
             await_future(e.add_permission_for_user(
