@@ -202,16 +202,19 @@ impl CoreApi for Enforcer {
     /// use casbin::prelude::*;
     /// #[cfg(feature = "runtime-async-std")]
     /// #[async_std::main]
-    /// async fn main() {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await.unwrap());
+    /// async fn main() -> Result<()> {
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
+    ///     Ok(())
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
     /// #[tokio::main]
-    /// async fn main() {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await.unwrap();
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await.unwrap());
+    /// async fn main() -> Result<()> {
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
+    ///
+    ///     Ok(())
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
