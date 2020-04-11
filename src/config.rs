@@ -1,8 +1,5 @@
 use crate::Result;
 
-use std::collections::HashMap;
-use std::convert::AsRef;
-
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
     fs::File,
@@ -18,6 +15,8 @@ use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind},
 };
+
+use std::collections::HashMap;
 
 const DEFAULT_SECTION: &str = "default";
 const DEFAULT_COMMENT: &str = "#";

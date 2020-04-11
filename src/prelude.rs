@@ -1,3 +1,4 @@
 pub use crate::{
-    CachedEnforcer, DefaultModel, Enforcer, FileAdapter, InternalApi, MgmtApi, Model, RbacApi,
+    CachedApi, CachedEnforcer, CoreApi, DefaultModel, Enforcer, FileAdapter, InternalApi,
+    MemoryAdapter, MgmtApi, Model, RbacApi,
 };

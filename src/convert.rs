@@ -3,12 +3,12 @@ use crate::{Adapter, DefaultModel, FileAdapter, Model, Result};
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait TryIntoModel {
+pub trait TryIntoModel: Send + Sync {
     async fn try_into_model(self) -> Result<Box<dyn Model>>;
 }
 
 #[async_trait]
-pub trait TryIntoAdapter {
+pub trait TryIntoAdapter: Send + Sync {
     async fn try_into_adapter(self) -> Result<Box<dyn Adapter>>;
 }
 

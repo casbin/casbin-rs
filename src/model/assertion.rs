@@ -1,11 +1,15 @@
-use crate::error::{ModelError, PolicyError};
-use crate::rbac::{DefaultRoleManager, RoleManager};
-use crate::Result;
+use crate::{
+    error::{ModelError, PolicyError},
+    rbac::{DefaultRoleManager, RoleManager},
+    Result,
+};
 
 use indexmap::IndexSet;
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 pub(crate) type AssertionMap = HashMap<String, Assertion>;
 

@@ -1,8 +1,9 @@
-use crate::error::RbacError;
-use crate::rbac::RoleManager;
-use crate::Result;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use crate::{error::RbacError, rbac::RoleManager, Result};
+
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Clone)]
 pub struct DefaultRoleManager {

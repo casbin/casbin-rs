@@ -1,14 +1,14 @@
 #[cfg(feature = "runtime-async-std")]
 use async_std::net::IpAddr;
-use globset::GlobBuilder;
 
-use ip_network::IpNetwork;
-use regex::Regex;
-use rhai::Array;
-
-use std::collections::HashMap;
 #[cfg(feature = "runtime-tokio")]
 use std::net::IpAddr;
+
+use globset::GlobBuilder;
+use ip_network::IpNetwork;
+use regex::Regex;
+
+use std::collections::HashMap;
 
 pub struct FunctionMap {
     pub(crate) fm: HashMap<String, fn(String, String) -> bool>,
@@ -73,17 +73,6 @@ pub fn key_match3(key1: String, key2: String) -> bool {
         key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
     }
     regex_match(key1, format!("^{}$", key2))
-}
-
-// in_match determines whether key1 matches any element in key2
-// For example, in_match("alice", ["bob", "alice"]) returns true
-// Todo: add in operator in rhai and remove this
-pub fn in_match(k1: String, k2: Array) -> bool {
-    let r = k2
-        .into_iter()
-        .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
-        .collect::<Vec<String>>();
-    r.contains(&k1)
 }
 
 // regex_match determines whether key1 matches the pattern of key2 in regular expression.

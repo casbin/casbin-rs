@@ -1,6 +1,8 @@
 # casbin-rs
 
+![GitHub last commit](https://img.shields.io/github/last-commit/casbin/casbin-rs)
 [![Crates.io](https://img.shields.io/crates/v/casbin.svg)](https://crates.io/crates/casbin)
+![crates.io](https://img.shields.io/crates/d/casbin)
 [![Docs](https://docs.rs/casbin/badge.svg)](https://docs.rs/casbin)
 [![Build Status](https://travis-ci.org/casbin/casbin-rs.svg?branch=master)](https://travis-ci.org/casbin/casbin-rs)
 [![codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
@@ -25,7 +27,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.4.3"
+casbin = "0.5.0"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
@@ -39,7 +41,7 @@ use casbin::prelude::*;
 
 #[async_std::main]
 async fn main() {
-    let e = Enforcer::new("path/to/model.conf", "path/to/policy.csv").await?;
+    let mut e = Enforcer::new("path/to/model.conf", "path/to/policy.csv").await?;
 }
 ```
 
@@ -50,7 +52,7 @@ async fn main() {
     obj = "data1"; // the resource that is going to be accessed.
     act = "read"; // the operation that the user performs on the resource.
 
-    if let Ok(authorized) = e.enforce(&[sub, obj, act]) {
+    if let Ok(authorized) = e.enforce(&[sub, obj, act]).await {
         if authorized {
             // permit alice to read data1
         } else {
