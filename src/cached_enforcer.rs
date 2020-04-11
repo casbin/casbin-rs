@@ -5,7 +5,7 @@ use crate::{
     convert::{TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::Effector,
-    emitter::{Event, CACHED_EMITTER},
+    emitter::{clear_cache, Event, EventData, EventEmitter},
     enforcer::Enforcer,
     model::Model,
     rbac::RoleManager,
@@ -13,12 +13,10 @@ use crate::{
     Result,
 };
 
-#[cfg(feature = "runtime-async-std")]
-use async_std::task;
 use async_trait::async_trait;
-use emitbrown::Events;
 
 use std::{
+    collections::HashMap,
     sync::{Arc, RwLock},
     time::Duration,
 };
@@ -26,54 +24,37 @@ use std::{
 pub struct CachedEnforcer {
     pub(crate) enforcer: Enforcer,
     pub(crate) cache: Box<dyn Cache<Vec<String>, bool>>,
+    pub(crate) events: HashMap<Event, Vec<fn(&mut Self, Option<EventData>)>>,
+}
+
+impl EventEmitter<Event> for CachedEnforcer {
+    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+        self.events.entry(e).or_insert(vec![]).push(f)
+    }
+
+    fn off(&mut self, e: Event) {
+        self.events.remove(&e);
+    }
+
+    fn emit(&mut self, e: Event, d: Option<EventData>) {
+        if let Some(cbs) = self.events.get(&e) {
+            for cb in cbs.clone().iter() {
+                cb(self, d.clone())
+            }
+        }
+    }
 }
 
 #[async_trait]
 impl CoreApi for CachedEnforcer {
-    #[cfg(feature = "runtime-async-std")]
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
-        let cached_enforcer = CachedEnforcer {
+        let mut cached_enforcer = CachedEnforcer {
             enforcer: Enforcer::new(m, a).await?,
-            cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
+            cache: Box::new(DefaultCache::new(1000)),
+            events: HashMap::new(),
         };
 
-        CACHED_EMITTER.lock().unwrap().on(
-            Event::PolicyChange,
-            // Todo: Move to async closure when it's stable
-            // https://github.com/rust-lang/rfcs/blob/master/text/2394-async_await.md
-            Box::new(|ce: &mut CachedEnforcer| {
-                task::block_on(async {
-                    ce.cache.clear().await;
-                });
-            }),
-        );
-
-        Ok(cached_enforcer)
-    }
-
-    #[cfg(feature = "runtime-tokio")]
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
-        let cached_enforcer = CachedEnforcer {
-            enforcer: Enforcer::new(m, a).await?,
-            cache: Box::new(DefaultCache::new(1000)) as Box<dyn Cache<Vec<String>, bool>>,
-        };
-
-        CACHED_EMITTER.lock().unwrap().on(
-            Event::PolicyChange,
-            // Todo: Move to async closure when it's stable
-            // https://github.com/rust-lang/rfcs/blob/master/text/2394-async_await.md
-            Box::new(|ce: &mut CachedEnforcer| {
-                tokio::runtime::Builder::new()
-                    .basic_scheduler()
-                    .threaded_scheduler()
-                    .enable_all()
-                    .build()
-                    .unwrap()
-                    .block_on(async {
-                        ce.cache.clear().await;
-                    });
-            }),
-        );
+        cached_enforcer.on(Event::PolicyChange, clear_cache);
 
         Ok(cached_enforcer)
     }
@@ -108,6 +89,15 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_watcher(w);
     }
 
+    #[inline]
+    fn get_watcher(&self) -> Option<&dyn Watcher> {
+        self.enforcer.get_watcher()
+    }
+
+    #[inline]
+    fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
+        self.enforcer.get_mut_watcher()
+    }
     #[inline]
     fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>> {
         self.enforcer.get_role_manager()
@@ -193,6 +183,10 @@ impl CoreApi for CachedEnforcer {
 }
 
 impl CachedApi for CachedEnforcer {
+    fn get_mut_cache(&mut self) -> &mut dyn Cache<Vec<String>, bool> {
+        &mut *self.cache
+    }
+
     fn set_cache(&mut self, cache: Box<dyn Cache<Vec<String>, bool>>) {
         self.cache = cache;
     }

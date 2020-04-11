@@ -3,7 +3,7 @@ use crate::{
     convert::{TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
-    emitter::{Event, EMITTER},
+    emitter::{notify_watcher, Event, EventData, EventEmitter},
     error::{Error, ModelError, PolicyError, RequestError},
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
@@ -12,10 +12,12 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use emitbrown::Events;
 use rhai::{Array, Engine, RegisterFn, Scope};
 
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 macro_rules! get_or_err {
     ($this:ident, $key:expr, $err:expr, $msg:expr) => {{
@@ -62,6 +64,25 @@ pub struct Enforcer {
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
+    pub(crate) events: HashMap<Event, Vec<fn(&mut Self, Option<EventData>)>>,
+}
+
+impl EventEmitter<Event> for Enforcer {
+    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+        self.events.entry(e).or_insert(vec![]).push(f)
+    }
+
+    fn off(&mut self, e: Event) {
+        self.events.remove(&e);
+    }
+
+    fn emit(&mut self, e: Event, d: Option<EventData>) {
+        if let Some(cbs) = self.events.get(&e) {
+            for cb in cbs.clone().iter() {
+                cb(self, d.clone())
+            }
+        }
+    }
 }
 
 #[async_trait]
@@ -83,22 +104,17 @@ impl CoreApi for Enforcer {
             auto_save: true,
             auto_build_role_links: true,
             watcher: None,
+            events: HashMap::new(),
         };
 
-        EMITTER.lock().unwrap().on(
-            Event::PolicyChange,
-            Box::new(|e: &mut Enforcer| {
-                if let Some(ref mut w) = e.watcher {
-                    w.update();
-                }
-            }),
-        );
+        e.on(Event::PolicyChange, notify_watcher);
 
         // TODO: check filtered adapter, match over a implementor?
         e.load_policy().await?;
         Ok(e)
     }
 
+    #[inline]
     fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.add_function(fname, f);
     }
@@ -126,6 +142,24 @@ impl CoreApi for Enforcer {
     #[inline]
     fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
+    }
+
+    #[inline]
+    fn get_watcher(&self) -> Option<&dyn Watcher> {
+        if let Some(ref watcher) = self.watcher {
+            Some(&**watcher)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
+        if let Some(ref mut watcher) = self.watcher {
+            Some(&mut **watcher)
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -292,7 +326,7 @@ impl CoreApi for Enforcer {
 
     async fn save_policy(&mut self) -> Result<()> {
         self.adapter.save_policy(&mut *self.model).await?;
-        EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, None);
         Ok(())
     }
 
