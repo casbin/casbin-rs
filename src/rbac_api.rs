@@ -519,9 +519,62 @@ mod tests {
         );
 
         thread::spawn(move || {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "runtime-async-std")] {
-                    task::block_on(async move {
+            #[cfg(feature = "runtime-async-std")]
+            {
+                task::block_on(async move {
+                    ee.write()
+                        .unwrap()
+                        .add_role_for_user("alice", "data1_admin", None)
+                        .await
+                        .unwrap();
+
+                    assert_eq!(
+                        vec!["data2_admin", "data1_admin"],
+                        ee.write().unwrap().get_roles_for_user("alice", None)
+                    );
+                    assert_eq!(
+                        vec![String::new(); 0],
+                        ee.write().unwrap().get_roles_for_user("bob", None)
+                    );
+                    assert_eq!(
+                        vec![String::new(); 0],
+                        ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                    );
+
+                    ee.write()
+                        .unwrap()
+                        .add_roles_for_user(
+                            "bob",
+                            vec!["data2_admin"].iter().map(|s| s.to_string()).collect(),
+                            None,
+                        )
+                        .await
+                        .unwrap();
+
+                    assert_eq!(
+                        vec!["data2_admin", "data1_admin"],
+                        ee.write().unwrap().get_roles_for_user("alice", None)
+                    );
+                    assert_eq!(
+                        vec!["data2_admin"],
+                        ee.write().unwrap().get_roles_for_user("bob", None)
+                    );
+                    assert_eq!(
+                        vec![String::new(); 0],
+                        ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                    );
+                });
+            }
+
+            #[cfg(feature = "runtime-tokio")]
+            {
+                tokio::runtime::Builder::new()
+                    .basic_scheduler()
+                    .threaded_scheduler()
+                    .enable_all()
+                    .build()
+                    .unwrap()
+                    .block_on(async move {
                         ee.write()
                             .unwrap()
                             .add_role_for_user("alice", "data1_admin", None)
@@ -542,10 +595,10 @@ mod tests {
                         );
 
                         ee.write()
-                        .unwrap()
-                        .add_roles_for_user("bob",vec!["data2_admin"].iter().map(|s| s.to_string()).collect(), None)
-                        .await
-                        .unwrap();
+                            .unwrap()
+                            .add_roles_for_user("bob", vec!["data2_admin".to_owned()], None)
+                            .await
+                            .unwrap();
 
                         assert_eq!(
                             vec!["data2_admin", "data1_admin"],
@@ -560,53 +613,6 @@ mod tests {
                             ee.write().unwrap().get_roles_for_user("data2_admin", None)
                         );
                     });
-                } else if #[cfg(feature = "runtime-tokio")] {
-                    tokio::runtime::Builder::new()
-                        .basic_scheduler()
-                        .threaded_scheduler()
-                        .enable_all()
-                        .build()
-                        .unwrap()
-                        .block_on(async move {
-                            ee.write()
-                                .unwrap()
-                                .add_role_for_user("alice", "data1_admin", None)
-                                .await
-                                .unwrap();
-
-                            assert_eq!(
-                                vec!["data2_admin", "data1_admin"],
-                                ee.write().unwrap().get_roles_for_user("alice", None)
-                            );
-                            assert_eq!(
-                                vec![String::new(); 0],
-                                ee.write().unwrap().get_roles_for_user("bob", None)
-                            );
-                            assert_eq!(
-                                vec![String::new(); 0],
-                                ee.write().unwrap().get_roles_for_user("data2_admin", None)
-                            );
-
-                            ee.write()
-                            .unwrap()
-                            .add_roles_for_user("bob",vec!["data2_admin".to_owned()], None)
-                            .await
-                            .unwrap();
-
-                            assert_eq!(
-                                vec!["data2_admin", "data1_admin"],
-                                ee.write().unwrap().get_roles_for_user("alice", None)
-                            );
-                            assert_eq!(
-                                vec!["data2_admin"],
-                                ee.write().unwrap().get_roles_for_user("bob", None)
-                            );
-                            assert_eq!(
-                                vec![String::new(); 0],
-                                ee.write().unwrap().get_roles_for_user("data2_admin", None)
-                            );
-                        });
-                }
             }
         })
         .join()

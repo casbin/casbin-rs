@@ -170,8 +170,9 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) {
+    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         self.rm = rm;
+        self.build_role_links()
     }
 
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
