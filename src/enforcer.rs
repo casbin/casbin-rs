@@ -196,8 +196,14 @@ impl CoreApi for Enforcer {
         let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
 
         for (i, token) in r_ast.tokens.iter().enumerate() {
-            let scope_exp = format!("let {} = \"{}\";", token, rvals[i].as_ref());
-            engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+            if rvals[i].as_ref().starts_with('{') && rvals[i].as_ref().ends_with('}') {
+                // if r_sub, r_obj or r_act is a json string, then we need to parse it into an object
+                // https://casbin.org/docs/en/abac#how-to-use-abac
+                let scope_exp = format!("const {} = #{};", token, rvals[i].as_ref());
+                engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+            } else {
+                scope.push_constant(token, rvals[i].as_ref().to_owned());
+            }
         }
 
         for (key, func) in self.fm.fm.iter() {
@@ -233,8 +239,7 @@ impl CoreApi for Enforcer {
                     .into());
                 }
                 for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
-                    let scope_exp = format!("let {} = \"{}\";", ptoken, pvals[pi]);
-                    engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+                    scope.push_constant(ptoken, pvals[pi].to_owned());
                 }
 
                 let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
@@ -260,8 +265,7 @@ impl CoreApi for Enforcer {
             }
         } else {
             for token in p_ast.tokens.iter() {
-                let scope_exp = format!("let {} = \"{}\";", token, "");
-                engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+                scope.push_constant(token, String::new());
             }
             let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
             if eval_result {
