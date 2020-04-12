@@ -114,16 +114,18 @@ fn b_benchmark_rbac_model_small(b: &mut Bencher) {
 
     // 100 roles, 10 resources.
     for i in 0..100 {
-        e.add_policy(vec![
+        await_future(e.add_policy(vec![
             format!("group{}", i),
             format!("data{}", i / 10),
             "read".to_owned(),
-        ]);
+        ]))
+        .unwrap();
     }
 
     // 1000 users.
-    for i in 0..100 {
-        e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]);
+    for i in 0..1000 {
+        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
+            .unwrap();
     }
 
     e.build_role_links().unwrap();
@@ -143,16 +145,18 @@ fn b_benchmark_cached_rbac_model_small(b: &mut Bencher) {
 
     // 100 roles, 10 resources.
     for i in 0..100 {
-        e.add_policy(vec![
+        await_future(e.add_policy(vec![
             format!("group{}", i),
             format!("data{}", i / 10),
             "read".to_owned(),
-        ]);
+        ]))
+        .unwrap();
     }
 
     // 1000 users.
     for i in 0..1000 {
-        e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]);
+        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
+            .unwrap();
     }
 
     e.build_role_links().unwrap();
@@ -172,16 +176,18 @@ fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
 
     // 1000 roles, 100 resources.
     for i in 0..1000 {
-        e.add_policy(vec![
+        await_future(e.add_policy(vec![
             format!("group{}", i),
             format!("data{}", i / 10),
             "read".to_owned(),
-        ]);
+        ]))
+        .unwrap();
     }
 
     // 10000 users.
     for i in 0..10000 {
-        e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]);
+        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
+            .unwrap();
     }
 
     e.build_role_links().unwrap();
@@ -201,16 +207,18 @@ fn b_benchmark_cached_rbac_model_medium(b: &mut Bencher) {
 
     // 1000 roles, 100 resources.
     for i in 0..1000 {
-        e.add_policy(vec![
+        await_future(e.add_policy(vec![
             format!("group{}", i),
             format!("data{}", i / 10),
             "read".to_owned(),
-        ]);
+        ]))
+        .unwrap();
     }
 
     // 10000 users.
     for i in 0..10000 {
-        e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]);
+        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
+            .unwrap();
     }
 
     e.build_role_links().unwrap();
@@ -230,16 +238,18 @@ fn b_benchmark_rbac_model_large(b: &mut Bencher) {
 
     // 10000 roles, 1000 resources.
     for i in 0..10000 {
-        e.add_policy(vec![
+        await_future(e.add_policy(vec![
             format!("group{}", i),
             format!("data{}", i / 10),
             "read".to_owned(),
-        ]);
+        ]))
+        .unwrap();
     }
 
     // 100000 users.
     for i in 0..100000 {
-        e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]);
+        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
+            .unwrap();
     }
 
     e.build_role_links().unwrap();
@@ -294,11 +304,10 @@ fn b_benchmark_cached_rbac_model_with_domains(b: &mut Bencher) {
 #[bench]
 fn b_benchmark_abac_model(b: &mut Bencher) {
     let mut e = await_future(Enforcer::new(
-        "examples/basic_model.conf",
-        "examples/basic_policy.csv",
+        "examples/abac_model.conf",
+        None as Option<&str>,
     ))
     .unwrap();
-    e.clear_policy();
 
     b.iter(|| await_future(e.enforce(&["alice", r#"{"Owner": "alice"}"#, "read"])).unwrap());
 }
@@ -306,11 +315,10 @@ fn b_benchmark_abac_model(b: &mut Bencher) {
 #[bench]
 fn b_benchmark_cached_abac_model(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
-        "examples/basic_model.conf",
-        "examples/basic_policy.csv",
+        "examples/abac_model.conf",
+        None as Option<&str>,
     ))
     .unwrap();
-    e.clear_policy();
 
     b.iter(|| await_future(e.enforce(&["alice", r#"{"Owner": "alice"}"#, "read"])).unwrap());
 }
@@ -362,6 +370,17 @@ fn b_benchmark_cached_rbac_with_deny(b: &mut Bencher) {
 #[bench]
 fn b_benchmark_priority_model(b: &mut Bencher) {
     let mut e = await_future(Enforcer::new(
+        "examples/priority_model.conf",
+        "examples/priority_policy.csv",
+    ))
+    .unwrap();
+
+    b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
+}
+
+#[bench]
+fn b_benchmark_cached_priority_model(b: &mut Bencher) {
+    let mut e = await_future(CachedEnforcer::new(
         "examples/priority_model.conf",
         "examples/priority_policy.csv",
     ))
