@@ -1,16 +1,15 @@
 use crate::{
     cached_enforcer::CachedEnforcer,
     core_api::CoreApi,
-    emitter::{Event, CACHED_EMITTER, EMITTER},
+    emitter::{Event, EventData, EventEmitter},
     enforcer::Enforcer,
     Result,
 };
 
 use async_trait::async_trait;
-use emitbrown::Events;
 
 #[async_trait]
-pub trait InternalApi: CoreApi {
+pub trait InternalApi: CoreApi + EventEmitter<Event> {
     async fn add_policy_internal(
         &mut self,
         sec: &str,
@@ -61,9 +60,9 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rule_added = self.get_mut_model().add_policy(sec, ptype, rule);
+        let rule_added = self.get_mut_model().add_policy(sec, ptype, rule.clone());
         if rule_added {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            self.emit(Event::PolicyChange, Some(EventData::AddPolicy(rule)));
         }
 
         Ok(rule_added)
@@ -84,9 +83,9 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rules_added = self.get_mut_model().add_policies(sec, ptype, rules);
+        let rules_added = self.get_mut_model().add_policies(sec, ptype, rules.clone());
         if rules_added {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            self.emit(Event::PolicyChange, Some(EventData::AddPolicies(rules)));
         }
 
         Ok(rules_added)
@@ -107,9 +106,9 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rule_removed = self.get_mut_model().remove_policy(sec, ptype, rule);
+        let rule_removed = self.get_mut_model().remove_policy(sec, ptype, rule.clone());
         if rule_removed {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            self.emit(Event::PolicyChange, Some(EventData::RemovePolicy(rule)));
         }
 
         Ok(rule_removed)
@@ -130,9 +129,11 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rules_removed = self.get_mut_model().remove_policies(sec, ptype, rules);
+        let rules_removed = self
+            .get_mut_model()
+            .remove_policies(sec, ptype, rules.clone());
         if rules_removed {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            self.emit(Event::PolicyChange, Some(EventData::RemovePolicies(rules)));
         }
 
         Ok(rules_removed)
@@ -158,7 +159,7 @@ impl InternalApi for Enforcer {
             self.get_mut_model()
                 .remove_filtered_policy(sec, ptype, field_index, field_values);
         if rules_removed {
-            EMITTER.lock().unwrap().emit(Event::PolicyChange, self);
+            self.emit(Event::PolicyChange, Some(EventData::RemoveFilteredPolicy));
         }
 
         Ok(rules_removed)
@@ -173,15 +174,15 @@ impl InternalApi for CachedEnforcer {
         ptype: &str,
         rule: Vec<String>,
     ) -> Result<bool> {
-        let rule_added = self.enforcer.add_policy_internal(sec, ptype, rule).await?;
+        let rule_added = self
+            .enforcer
+            .add_policy_internal(sec, ptype, rule.clone())
+            .await?;
         if !rule_added {
             return Ok(false);
         }
 
-        CACHED_EMITTER
-            .lock()
-            .unwrap()
-            .emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, Some(EventData::AddPolicy(rule)));
 
         Ok(rule_added)
     }
@@ -194,16 +195,13 @@ impl InternalApi for CachedEnforcer {
     ) -> Result<bool> {
         let all_added = self
             .enforcer
-            .add_policies_internal(sec, ptype, rules)
+            .add_policies_internal(sec, ptype, rules.clone())
             .await?;
         if !all_added {
             return Ok(false);
         }
 
-        CACHED_EMITTER
-            .lock()
-            .unwrap()
-            .emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, Some(EventData::AddPolicies(rules)));
 
         Ok(all_added)
     }
@@ -216,16 +214,13 @@ impl InternalApi for CachedEnforcer {
     ) -> Result<bool> {
         let all_removed = self
             .enforcer
-            .remove_policies_internal(sec, ptype, rules)
+            .remove_policies_internal(sec, ptype, rules.clone())
             .await?;
         if !all_removed {
             return Ok(false);
         }
 
-        CACHED_EMITTER
-            .lock()
-            .unwrap()
-            .emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, Some(EventData::RemovePolicies(rules)));
 
         Ok(all_removed)
     }
@@ -238,16 +233,13 @@ impl InternalApi for CachedEnforcer {
     ) -> Result<bool> {
         let rule_removed = self
             .enforcer
-            .remove_policy_internal(sec, ptype, rule)
+            .remove_policy_internal(sec, ptype, rule.clone())
             .await?;
         if !rule_removed {
             return Ok(false);
         }
 
-        CACHED_EMITTER
-            .lock()
-            .unwrap()
-            .emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, Some(EventData::RemovePolicy(rule)));
 
         Ok(rule_removed)
     }
@@ -267,10 +259,7 @@ impl InternalApi for CachedEnforcer {
             return Ok(false);
         }
 
-        CACHED_EMITTER
-            .lock()
-            .unwrap()
-            .emit(Event::PolicyChange, self);
+        self.emit(Event::PolicyChange, Some(EventData::RemoveFilteredPolicy));
 
         Ok(rule_removed)
     }

@@ -29,6 +29,7 @@ impl Default for FunctionMap {
 }
 
 impl FunctionMap {
+    #[inline]
     pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.insert(fname.to_owned(), f);
     }

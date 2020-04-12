@@ -1,8 +1,9 @@
-use crate::rbac::RoleManager;
-use crate::Result;
+use crate::{rbac::RoleManager, Result};
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 mod assertion;
 mod default_model;

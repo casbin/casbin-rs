@@ -27,7 +27,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.5.0"
+casbin = "0.5.1"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
@@ -40,8 +40,9 @@ async-std = { version = "1.5.0", features = ["attributes"] }
 use casbin::prelude::*;
 
 #[async_std::main]
-async fn main() {
+async fn main() -> Result<()> {
     let mut e = Enforcer::new("path/to/model.conf", "path/to/policy.csv").await?;
+    Ok(())
 }
 ```
 
