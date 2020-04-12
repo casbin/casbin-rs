@@ -53,6 +53,8 @@ macro_rules! generate_g_function {
     }};
 }
 
+type EventCallback = fn(&mut Enforcer, Option<EventData>);
+
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
     pub(crate) model: Box<dyn Model>,
@@ -64,12 +66,12 @@ pub struct Enforcer {
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
-    pub(crate) events: HashMap<Event, Vec<fn(&mut Self, Option<EventData>)>>,
+    pub(crate) events: HashMap<Event, Vec<EventCallback>>,
 }
 
 impl EventEmitter<Event> for Enforcer {
     fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
-        self.events.entry(e).or_insert(vec![]).push(f)
+        self.events.entry(e).or_insert_with(|| vec![]).push(f)
     }
 
     fn off(&mut self, e: Event) {

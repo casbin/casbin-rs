@@ -21,15 +21,17 @@ use std::{
     time::Duration,
 };
 
+type EventCallback = fn(&mut CachedEnforcer, Option<EventData>);
+
 pub struct CachedEnforcer {
     pub(crate) enforcer: Enforcer,
     pub(crate) cache: Box<dyn Cache<Vec<String>, bool>>,
-    pub(crate) events: HashMap<Event, Vec<fn(&mut Self, Option<EventData>)>>,
+    pub(crate) events: HashMap<Event, Vec<EventCallback>>,
 }
 
 impl EventEmitter<Event> for CachedEnforcer {
     fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
-        self.events.entry(e).or_insert(vec![]).push(f)
+        self.events.entry(e).or_insert_with(|| vec![]).push(f)
     }
 
     fn off(&mut self, e: Event) {
