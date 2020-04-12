@@ -39,11 +39,11 @@ after_success: |
       cd  "${TRAVIS_REPO_SLUG}-bench" && \
       git fetch origin +refs/pull/${TRAVIS_PULL_REQUEST}/merge
       # Bench master
-      cargo bench -- --save-baseline before && \
+      cargo bench > before && \
       # Bench PR
       git checkout FETCH_HEAD && \
-      cargo bench -- --save-baseline after && \
-      cargo install critcmp --force && \
-      critcmp before after
+      cargo bench > after && \
+      cargo install cargo-benchcmp --force && \
+      cargo benchcmp before after
     fi
   fi

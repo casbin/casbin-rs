@@ -106,8 +106,8 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) {
-        self.enforcer.set_role_manager(rm);
+    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+        self.enforcer.set_role_manager(rm)
     }
 
     #[inline]

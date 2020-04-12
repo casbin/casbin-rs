@@ -19,7 +19,7 @@ mod watcher;
 pub mod error;
 pub mod prelude;
 
-pub use adapter::{Adapter, FileAdapter, MemoryAdapter};
+pub use adapter::{Adapter, FileAdapter, MemoryAdapter, NullAdapter};
 pub use cache::{Cache, DefaultCache};
 pub use cached_api::CachedApi;
 pub use cached_enforcer::CachedEnforcer;

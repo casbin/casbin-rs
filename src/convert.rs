@@ -1,4 +1,4 @@
-use crate::{Adapter, DefaultModel, FileAdapter, Model, Result};
+use crate::{Adapter, DefaultModel, FileAdapter, Model, NullAdapter, Result};
 
 use async_trait::async_trait;
 
@@ -20,9 +20,37 @@ impl TryIntoModel for &'static str {
 }
 
 #[async_trait]
+impl<T> TryIntoModel for Option<T>
+where
+    T: TryIntoModel,
+{
+    async fn try_into_model(self) -> Result<Box<dyn Model>> {
+        if let Some(m) = self {
+            m.try_into_model().await
+        } else {
+            Ok(Box::new(DefaultModel::default()))
+        }
+    }
+}
+
+#[async_trait]
 impl TryIntoAdapter for &'static str {
     async fn try_into_adapter(self) -> Result<Box<dyn Adapter>> {
         Ok(Box::new(FileAdapter::new(self)))
+    }
+}
+
+#[async_trait]
+impl<T> TryIntoAdapter for Option<T>
+where
+    T: TryIntoAdapter,
+{
+    async fn try_into_adapter(self) -> Result<Box<dyn Adapter>> {
+        if let Some(a) = self {
+            a.try_into_adapter().await
+        } else {
+            Ok(Box::new(NullAdapter))
+        }
     }
 }
 
