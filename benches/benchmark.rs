@@ -1,9 +1,10 @@
 #![feature(test)]
-use casbin::prelude::*;
-
 extern crate test;
-
 use test::Bencher;
+
+use lazy_static::lazy_static;
+
+use casbin::prelude::*;
 
 fn await_future<F, T>(future: F) -> T
 where
@@ -479,3 +480,4 @@ fn b_benchmark_cached_priority_model(b: &mut Bencher) {
 
     b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
 }
+
