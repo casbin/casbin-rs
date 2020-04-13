@@ -10,7 +10,7 @@ pub enum EffectKind {
 }
 
 #[derive(Default)]
-pub struct DefaultEffector {}
+pub struct DefaultEffector;
 
 impl Effector for DefaultEffector {
     fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool {

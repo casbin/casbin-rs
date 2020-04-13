@@ -192,7 +192,7 @@ fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
 
     e.build_role_links().unwrap();
 
-    b.iter(|| await_future(e.enforce(&["user5001", "data150", "read"])).unwrap());
+    b.iter(|| await_future(e.enforce(&["user5001", "data15", "read"])).unwrap());
 }
 
 #[bench]
