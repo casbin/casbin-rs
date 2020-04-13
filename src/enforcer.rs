@@ -235,14 +235,20 @@ impl CoreApi for Enforcer {
         let m_ast = get_or_err!(self, "m", ModelError::M, "matcher");
         let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
 
-        for (i, token) in r_ast.tokens.iter().enumerate() {
-            if rvals[i].as_ref().starts_with('{') && rvals[i].as_ref().ends_with('}') {
+        if r_ast.tokens.len() != rvals.len() {
+            return Err(
+                RequestError::UnmatchRequestDefinition(r_ast.tokens.len(), rvals.len()).into(),
+            );
+        }
+
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
+            if rval.as_ref().starts_with('{') && rval.as_ref().ends_with('}') {
                 // if r_sub, r_obj or r_act is a json string, then we need to parse it into an object
                 // https://casbin.org/docs/en/abac#how-to-use-abac
-                let scope_exp = format!("const {} = #{};", token, rvals[i].as_ref());
+                let scope_exp = format!("const {} = #{};", rtoken, rval.as_ref());
                 engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             } else {
-                scope.push_constant(token, rvals[i].as_ref().to_owned());
+                scope.push_constant(rtoken, rval.as_ref().to_owned());
             }
         }
 
@@ -261,15 +267,10 @@ impl CoreApi for Enforcer {
         let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = self.model.get_policy("p", "p");
         let policy_len = policies.len();
+        let scope_size = scope.len();
+
         if policy_len != 0 {
             policy_effects = vec![EffectKind::Deny; policy_len];
-            if r_ast.tokens.len() != rvals.len() {
-                return Err(RequestError::UnmatchRequestDefinition(
-                    r_ast.tokens.len(),
-                    rvals.len(),
-                )
-                .into());
-            }
             for (i, pvals) in policies.iter().enumerate() {
                 if p_ast.tokens.len() != pvals.len() {
                     return Err(PolicyError::UnmatchPolicyDefinition(
@@ -278,13 +279,14 @@ impl CoreApi for Enforcer {
                     )
                     .into());
                 }
-                for (pi, ptoken) in p_ast.tokens.iter().enumerate() {
-                    scope.push_constant(ptoken, pvals[pi].to_owned());
+                for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
+                    scope.push_constant(ptoken, pval.to_owned());
                 }
 
                 let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
+                    scope.rewind(scope_size);
                     continue;
                 }
                 if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
@@ -299,6 +301,7 @@ impl CoreApi for Enforcer {
                 } else {
                     policy_effects[i] = EffectKind::Allow;
                 }
+                scope.rewind(scope_size);
                 if e_ast.value == "priority(p_eft) || deny" {
                     break;
                 }
