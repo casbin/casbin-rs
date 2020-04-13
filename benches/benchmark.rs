@@ -113,20 +113,30 @@ fn b_benchmark_rbac_model_small(b: &mut Bencher) {
     e.enable_auto_build_role_links(false);
 
     // 100 roles, 10 resources.
-    for i in 0..100 {
-        await_future(e.add_policy(vec![
-            format!("group{}", i),
-            format!("data{}", i / 10),
-            "read".to_owned(),
-        ]))
-        .unwrap();
-    }
+    await_future(
+        e.add_policies(
+            (0..100_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     // 1000 users.
-    for i in 0..1000 {
-        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
-            .unwrap();
-    }
+    await_future(
+        e.add_grouping_policies(
+            (0..1000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     e.build_role_links().unwrap();
 
@@ -144,20 +154,30 @@ fn b_benchmark_cached_rbac_model_small(b: &mut Bencher) {
     e.enable_auto_build_role_links(false);
 
     // 100 roles, 10 resources.
-    for i in 0..100 {
-        await_future(e.add_policy(vec![
-            format!("group{}", i),
-            format!("data{}", i / 10),
-            "read".to_owned(),
-        ]))
-        .unwrap();
-    }
+    await_future(
+        e.add_policies(
+            (0..100_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     // 1000 users.
-    for i in 0..1000 {
-        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
-            .unwrap();
-    }
+    await_future(
+        e.add_grouping_policies(
+            (0..1000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     e.build_role_links().unwrap();
 
@@ -175,20 +195,30 @@ fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
     e.enable_auto_build_role_links(false);
 
     // 1000 roles, 100 resources.
-    for i in 0..1000 {
-        await_future(e.add_policy(vec![
-            format!("group{}", i),
-            format!("data{}", i / 10),
-            "read".to_owned(),
-        ]))
-        .unwrap();
-    }
+    await_future(
+        e.add_policies(
+            (0..1000_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     // 10000 users.
-    for i in 0..10000 {
-        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
-            .unwrap();
-    }
+    await_future(
+        e.add_grouping_policies(
+            (0..10000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     e.build_role_links().unwrap();
 
@@ -206,20 +236,30 @@ fn b_benchmark_cached_rbac_model_medium(b: &mut Bencher) {
     e.enable_auto_build_role_links(false);
 
     // 1000 roles, 100 resources.
-    for i in 0..1000 {
-        await_future(e.add_policy(vec![
-            format!("group{}", i),
-            format!("data{}", i / 10),
-            "read".to_owned(),
-        ]))
-        .unwrap();
-    }
+    await_future(
+        e.add_policies(
+            (0..1000_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     // 10000 users.
-    for i in 0..10000 {
-        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
-            .unwrap();
-    }
+    await_future(
+        e.add_grouping_policies(
+            (0..10000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     e.build_role_links().unwrap();
 
@@ -237,20 +277,71 @@ fn b_benchmark_rbac_model_large(b: &mut Bencher) {
     e.enable_auto_build_role_links(false);
 
     // 10000 roles, 1000 resources.
-    for i in 0..10000 {
-        await_future(e.add_policy(vec![
-            format!("group{}", i),
-            format!("data{}", i / 10),
-            "read".to_owned(),
-        ]))
-        .unwrap();
-    }
+    await_future(
+        e.add_policies(
+            (0..10000_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     // 100000 users.
-    for i in 0..100000 {
-        await_future(e.add_grouping_policy(vec![format!("user{}", i), format!("group{}", i / 10)]))
-            .unwrap();
-    }
+    await_future(
+        e.add_grouping_policies(
+            (0..100000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
+
+    e.build_role_links().unwrap();
+
+    b.iter(|| await_future(e.enforce(&["user50001", "data1500", "read"])).unwrap());
+}
+
+#[bench]
+fn b_benchmark_cached_rbac_model_large(b: &mut Bencher) {
+    let mut e = await_future(CachedEnforcer::new(
+        "examples/rbac_model.conf",
+        None as Option<&str>,
+    ))
+    .unwrap();
+
+    e.enable_auto_build_role_links(false);
+
+    // 10000 roles, 1000 resources.
+    await_future(
+        e.add_policies(
+            (0..10000_u64)
+                .map(|i| {
+                    vec![
+                        format!("group{}", i),
+                        format!("data{}", i / 10),
+                        "read".to_owned(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
+
+    // 100000 users.
+    await_future(
+        e.add_grouping_policies(
+            (0..100000)
+                .map(|i| vec![format!("user{}", i), format!("group{}", i / 10)])
+                .collect::<Vec<Vec<String>>>(),
+        ),
+    )
+    .unwrap();
 
     e.build_role_links().unwrap();
 
