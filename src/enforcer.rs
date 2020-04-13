@@ -12,6 +12,7 @@ use crate::{
 };
 
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use rhai::{Array, Engine, RegisterFn, Scope};
 
 use std::{
@@ -51,11 +52,6 @@ macro_rules! generate_g_function {
         };
         Box::new(cb)
     }};
-}
-
-use lazy_static::lazy_static;
-lazy_static! {
-    static ref ENGINE: Arc<RwLock<Engine<'static>>> = Arc::new(RwLock::new(Engine::new()));
 }
 
 type EventCallback = fn(&mut Enforcer, Option<EventData>);
@@ -228,6 +224,10 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+        lazy_static! {
+            static ref ENGINE: Arc<RwLock<Engine<'static>>> = Arc::new(RwLock::new(Engine::new()));
+        }
+
         if !self.enabled {
             return Ok(true);
         }

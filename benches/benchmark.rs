@@ -505,6 +505,10 @@ mod task {
         unsafe { Waker::from_raw(RAW_WAKER) }
     }
 
+    /// Using this tests only the code that is polled.
+    ///
+    /// `block_on` creates no runtime overhead so a more accurate benchmark of just the code
+    /// can be collected.
     pub fn block_on<F, T>(mut future: F) -> T
     where
         F: Future<Output = T>,
