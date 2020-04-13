@@ -242,7 +242,7 @@ where
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
-        let rule_removed = self
+        let (rule_removed, _) = self
             .remove_filtered_policy_internal("g", ptype, field_index, field_values)
             .await?;
         self.build_role_links()?;
@@ -255,8 +255,10 @@ where
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
-        self.remove_filtered_policy_internal("p", ptype, field_index, field_values)
-            .await
+        Ok(self
+            .remove_filtered_policy_internal("p", ptype, field_index, field_values)
+            .await?
+            .0)
     }
 
     fn get_named_policy(&self, ptype: &str) -> Vec<Vec<String>> {

@@ -287,11 +287,11 @@ impl Model for DefaultModel {
         ptype: &str,
         field_index: usize,
         field_values: Vec<String>,
-    ) -> bool {
+    ) -> (bool, Vec<Vec<String>>) {
         let mut res = false;
+        let mut rules_removed: Vec<Vec<String>> = vec![];
         if let Some(t1) = self.model.get_mut(sec) {
             if let Some(t2) = t1.get_mut(ptype) {
-                let mut tmp: IndexSet<Vec<String>> = IndexSet::new();
                 for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
@@ -302,14 +302,17 @@ impl Model for DefaultModel {
                     }
                     if matched {
                         res = true;
-                    } else {
-                        tmp.insert(rule.clone());
+                        rules_removed.push(rule.clone());
                     }
                 }
-                t2.policy = tmp;
+                if res && !rules_removed.is_empty() {
+                    for rule in rules_removed.iter() {
+                        t2.policy.remove(rule);
+                    }
+                }
             }
         }
-        res
+        (res, rules_removed)
     }
 }
 

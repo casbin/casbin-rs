@@ -44,5 +44,5 @@ pub trait Model: Send + Sync {
         ptype: &str,
         field_index: usize,
         field_values: Vec<String>,
-    ) -> bool;
+    ) -> (bool, Vec<Vec<String>>);
 }
