@@ -50,9 +50,12 @@ impl EventEmitter<Event> for CachedEnforcer {
 #[async_trait]
 impl CoreApi for CachedEnforcer {
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
+        let enforcer = Enforcer::new(m, a).await?;
+        let cache = Box::new(DefaultCache::new(1000));
+
         let mut cached_enforcer = CachedEnforcer {
-            enforcer: Enforcer::new(m, a).await?,
-            cache: Box::new(DefaultCache::new(1000)),
+            enforcer,
+            cache,
             events: HashMap::new(),
         };
 
@@ -179,8 +182,19 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
+    fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool) {
+        self.enforcer
+            .enable_auto_notify_watcher(auto_notify_watcher);
+    }
+
+    #[inline]
     fn has_auto_save_enabled(&self) -> bool {
         self.enforcer.has_auto_save_enabled()
+    }
+
+    #[inline]
+    fn has_auto_notify_watcher_enabled(&self) -> bool {
+        self.enforcer.has_auto_notify_watcher_enabled()
     }
 }
 

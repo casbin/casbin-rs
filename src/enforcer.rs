@@ -65,6 +65,7 @@ pub struct Enforcer {
     pub(crate) enabled: bool,
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
+    pub(crate) auto_notify_watcher: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
 }
@@ -105,6 +106,7 @@ impl CoreApi for Enforcer {
             enabled: true,
             auto_save: true,
             auto_build_role_links: true,
+            auto_notify_watcher: true,
             watcher: None,
             events: HashMap::new(),
         };
@@ -364,8 +366,23 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
+    fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool) {
+        if !auto_notify_watcher {
+            self.off(Event::PolicyChange);
+        } else {
+            self.on(Event::PolicyChange, notify_watcher);
+        }
+        self.auto_notify_watcher = auto_notify_watcher;
+    }
+
+    #[inline]
     fn has_auto_save_enabled(&self) -> bool {
         self.auto_save
+    }
+
+    #[inline]
+    fn has_auto_notify_watcher_enabled(&self) -> bool {
+        self.auto_notify_watcher
     }
 }
 

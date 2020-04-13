@@ -29,5 +29,7 @@ pub trait CoreApi: Sized + Send + Sync {
     fn enable_auto_save(&mut self, auto_save: bool);
     fn enable_enforce(&mut self, enabled: bool);
     fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool);
+    fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool);
     fn has_auto_save_enabled(&self) -> bool;
+    fn has_auto_notify_watcher_enabled(&self) -> bool;
 }

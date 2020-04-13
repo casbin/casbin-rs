@@ -16,7 +16,7 @@ pub enum EventData {
     AddPolicies(Vec<Vec<String>>),
     RemovePolicy(Vec<String>),
     RemovePolicies(Vec<Vec<String>>),
-    RemoveFilteredPolicy,
+    RemoveFilteredPolicy(Vec<Vec<String>>),
 }
 
 pub trait EventEmitter<K>
@@ -28,13 +28,13 @@ where
     fn emit(&mut self, e: K, d: Option<EventData>);
 }
 
-pub fn notify_watcher<T: CoreApi>(e: &mut T, d: Option<EventData>) {
+pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: Option<EventData>) {
     if let Some(w) = e.get_mut_watcher() {
         w.update(d);
     }
 }
 
-pub fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: Option<EventData>) {
+pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: Option<EventData>) {
     #[cfg(feature = "runtime-tokio")]
     {
         tokio::runtime::Builder::new()

@@ -26,7 +26,7 @@ pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use core_api::CoreApi;
 pub use effector::{DefaultEffector, EffectKind, Effector};
-pub use emitter::EventData;
+pub use emitter::{Event, EventData, EventEmitter, EventKey};
 pub use enforcer::Enforcer;
 pub use error::Error;
 pub use internal_api::InternalApi;
