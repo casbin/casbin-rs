@@ -2,8 +2,6 @@
 extern crate test;
 use test::Bencher;
 
-use lazy_static::lazy_static;
-
 use casbin::prelude::*;
 
 fn await_future<F, T>(future: F) -> T
@@ -481,3 +479,47 @@ fn b_benchmark_cached_priority_model(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
 }
 
+#[allow(dead_code)]
+mod task {
+    use std::future::Future;
+    use std::pin::Pin;
+    use std::ptr;
+    use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
+    const RAW_WAKER: RawWaker = RawWaker::new(ptr::null(), &VTABLE);
+    const VTABLE: RawWakerVTable = RawWakerVTable::new(clone, wake, wake_by_ref, drop);
+
+    unsafe fn clone(_: *const ()) -> RawWaker {
+        RAW_WAKER
+    }
+
+    unsafe fn wake(_: *const ()) {}
+
+    unsafe fn wake_by_ref(_: *const ()) {}
+
+    unsafe fn drop(_: *const ()) {}
+
+    pub fn create() -> Waker {
+        // Safety: The waker points to a vtable with functions that do nothing. Doing
+        // nothing is always safe.
+        unsafe { Waker::from_raw(RAW_WAKER) }
+    }
+
+    pub fn block_on<F, T>(mut future: F) -> T
+    where
+        F: Future<Output = T>,
+    {
+        // Safety: since we own the future no one can move any part of it but us, and we won't.
+        let mut fut = unsafe { Pin::new_unchecked(&mut future) };
+        let waker = create();
+        let mut ctx = Context::from_waker(&waker);
+        loop {
+            if let Poll::Ready(res) = fut.as_mut().poll(&mut ctx) {
+                return res;
+            }
+            // TODO since criterion is single threaded simply looping seems ok
+            // burning cpu for a simpler function seems fair
+            // possible `std::sync::atomic::spin_loop_hint` here.
+        }
+    }
+}

@@ -53,6 +53,11 @@ macro_rules! generate_g_function {
     }};
 }
 
+use lazy_static::lazy_static;
+lazy_static! {
+    static ref ENGINE: Arc<RwLock<Engine<'static>>> = Arc::new(RwLock::new(Engine::new()));
+}
+
 type EventCallback = fn(&mut Enforcer, Option<EventData>);
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
@@ -227,7 +232,7 @@ impl CoreApi for Enforcer {
             return Ok(true);
         }
 
-        let mut engine = Engine::new();
+        let mut engine = ENGINE.write().unwrap();
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
