@@ -61,7 +61,7 @@ impl InternalApi for Enforcer {
         }
 
         let rule_added = self.get_mut_model().add_policy(sec, ptype, rule.clone());
-        if rule_added {
+        if rule_added && self.has_auto_notify_watcher_enabled() {
             self.emit(Event::PolicyChange, Some(EventData::AddPolicy(rule)));
         }
 
