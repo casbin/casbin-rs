@@ -225,14 +225,14 @@ impl CoreApi for Enforcer {
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         lazy_static! {
-            static ref ENGINE: Arc<RwLock<Engine<'static>>> = Arc::new(RwLock::new(Engine::new()));
+            static ref ENGINE: Arc<async_std::sync::RwLock<Engine<'static>>> = Arc::new(async_std::sync::RwLock::new(Engine::new()));
         }
 
         if !self.enabled {
             return Ok(true);
         }
-
-        let mut engine = ENGINE.write().unwrap();
+        
+        let mut engine = ENGINE.try_write().unwrap();
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
@@ -392,6 +392,92 @@ mod tests {
         assert!(is_send::<Enforcer>());
         assert!(is_sync::<Enforcer>());
     }
+    
+    #[test]
+    #[ignore]
+    fn test_enforcer_deadlock() {
+        lazy_static! {
+            static ref E: Arc<async_std::sync::RwLock<Enforcer>> = {
+                let mut m = DefaultModel::default();
+                m.add_def("r", "r", "sub, obj, act");
+                m.add_def("p", "p", "sub, obj, act");
+                m.add_def("e", "e", "some(where (p.eft == allow))");
+                m.add_def(
+                    "m",
+                    "m",
+                    "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+                );
+                let file = FileAdapter::new("examples/keymatch_policy.csv");
+                Arc::new(async_std::sync::RwLock::new(async_std::task::block_on(Enforcer::new(m, file)).unwrap()))
+            };
+        }
+
+        lazy_static! {
+            static ref E2: Arc<RwLock<Enforcer>> = {
+                let mut m = DefaultModel::default();
+                m.add_def("r", "r", "sub, obj, act");
+                m.add_def("p", "p", "sub, obj, act");
+                m.add_def("e", "e", "some(where (p.eft == allow))");
+                m.add_def(
+                    "m",
+                    "m",
+                    "r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)",
+                );
+                let file = FileAdapter::new("examples/keymatch_policy.csv");
+                Arc::new(RwLock::new(async_std::task::block_on(Enforcer::new(m, file)).unwrap()))
+            };
+        }
+
+        const V: &'static [&str] = &["alice", "/alice_data/resource1", "GET"];
+        
+        // run a bunch of times to test for deadlocks
+        for _ in 0..1000 {
+            let mut a = vec![];
+            async_std::task::block_on(async { 
+                for _ in 0..10_usize {
+                    a.push(async_std::task::spawn(async move {
+                        let mut e = E.write().await;
+                        assert!(e.enforce(V).await.unwrap());
+                    }));
+                }
+                futures::join!(
+                    async_std::task::spawn(async move {
+                        let mut e = E.write().await;
+                        assert!(e.enforce(V).await.unwrap());
+                    }),
+                    async_std::task::spawn(async move {
+                        let mut e = E.write().await;
+                        assert!(e.enforce(V).await.unwrap());
+                    }),
+                    async_std::task::spawn(async move {
+                        let mut e = E.write().await;
+                        assert!(e.enforce(V).await.unwrap());
+                    }),
+                    async_std::task::spawn(async move {
+                        let mut e = E.write().await;
+                        assert!(e.enforce(V).await.unwrap());
+                    }),
+                );
+
+                for x in a {
+                    x.await;
+                }
+            });
+
+            let mut threads = vec![];
+            for _ in 0..10_usize {
+                threads.push(std::thread::spawn(move || {
+                    async_std::task::block_on(async {
+                        let mut e = E2.write().unwrap();
+                        assert!(e.enforce(V).await.unwrap());
+                    });
+                }));
+            }
+            for t in threads {
+                t.join().unwrap();
+            }
+        }
+    }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
@@ -414,7 +500,8 @@ mod tests {
             .adapter
             .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
             .await
-            .unwrap());
+            .unwrap()
+        );
         e.set_adapter(mem).await.unwrap();
         // this passes since our MemoryAdapter has a working add_policy method
         assert!(e

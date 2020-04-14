@@ -1,3 +1,5 @@
+#![recursion_limit="256"]
+
 mod adapter;
 mod cache;
 mod cached_api;
