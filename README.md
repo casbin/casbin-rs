@@ -27,7 +27,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.5.1"
+casbin = "0.5.2"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
