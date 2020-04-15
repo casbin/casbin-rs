@@ -229,7 +229,7 @@ impl CoreApi for Enforcer {
             return Ok(true);
         }
 
-        let mut engine = Engine::new();
+        let mut engine = Engine::new_raw();
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
