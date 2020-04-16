@@ -46,7 +46,7 @@ macro_rules! generate_g_function {
             } else if args.len() == 2 {
                 $rm.write().unwrap().has_link(&args[0], &args[1], None)
             } else {
-                unreachable!()
+                panic!("g function supports at most 3 parameters");
             }
         };
         Box::new(cb)
@@ -68,6 +68,7 @@ pub struct Enforcer {
     pub(crate) auto_notify_watcher: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
+    pub(crate) engine: Engine<'static>,
 }
 
 impl EventEmitter<Event> for Enforcer {
@@ -96,6 +97,11 @@ impl CoreApi for Enforcer {
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
         let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
+        let mut engine = Engine::new_raw();
+
+        for (key, func) in fm.get_functions() {
+            engine.register_fn(key, *func);
+        }
 
         let mut e = Self {
             model,
@@ -109,6 +115,7 @@ impl CoreApi for Enforcer {
             auto_notify_watcher: true,
             watcher: None,
             events: HashMap::new(),
+            engine,
         };
 
         e.on(Event::PolicyChange, notify_watcher);
@@ -121,6 +128,7 @@ impl CoreApi for Enforcer {
     #[inline]
     fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.add_function(fname, f);
+        self.engine.register_fn(fname, f);
     }
 
     #[inline]
@@ -229,7 +237,6 @@ impl CoreApi for Enforcer {
             return Ok(true);
         }
 
-        let mut engine = Engine::new_raw();
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
@@ -248,20 +255,16 @@ impl CoreApi for Enforcer {
                 // if r_sub, r_obj or r_act is a json string, then we need to parse it into an object
                 // https://casbin.org/docs/en/abac#how-to-use-abac
                 let scope_exp = format!("const {} = #{};", rtoken, rval.as_ref());
-                engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+                self.engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             } else {
                 scope.push_constant(rtoken, rval.as_ref().to_owned());
             }
         }
 
-        for (key, func) in self.fm.fm.iter() {
-            engine.register_fn(key, *func);
-        }
-
         if let Some(g_result) = self.model.get_model().get("g") {
             for (key, ast) in g_result.iter() {
                 let rm = Arc::clone(&ast.rm);
-                engine.register_fn(key, generate_g_function!(rm));
+                self.engine.register_fn(key, generate_g_function!(rm));
             }
         }
 
@@ -285,7 +288,7 @@ impl CoreApi for Enforcer {
                     scope.push_constant(ptoken, pval.to_owned());
                 }
 
-                let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
+                let eval_result = self.engine.eval_with_scope::<bool>(&mut scope, expstring)?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
                     scope.rewind(scope_size);
@@ -312,7 +315,7 @@ impl CoreApi for Enforcer {
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
-            let eval_result = engine.eval_with_scope::<bool>(&mut scope, expstring)?;
+            let eval_result = self.engine.eval_with_scope::<bool>(&mut scope, expstring)?;
             if eval_result {
                 policy_effects.push(EffectKind::Allow);
             } else {
