@@ -128,6 +128,7 @@ impl CoreApi for Enforcer {
     #[inline]
     fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
         self.fm.add_function(fname, f);
+        self.engine.register_fn(fname, f);
     }
 
     #[inline]
