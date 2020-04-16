@@ -46,7 +46,7 @@ macro_rules! generate_g_function {
             } else if args.len() == 2 {
                 $rm.write().unwrap().has_link(&args[0], &args[1], None)
             } else {
-                unreachable!()
+                panic!("g function supports at most 3 parameters");
             }
         };
         Box::new(cb)
