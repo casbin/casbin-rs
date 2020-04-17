@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-pub(crate) type AssertionMap = HashMap<String, Assertion>;
+pub type AssertionMap = HashMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {
@@ -35,10 +35,12 @@ impl Default for Assertion {
 }
 
 impl Assertion {
+    #[inline]
     pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
         &self.policy
     }
 
+    #[inline]
     pub fn get_mut_policy(&mut self) -> &mut IndexSet<Vec<String>> {
         &mut self.policy
     }

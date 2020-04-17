@@ -344,7 +344,24 @@ impl CoreApi for Enforcer {
 
     async fn save_policy(&mut self) -> Result<()> {
         self.adapter.save_policy(&mut *self.model).await?;
-        self.emit(Event::PolicyChange, None);
+
+        let mut policies = self.get_model().get_policy("p", "p");
+        if let Some(ast_map) = self.get_model().get_model().get("g") {
+            for (ptype, ast) in ast_map {
+                policies.extend(
+                    ast.get_policy()
+                        .clone()
+                        .into_iter()
+                        .map(|mut x| {
+                            x.insert(0, ptype.clone());
+                            x
+                        })
+                        .collect::<Vec<Vec<String>>>(),
+                );
+            }
+        }
+
+        self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
         Ok(())
     }
 
