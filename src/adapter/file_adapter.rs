@@ -242,5 +242,5 @@ fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> boo
         }
     }
 
-    return is_filtered;
+    is_filtered
 }
