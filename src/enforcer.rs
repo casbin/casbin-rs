@@ -1200,6 +1200,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "filtered-adapter")]
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_filtered_file_adapter() {
@@ -1242,6 +1243,7 @@ mod tests {
             .unwrap());
     }
 
+    #[cfg(feature = "filtered-adapter")]
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     #[should_panic]
