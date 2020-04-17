@@ -39,7 +39,7 @@ where
         FileAdapter { file_path: p }
     }
 
-    pub async fn load_policy_file(
+    async fn load_policy_file(
         &self,
         m: &mut dyn Model,
         handler: LoadPolicyFileHandler,
@@ -53,7 +53,7 @@ where
         Ok(())
     }
 
-    pub async fn save_policy_file(&self, text: String) -> Result<()> {
+    async fn save_policy_file(&self, text: String) -> Result<()> {
         let mut file = File::create(&self.file_path).await?;
         file.write_all(text.as_bytes()).await?;
         Ok(())

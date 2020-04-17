@@ -199,22 +199,16 @@ where
     }
 
     async fn delete_user(&mut self, name: &str) -> Result<bool> {
-        self.remove_filtered_grouping_policy(
-            0,
-            vec![name].iter().map(|s| (*s).to_string()).collect(),
-        )
-        .await
+        self.remove_filtered_grouping_policy(0, vec![name.to_string()])
+            .await
     }
 
     async fn delete_role(&mut self, name: &str) -> Result<bool> {
         let res1 = self
-            .remove_filtered_grouping_policy(
-                1,
-                vec![name].iter().map(|s| (*s).to_string()).collect(),
-            )
+            .remove_filtered_grouping_policy(1, vec![name.to_string()])
             .await?;
         let res2 = self
-            .remove_filtered_policy(0, vec![name].iter().map(|s| (*s).to_string()).collect())
+            .remove_filtered_policy(0, vec![name.to_string()])
             .await?;
         Ok(res1 || res2)
     }
