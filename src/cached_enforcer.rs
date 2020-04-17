@@ -1,8 +1,7 @@
 use crate::{
-    adapter::Adapter,
     cache::{Cache, DefaultCache},
     cached_api::CachedApi,
-    convert::{TryIntoAdapter, TryIntoModel},
+    convert::TryIntoModel,
     core_api::CoreApi,
     effector::Effector,
     emitter::{clear_cache, Event, EventData, EventEmitter},
@@ -11,6 +10,14 @@ use crate::{
     rbac::RoleManager,
     watcher::Watcher,
     Result,
+};
+
+#[cfg(not(feature = "filtered-adapter"))]
+use crate::{adapter::Adapter, convert::TryIntoAdapter};
+#[cfg(feature = "filtered-adapter")]
+use crate::{
+    adapter::{Filter, FilteredAdapter},
+    convert::TryIntoFilteredAdapter,
 };
 
 use async_trait::async_trait;
@@ -49,7 +56,24 @@ impl EventEmitter<Event> for CachedEnforcer {
 
 #[async_trait]
 impl CoreApi for CachedEnforcer {
+    #[cfg(not(feature = "filtered-adapter"))]
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
+        let enforcer = Enforcer::new(m, a).await?;
+        let cache = Box::new(DefaultCache::new(1000));
+
+        let mut cached_enforcer = CachedEnforcer {
+            enforcer,
+            cache,
+            events: HashMap::new(),
+        };
+
+        cached_enforcer.on(Event::PolicyChange, clear_cache);
+
+        Ok(cached_enforcer)
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    async fn new<M: TryIntoModel, A: TryIntoFilteredAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
         let enforcer = Enforcer::new(m, a).await?;
         let cache = Box::new(DefaultCache::new(1000));
 
@@ -79,13 +103,27 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.get_mut_model()
     }
 
+    #[cfg(not(feature = "filtered-adapter"))]
     #[inline]
     fn get_adapter(&self) -> &dyn Adapter {
         self.enforcer.get_adapter()
     }
 
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    fn get_adapter(&self) -> &dyn FilteredAdapter {
+        self.enforcer.get_adapter()
+    }
+
+    #[cfg(not(feature = "filtered-adapter"))]
     #[inline]
     fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+        self.enforcer.get_mut_adapter()
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    fn get_mut_adapter(&mut self) -> &mut dyn FilteredAdapter {
         self.enforcer.get_mut_adapter()
     }
 
@@ -123,8 +161,15 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_model(m).await
     }
 
+    #[cfg(not(feature = "filtered-adapter"))]
     #[inline]
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
+        self.enforcer.set_adapter(a).await
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    async fn set_adapter<A: TryIntoFilteredAdapter>(&mut self, a: A) -> Result<()> {
         self.enforcer.set_adapter(a).await
     }
 
@@ -153,6 +198,18 @@ impl CoreApi for CachedEnforcer {
     #[inline]
     async fn load_policy(&mut self) -> Result<()> {
         self.enforcer.load_policy().await
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    async fn load_filtered_policy(&mut self, f: Option<Filter>) -> Result<()> {
+        self.enforcer.load_filtered_policy(f).await
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    fn is_filtered(&self) -> bool {
+        self.enforcer.is_filtered()
     }
 
     #[inline]

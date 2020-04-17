@@ -1,6 +1,5 @@
 use crate::{
-    adapter::Adapter,
-    convert::{TryIntoAdapter, TryIntoModel},
+    convert::TryIntoModel,
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{notify_watcher, Event, EventData, EventEmitter},
@@ -9,6 +8,14 @@ use crate::{
     rbac::{DefaultRoleManager, RoleManager},
     watcher::Watcher,
     Result,
+};
+
+#[cfg(not(feature = "filtered-adapter"))]
+use crate::{adapter::Adapter, convert::TryIntoAdapter};
+#[cfg(feature = "filtered-adapter")]
+use crate::{
+    adapter::{Filter, FilteredAdapter},
+    convert::TryIntoFilteredAdapter,
 };
 
 use async_trait::async_trait;
@@ -58,6 +65,9 @@ type EventCallback = fn(&mut Enforcer, Option<EventData>);
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
     pub(crate) model: Box<dyn Model>,
+    #[cfg(feature = "filtered-adapter")]
+    pub(crate) adapter: Box<dyn FilteredAdapter>,
+    #[cfg(not(feature = "filtered-adapter"))]
     pub(crate) adapter: Box<dyn Adapter>,
     pub(crate) fm: FunctionMap,
     pub(crate) eft: Box<dyn Effector>,
@@ -91,6 +101,7 @@ impl EventEmitter<Event> for Enforcer {
 
 #[async_trait]
 impl CoreApi for Enforcer {
+    #[cfg(not(feature = "filtered-adapter"))]
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
@@ -120,7 +131,40 @@ impl CoreApi for Enforcer {
 
         e.on(Event::PolicyChange, notify_watcher);
 
-        // TODO: check filtered adapter, match over a implementor?
+        e.load_policy().await?;
+        Ok(e)
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    async fn new<M: TryIntoModel, A: TryIntoFilteredAdapter>(m: M, a: A) -> Result<Self> {
+        let model = m.try_into_model().await?;
+        let adapter = a.try_into_filtered_adapter().await?;
+        let fm = FunctionMap::default();
+        let eft = Box::new(DefaultEffector::default());
+        let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
+        let mut engine = Engine::new_raw();
+
+        for (key, func) in fm.get_functions() {
+            engine.register_fn(key, *func);
+        }
+
+        let mut e = Self {
+            model,
+            adapter,
+            fm,
+            eft,
+            rm,
+            enabled: true,
+            auto_save: true,
+            auto_build_role_links: true,
+            auto_notify_watcher: true,
+            watcher: None,
+            events: HashMap::new(),
+            engine,
+        };
+
+        e.on(Event::PolicyChange, notify_watcher);
+
         e.load_policy().await?;
         Ok(e)
     }
@@ -141,13 +185,27 @@ impl CoreApi for Enforcer {
         &mut *self.model
     }
 
+    #[cfg(not(feature = "filtered-adapter"))]
     #[inline]
     fn get_adapter(&self) -> &dyn Adapter {
         &*self.adapter
     }
 
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    fn get_adapter(&self) -> &dyn FilteredAdapter {
+        &*self.adapter
+    }
+
+    #[cfg(not(feature = "filtered-adapter"))]
     #[inline]
     fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+        &mut *self.adapter
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    #[inline]
+    fn get_mut_adapter(&mut self) -> &mut dyn FilteredAdapter {
         &mut *self.adapter
     }
 
@@ -196,9 +254,16 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
+    #[cfg(not(feature = "filtered-adapter"))]
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
         self.adapter = a.try_into_adapter().await?;
         self.load_policy().await?;
+        Ok(())
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    async fn set_adapter<A: TryIntoFilteredAdapter>(&mut self, a: A) -> Result<()> {
+        self.adapter = a.try_into_filtered_adapter().await?;
         Ok(())
     }
 
@@ -342,7 +407,32 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
+    #[cfg(feature = "filtered-adapter")]
+    async fn load_filtered_policy(&mut self, f: Option<Filter>) -> Result<()> {
+        self.model.clear_policy();
+        self.adapter
+            .load_filtered_policy(&mut *self.model, f)
+            .await?;
+
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    fn is_filtered(&self) -> bool {
+        self.adapter.is_filtered()
+    }
+
     async fn save_policy(&mut self) -> Result<()> {
+        #[cfg(feature = "filtered-adapter")]
+        {
+            if self.is_filtered() {
+                panic!("cannot save filtered policy");
+            }
+        }
+
         self.adapter.save_policy(&mut *self.model).await?;
 
         let mut policies = self.get_model().get_policy("p", "p");
@@ -1108,5 +1198,68 @@ mod tests {
                 .await
                 .unwrap()
         );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_filtered_file_adapter() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_domains_model.conf",
+            "examples/rbac_with_domains_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        let filter = Filter {
+            p: vec!["".to_owned(), "domain1".to_owned()],
+            g: vec!["".to_owned(), "".to_owned(), "domain1".to_owned()],
+        };
+
+        e.load_filtered_policy(Some(filter)).await.unwrap();
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "read"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain1", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain1", "data2", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain2", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain2", "data2", "write"])
+            .await
+            .unwrap());
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[should_panic]
+    async fn test_filtered_file_adapter_save_policy() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_domains_model.conf",
+            "examples/rbac_with_domains_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        let filter = Filter {
+            p: vec!["".to_owned(), "domain1".to_owned()],
+            g: vec!["".to_owned(), "".to_owned(), "domain1".to_owned()],
+        };
+
+        e.save_policy().await.unwrap();
+        e.load_filtered_policy(Some(filter)).await.unwrap();
+        e.save_policy().await.unwrap();
     }
 }

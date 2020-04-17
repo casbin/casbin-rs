@@ -1,4 +1,4 @@
-use async_trait::async_trait;
+use crate::{model::Model, Result};
 
 pub mod file_adapter;
 pub mod memory_adapter;
@@ -8,8 +8,7 @@ pub use file_adapter::FileAdapter;
 pub use memory_adapter::MemoryAdapter;
 pub use null_adapter::NullAdapter;
 
-use crate::model::Model;
-use crate::Result;
+use async_trait::async_trait;
 
 #[async_trait]
 pub trait Adapter: Send + Sync {
@@ -36,4 +35,38 @@ pub trait Adapter: Send + Sync {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool>;
+}
+
+#[cfg(feature = "filtered-adapter")]
+#[derive(Clone, Debug)]
+pub struct Filter {
+    pub p: Vec<String>,
+    pub g: Vec<String>,
+}
+
+#[cfg(feature = "filtered-adapter")]
+#[async_trait]
+pub trait FilteredAdapter: Adapter {
+    async fn load_filtered_policy(&mut self, m: &mut dyn Model, _f: Option<Filter>) -> Result<()>;
+
+    fn is_filtered(&self) -> bool;
+}
+
+#[cfg(feature = "filtered-adapter")]
+#[async_trait]
+impl<T> FilteredAdapter for T
+where
+    T: Adapter,
+{
+    default async fn load_filtered_policy(
+        &mut self,
+        m: &mut dyn Model,
+        _f: Option<Filter>,
+    ) -> Result<()> {
+        self.load_policy(m).await
+    }
+
+    default fn is_filtered(&self) -> bool {
+        false
+    }
 }

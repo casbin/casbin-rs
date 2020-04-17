@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "filtered-adapter", feature(specialization))]
+
 mod adapter;
 mod cache;
 mod cached_api;
@@ -20,10 +22,16 @@ pub mod error;
 pub mod prelude;
 
 pub use adapter::{Adapter, FileAdapter, MemoryAdapter, NullAdapter};
+#[cfg(feature = "filtered-adapter")]
+pub use adapter::{Filter, FilteredAdapter};
 pub use cache::{Cache, DefaultCache};
 pub use cached_api::CachedApi;
 pub use cached_enforcer::CachedEnforcer;
-pub use convert::{TryIntoAdapter, TryIntoModel};
+#[cfg(not(feature = "filtered-adapter"))]
+pub use convert::TryIntoAdapter;
+#[cfg(feature = "filtered-adapter")]
+pub use convert::TryIntoFilteredAdapter;
+pub use convert::TryIntoModel;
 pub use core_api::CoreApi;
 pub use effector::{DefaultEffector, EffectKind, Effector};
 pub use emitter::{Event, EventData, EventEmitter, EventKey};

@@ -1,5 +1,8 @@
 use crate::{adapter::Adapter, error::ModelError, model::Model, Result};
 
+#[cfg(feature = "filtered-adapter")]
+use crate::adapter::{Filter, FilteredAdapter};
+
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
     fs::File,
@@ -27,16 +30,31 @@ use std::convert::AsRef;
 
 pub struct FileAdapter<P> {
     file_path: P,
+    #[cfg(feature = "filtered-adapter")]
+    is_filtered: bool,
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);
+
+#[cfg(feature = "filtered-adapter")]
+type LoadFilteredPolicyFileHandler = fn(String, &mut dyn Model, f: Option<Filter>);
 
 impl<P> FileAdapter<P>
 where
     P: AsRef<Path> + Send + Sync,
 {
     pub fn new(p: P) -> FileAdapter<P> {
-        FileAdapter { file_path: p }
+        #[cfg(not(feature = "filtered-adapter"))]
+        {
+            FileAdapter { file_path: p }
+        }
+        #[cfg(feature = "filtered-adapter")]
+        {
+            FileAdapter {
+                file_path: p,
+                is_filtered: false,
+            }
+        }
     }
 
     async fn load_policy_file(
@@ -49,6 +67,22 @@ where
 
         while let Some(line) = lines.next().await {
             handler(line?, m);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "filtered-adapter")]
+    async fn load_filtered_policy_file(
+        &self,
+        m: &mut dyn Model,
+        filter: Option<Filter>,
+        handler: LoadFilteredPolicyFileHandler,
+    ) -> Result<()> {
+        let f = File::open(&self.file_path).await?;
+        let mut lines = BufReader::new(f).lines();
+
+        while let Some(line) = lines.next().await {
+            handler(line?, m, filter.clone());
         }
         Ok(())
     }
@@ -150,6 +184,27 @@ where
     }
 }
 
+#[cfg(feature = "filtered-adapter")]
+#[async_trait]
+impl<P> FilteredAdapter for FileAdapter<P>
+where
+    P: AsRef<Path> + Send + Sync,
+{
+    async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Option<Filter>) -> Result<()> {
+        if f.is_some() {
+            self.is_filtered = true;
+        }
+        self.load_filtered_policy_file(m, f, load_filtered_policy_line)
+            .await?;
+        Ok(())
+    }
+
+    #[inline]
+    fn is_filtered(&self) -> bool {
+        self.is_filtered
+    }
+}
+
 fn load_policy_line(line: String, m: &mut dyn Model) {
     if line.is_empty() || line.starts_with('#') {
         return;
@@ -161,6 +216,44 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
         if let Some(t1) = m.get_mut_model().get_mut(&sec) {
             if let Some(t2) = t1.get_mut(&key) {
                 t2.policy.insert(tokens[1..].to_vec());
+            }
+        }
+    }
+}
+
+#[cfg(feature = "filtered-adapter")]
+fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: Option<Filter>) {
+    if line.is_empty() || line.starts_with('#') {
+        return;
+    }
+    let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
+    let key = tokens[0].clone();
+
+    if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
+        let mut is_matched = true;
+        if let Some(f) = f {
+            if &sec == "p" {
+                for (i, rule) in f.p.into_iter().enumerate() {
+                    if !rule.is_empty() && rule != tokens[i + 1] {
+                        is_matched = false;
+                    }
+                }
+            }
+
+            if &sec == "g" {
+                for (i, rule) in f.g.into_iter().enumerate() {
+                    if !rule.is_empty() && rule != tokens[i + 1] {
+                        is_matched = false;
+                    }
+                }
+            }
+        }
+
+        if is_matched {
+            if let Some(t1) = m.get_mut_model().get_mut(&sec) {
+                if let Some(t2) = t1.get_mut(&key) {
+                    t2.policy.insert(tokens[1..].to_vec());
+                }
             }
         }
     }
