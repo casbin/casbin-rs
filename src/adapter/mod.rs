@@ -8,13 +8,20 @@ pub use file_adapter::FileAdapter;
 pub use memory_adapter::MemoryAdapter;
 pub use null_adapter::NullAdapter;
 
-use crate::model::Model;
-use crate::Result;
+use crate::{model::Model, Result};
+
+#[derive(Clone)]
+pub struct Filter {
+    pub p: Vec<&'static str>,
+    pub g: Vec<&'static str>,
+}
 
 #[async_trait]
 pub trait Adapter: Send + Sync {
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()>;
+    async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Filter) -> Result<()>;
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()>;
+    fn is_filtered(&self) -> bool;
     async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool>;
     async fn add_policies(
         &mut self,

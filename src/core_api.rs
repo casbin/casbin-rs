@@ -1,4 +1,6 @@
-use crate::{Adapter, Effector, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel, Watcher};
+use crate::{
+    Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel, Watcher,
+};
 
 use async_trait::async_trait;
 
@@ -24,6 +26,8 @@ pub trait CoreApi: Sized + Send + Sync {
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
     fn build_role_links(&mut self) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
+    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
+    fn is_filtered(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     fn clear_policy(&mut self);
     fn enable_auto_save(&mut self, auto_save: bool);

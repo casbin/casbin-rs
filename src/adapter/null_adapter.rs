@@ -1,4 +1,8 @@
-use crate::{adapter::Adapter, model::Model, Result};
+use crate::{
+    adapter::{Adapter, Filter},
+    model::Model,
+    Result,
+};
 
 use async_trait::async_trait;
 
@@ -7,6 +11,10 @@ pub struct NullAdapter;
 #[async_trait]
 impl Adapter for NullAdapter {
     async fn load_policy(&self, _m: &mut dyn Model) -> Result<()> {
+        Ok(())
+    }
+
+    async fn load_filtered_policy(&mut self, _m: &mut dyn Model, _f: Filter) -> Result<()> {
         Ok(())
     }
 
@@ -53,5 +61,9 @@ impl Adapter for NullAdapter {
         _field_values: Vec<String>,
     ) -> Result<bool> {
         Ok(true)
+    }
+
+    fn is_filtered(&self) -> bool {
+        false
     }
 }
