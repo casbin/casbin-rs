@@ -7,7 +7,7 @@ use crate::{
     error::{Error, ModelError, PolicyError, RequestError},
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::merge_abc_into_matcher,
+    util::{escape_eval, ESC_E},
     watcher::Watcher,
     Result,
 };
@@ -288,9 +288,8 @@ impl CoreApi for Enforcer {
                 }
 
                 let mut expstring = m_ast.value.to_owned();
-                if expstring.contains("Any(_)") {
-                    let pstring = pvals.join(",");
-                    expstring = merge_abc_into_matcher(expstring, &pstring);
+                if ESC_E.is_match(&expstring) {
+                    expstring = escape_eval(expstring, &scope);
                 }
 
                 let eval_result = self
@@ -1218,16 +1217,20 @@ mod tests {
     async fn test_policy_abac() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
-        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("p", "p", "sub_rule, obj, act");
         m.add_def("e", "e", "some(where (p.eft == allow))");
-        m.add_def("m", "m", "Any(_) && r.obj == p.obj && r.act == p.act");
+        m.add_def(
+            "m",
+            "m",
+            "eval(p.sub_rule) && r.obj == p.obj && r.act == p.act",
+        );
 
         let a = MemoryAdapter::default();
 
         let mut e = Enforcer::new(m, a).await.unwrap();
 
         e.add_policy(
-            vec!["Any(r.sub.age > 18)", "/data1", "read"]
+            vec!["r.sub.age > 18", "/data1", "read"]
                 .into_iter()
                 .map(|x| x.to_string())
                 .collect(),
