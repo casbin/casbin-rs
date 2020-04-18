@@ -7,6 +7,7 @@ use crate::{
     error::{Error, ModelError, PolicyError, RequestError},
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
+    util::merge_abc_into_matcher,
     watcher::Watcher,
     Result,
 };
@@ -267,7 +268,6 @@ impl CoreApi for Enforcer {
             }
         }
 
-        let expstring = &m_ast.value;
         let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = self.model.get_policy("p", "p");
         let policy_len = policies.len();
@@ -287,7 +287,15 @@ impl CoreApi for Enforcer {
                     scope.push_constant(ptoken, pval.to_owned());
                 }
 
-                let eval_result = self.engine.eval_with_scope::<bool>(&mut scope, expstring)?;
+                let mut expstring = m_ast.value.to_owned();
+                if expstring.contains("Any(_)") {
+                    let pstring = pvals.join(",");
+                    expstring = merge_abc_into_matcher(expstring, &pstring);
+                }
+
+                let eval_result = self
+                    .engine
+                    .eval_with_scope::<bool>(&mut scope, &expstring)?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
                     scope.rewind(scope_size);
@@ -314,7 +322,9 @@ impl CoreApi for Enforcer {
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
-            let eval_result = self.engine.eval_with_scope::<bool>(&mut scope, expstring)?;
+            let eval_result = self
+                .engine
+                .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
             if eval_result {
                 policy_effects.push(EffectKind::Allow);
             } else {
@@ -1201,5 +1211,41 @@ mod tests {
         e.save_policy().await.unwrap();
         e.load_filtered_policy(filter).await.unwrap();
         e.save_policy().await.unwrap();
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_policy_abac() {
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def("m", "m", "Any(_) && r.obj == p.obj && r.act == p.act");
+
+        let a = MemoryAdapter::default();
+
+        let mut e = Enforcer::new(m, a).await.unwrap();
+
+        e.add_policy(
+            vec!["Any(r.sub.age > 18)", "/data1", "read"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            e.enforce(&[r#"{"name": "alice", "age": 16}"#, "/data1", "read"])
+                .await
+                .unwrap(),
+            false
+        );
+        assert_eq!(
+            e.enforce(&[r#"{"name": "bob", "age": 19}"#, "/data1", "read"])
+                .await
+                .unwrap(),
+            true
+        );
     }
 }
