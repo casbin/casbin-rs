@@ -2,16 +2,11 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use rhai::Scope;
 
-macro_rules! regex {
-    ($re:expr) => {
-        ::regex::Regex::new($re).unwrap()
-    };
-}
-
 lazy_static! {
-    static ref ESC_A: Regex = regex!(r"(r|p)\.");
-    static ref ESC_G: Regex = regex!(r"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)");
-    pub(crate) static ref ESC_E: Regex = regex!(r"eval\((?P<rule>[^),]*)\)");
+    static ref ESC_A: Regex = Regex::new(r"(r|p)\.").unwrap();
+    static ref ESC_G: Regex =
+        Regex::new(r"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)").unwrap();
+    pub(crate) static ref ESC_E: Regex = Regex::new(r"eval\((?P<rule>[^),]*)\)").unwrap();
 }
 
 pub fn escape_assertion(s: String) -> String {
@@ -31,7 +26,8 @@ pub fn remove_comments(mut s: String) -> String {
 }
 
 pub fn escape_eval(mut m: String, scope: &Scope) -> String {
-    for caps in ESC_E.captures_iter(&m.to_owned()) {
+    let cloned_m = m.to_owned();
+    for caps in ESC_E.captures_iter(&cloned_m) {
         if let Some(val) = scope.get_value::<String>(&caps["rule"]) {
             m = ESC_E
                 .replace(m.as_str(), escape_assertion(format!("({})", &val)).as_str())
