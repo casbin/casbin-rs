@@ -8,7 +8,7 @@ use globset::GlobBuilder;
 use ip_network::IpNetwork;
 use regex::Regex;
 
-use std::collections::{hash_map::Iter, HashMap};
+use std::collections::HashMap;
 
 pub struct FunctionMap {
     pub(crate) fm: HashMap<String, fn(String, String) -> bool>,
@@ -35,7 +35,7 @@ impl FunctionMap {
     }
 
     #[inline]
-    pub fn get_functions(&self) -> Iter<'_, String, fn(String, String) -> bool> {
+    pub fn get_functions(&self) -> impl Iterator<Item = (&String, &fn(String, String) -> bool)> {
         self.fm.iter()
     }
 }

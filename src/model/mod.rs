@@ -9,7 +9,7 @@ mod assertion;
 mod default_model;
 mod function_map;
 
-pub(crate) use assertion::{Assertion, AssertionMap};
+pub use assertion::{Assertion, AssertionMap};
 pub use default_model::DefaultModel;
 pub use function_map::*;
 

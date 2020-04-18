@@ -1,5 +1,5 @@
 use crate::{
-    adapter::Adapter,
+    adapter::{Adapter, Filter},
     convert::{TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
@@ -120,7 +120,6 @@ impl CoreApi for Enforcer {
 
         e.on(Event::PolicyChange, notify_watcher);
 
-        // TODO: check filtered adapter, match over a implementor?
         e.load_policy().await?;
         Ok(e)
     }
@@ -342,9 +341,57 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
+    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()> {
+        self.model.clear_policy();
+        self.adapter
+            .load_filtered_policy(&mut *self.model, f)
+            .await?;
+
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+        Ok(())
+    }
+
+    #[inline]
+    fn is_filtered(&self) -> bool {
+        self.adapter.is_filtered()
+    }
+
     async fn save_policy(&mut self) -> Result<()> {
+        if self.is_filtered() {
+            panic!("cannot save filtered policy");
+        }
+
         self.adapter.save_policy(&mut *self.model).await?;
-        self.emit(Event::PolicyChange, None);
+
+        let mut policies: Vec<Vec<String>> = self
+            .get_model()
+            .get_policy("p", "p")
+            .into_iter()
+            .map(|mut x| {
+                x.insert(0, "p".to_owned());
+                x
+            })
+            .collect();
+
+        if let Some(ast_map) = self.get_model().get_model().get("g") {
+            for (ptype, ast) in ast_map {
+                let gpolicies: Vec<Vec<String>> = ast
+                    .get_policy()
+                    .clone()
+                    .into_iter()
+                    .map(|mut x| {
+                        x.insert(0, ptype.clone());
+                        x
+                    })
+                    .collect();
+
+                policies.extend(gpolicies);
+            }
+        }
+
+        self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
         Ok(())
     }
 
@@ -1091,5 +1138,68 @@ mod tests {
                 .await
                 .unwrap()
         );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_filtered_file_adapter() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_domains_model.conf",
+            "examples/rbac_with_domains_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        let filter = Filter {
+            p: vec!["", "domain1"],
+            g: vec!["", "", "domain1"],
+        };
+
+        e.load_filtered_policy(filter).await.unwrap();
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "read"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain1", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain1", "data2", "write"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain2", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain2", "data2", "write"])
+            .await
+            .unwrap());
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[should_panic]
+    async fn test_filtered_file_adapter_save_policy() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_domains_model.conf",
+            "examples/rbac_with_domains_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        let filter = Filter {
+            p: vec!["", "domain1"],
+            g: vec!["", "", "domain1"],
+        };
+
+        e.save_policy().await.unwrap();
+        e.load_filtered_policy(filter).await.unwrap();
+        e.save_policy().await.unwrap();
     }
 }

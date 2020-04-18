@@ -17,6 +17,7 @@ pub enum EventData {
     RemovePolicy(Vec<String>),
     RemovePolicies(Vec<Vec<String>>),
     RemoveFilteredPolicy(Vec<Vec<String>>),
+    SavePolicy(Vec<Vec<String>>),
 }
 
 pub trait EventEmitter<K>

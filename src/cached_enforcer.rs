@@ -1,5 +1,5 @@
 use crate::{
-    adapter::Adapter,
+    adapter::{Adapter, Filter},
     cache::{Cache, DefaultCache},
     cached_api::CachedApi,
     convert::{TryIntoAdapter, TryIntoModel},
@@ -153,6 +153,16 @@ impl CoreApi for CachedEnforcer {
     #[inline]
     async fn load_policy(&mut self) -> Result<()> {
         self.enforcer.load_policy().await
+    }
+
+    #[inline]
+    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()> {
+        self.enforcer.load_filtered_policy(f).await
+    }
+
+    #[inline]
+    fn is_filtered(&self) -> bool {
+        self.enforcer.is_filtered()
     }
 
     #[inline]

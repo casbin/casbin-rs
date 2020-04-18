@@ -1,4 +1,8 @@
-use crate::{adapter::Adapter, model::Model, Result};
+use crate::{
+    adapter::{Adapter, Filter},
+    model::Model,
+    Result,
+};
 
 use async_trait::async_trait;
 use indexmap::IndexSet;
@@ -6,6 +10,7 @@ use indexmap::IndexSet;
 #[derive(Default)]
 pub struct MemoryAdapter {
     policy: IndexSet<Vec<String>>,
+    is_filtered: bool,
 }
 
 #[async_trait]
@@ -19,6 +24,40 @@ impl Adapter for MemoryAdapter {
                 if let Some(t2) = t1.get_mut(&ptype) {
                     t2.get_mut_policy().insert(rule);
                 }
+            }
+        }
+        Ok(())
+    }
+
+    async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Filter) -> Result<()> {
+        for line in self.policy.iter() {
+            let sec = line[0].clone();
+            let ptype = line[1].clone();
+            let rule = line[1..].to_vec().clone();
+            let mut is_filtered = false;
+
+            if &sec == "p" {
+                for (i, r) in f.p.iter().enumerate() {
+                    if !r.is_empty() && r != &rule[i + 1] {
+                        is_filtered = true;
+                    }
+                }
+            }
+            if &sec == "g" {
+                for (i, r) in f.g.iter().enumerate() {
+                    if !r.is_empty() && r != &rule[i + 1] {
+                        is_filtered = true;
+                    }
+                }
+            }
+            if !is_filtered {
+                if let Some(t1) = m.get_mut_model().get_mut(&sec) {
+                    if let Some(t2) = t1.get_mut(&ptype) {
+                        t2.get_mut_policy().insert(rule);
+                    }
+                }
+            } else {
+                self.is_filtered = true;
             }
         }
         Ok(())
@@ -151,5 +190,9 @@ impl Adapter for MemoryAdapter {
         self.policy = tmp;
 
         Ok(res)
+    }
+
+    fn is_filtered(&self) -> bool {
+        self.is_filtered
     }
 }
