@@ -54,7 +54,7 @@ pub fn extract_ptype_from_matcher(m: &str) -> Option<String> {
         }
     }
 
-    return ptype;
+    ptype
 }
 
 #[cfg(test)]
