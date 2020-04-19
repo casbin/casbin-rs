@@ -6,7 +6,13 @@ use std::net::IpAddr;
 
 use globset::GlobBuilder;
 use ip_network::IpNetwork;
+use lazy_static::lazy_static;
 use regex::Regex;
+
+lazy_static! {
+    static ref MAT_B: Regex = Regex::new(r":[^/]+").unwrap();
+    static ref MAT_P: Regex = Regex::new(r"\{[^/]+\}").unwrap();
+}
 
 use std::collections::HashMap;
 
@@ -57,12 +63,11 @@ pub fn key_match(key1: String, key2: String) -> bool {
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
 pub fn key_match2(key1: String, key2: String) -> bool {
     let mut key2 = key2.replace("/*", "/.*");
-    let re = Regex::new("(.*):[^/]+(.*)").unwrap();
     loop {
         if !key2.contains("/:") {
             break;
         }
-        key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
+        key2 = MAT_B.replace(key2.as_str(), "[^/]+").to_string();
     }
     regex_match(key1, format!("^{}$", key2))
 }
@@ -71,12 +76,11 @@ pub fn key_match2(key1: String, key2: String) -> bool {
 // For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
 pub fn key_match3(key1: String, key2: String) -> bool {
     let mut key2 = key2.replace("/*", "/.*");
-    let re = Regex::new(r"(.*)\{[^/]+\}(.*)").unwrap();
     loop {
         if !key2.contains("/{") {
             break;
         }
-        key2 = re.replace_all(key2.as_str(), "$1[^/]+$2").to_string();
+        key2 = MAT_P.replace(key2.as_str(), "[^/]+").to_string();
     }
     regex_match(key1, format!("^{}$", key2))
 }

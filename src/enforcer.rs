@@ -1165,10 +1165,12 @@ mod tests {
         };
 
         e.load_filtered_policy(filter).await.unwrap();
-        assert!(e
-            .enforce(&["alice", "domain1", "data1", "read"])
-            .await
-            .unwrap());
+        assert_eq!(
+            e.enforce(&["alice", "domain1", "data1", "read"])
+                .await
+                .unwrap(),
+            true
+        );
         assert!(e
             .enforce(&["alice", "domain1", "data1", "write"])
             .await

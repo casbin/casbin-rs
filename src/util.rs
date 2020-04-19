@@ -6,7 +6,7 @@ lazy_static! {
     static ref ESC_A: Regex = Regex::new(r"(r|p)\.").unwrap();
     static ref ESC_G: Regex =
         Regex::new(r"(g\d*)\(((?:\s*[r|p]\.\w+\s*,\s*){1,2}\s*[r|p]\.\w+\s*)\)").unwrap();
-    pub(crate) static ref ESC_E: Regex = Regex::new(r"eval\((?P<rule>[^),]*)\)").unwrap();
+    pub(crate) static ref ESC_E: Regex = Regex::new(r"eval\((?P<rule>[^)]*)\)").unwrap();
 }
 
 pub fn escape_assertion(s: String) -> String {
