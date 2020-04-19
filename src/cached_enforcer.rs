@@ -134,12 +134,21 @@ impl CoreApi for CachedEnforcer {
     }
 
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
-        let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        self.enforce_with_matcher(rvals, "m").await
+    }
+
+    async fn enforce_with_matcher<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+        m: &str,
+    ) -> Result<bool> {
+        let mut key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        key.push(m.to_owned());
 
         if let Some(result) = self.cache.get(&key).await {
             Ok(*result)
         } else {
-            let result = self.enforcer.enforce(rvals).await?;
+            let result = self.enforcer.enforce_with_matcher(rvals, m).await?;
             self.cache.set(key, result).await;
             Ok(result)
         }

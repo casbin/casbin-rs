@@ -7,7 +7,7 @@ use crate::{
     Result,
 };
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 #[cfg(feature = "runtime-async-std")]
 use async_std::path::Path;
@@ -120,7 +120,7 @@ impl Model for DefaultModel {
         if let Some(new_model) = self.model.get_mut(sec) {
             new_model.insert(key.to_owned(), ast);
         } else {
-            let mut new_ast_map = HashMap::new();
+            let mut new_ast_map = IndexMap::new();
             new_ast_map.insert(key.to_owned(), ast);
             self.model.insert(sec.to_owned(), new_ast_map);
         }

@@ -4,14 +4,11 @@ use crate::{
     Result,
 };
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
-pub type AssertionMap = HashMap<String, Assertion>;
+pub type AssertionMap = IndexMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {

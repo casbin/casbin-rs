@@ -1,5 +1,5 @@
 pub trait Effector: Send + Sync {
-    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool;
+    fn merge_effects(&self, expr: &str, effects: &[EffectKind]) -> bool;
 }
 
 #[derive(PartialEq, Clone)]
@@ -13,11 +13,11 @@ pub enum EffectKind {
 pub struct DefaultEffector;
 
 impl Effector for DefaultEffector {
-    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool {
+    fn merge_effects(&self, expr: &str, effects: &[EffectKind]) -> bool {
         if expr == "some(where (p_eft == allow))" {
             let mut result = false;
             for eft in effects {
-                if eft == EffectKind::Allow {
+                if eft == &EffectKind::Allow {
                     result = true;
                     break;
                 }
@@ -27,7 +27,7 @@ impl Effector for DefaultEffector {
         } else if expr == "!some(where (p_eft == deny))" {
             let mut result = true;
             for eft in effects {
-                if eft == EffectKind::Deny {
+                if eft == &EffectKind::Deny {
                     result = false;
                     break;
                 }
@@ -37,9 +37,9 @@ impl Effector for DefaultEffector {
         } else if expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
             let mut result = false;
             for eft in effects {
-                if eft == EffectKind::Allow {
+                if eft == &EffectKind::Allow {
                     result = true;
-                } else if eft == EffectKind::Deny {
+                } else if eft == &EffectKind::Deny {
                     result = false;
                     break;
                 }
@@ -49,8 +49,8 @@ impl Effector for DefaultEffector {
         } else if expr == "priority(p_eft) || deny" {
             let mut result = false;
             for eft in effects {
-                if eft != EffectKind::Indeterminate {
-                    if eft == EffectKind::Allow {
+                if eft != &EffectKind::Indeterminate {
+                    if eft == &EffectKind::Allow {
                         result = true
                     } else {
                         result = false

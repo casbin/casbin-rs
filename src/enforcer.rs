@@ -7,7 +7,7 @@ use crate::{
     error::{Error, ModelError, PolicyError, RequestError},
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::{escape_eval, ESC_E},
+    util::{escape_eval, extract_ptype_from_matcher, ESC_E},
     watcher::Watcher,
     Result,
 };
@@ -27,9 +27,31 @@ macro_rules! get_or_err {
             .get_model()
             .get($key)
             .ok_or_else(|| Error::from($err(format!("Missing {} definition in conf file", $msg))))?
-            .get($key)
-            .ok_or_else(|| Error::from($err(format!("Missing {} section in conf file", $msg))))?
     }};
+    ($this:ident, $key1:expr, $key2:expr, $err:expr, $msg:expr) => {{
+        $this
+            .model
+            .get_model()
+            .get($key1)
+            .ok_or_else(|| Error::from($err(format!("Missing {} definition in conf file", $msg))))?
+            .get($key2)
+            .ok_or_else(|| {
+                Error::from($err(format!(
+                    "Missing {}::{} section in conf file",
+                    $key1, $msg
+                )))
+            })?
+    }};
+}
+
+macro_rules! get_value {
+    ($scope:ident, $matcher:expr) => {
+        if let Some(eval_result) = $scope.get_value::<bool>($matcher) {
+            eval_result
+        } else {
+            panic!("matcher::{} result not found in scope", $matcher);
+        };
+    };
 }
 
 macro_rules! generate_g_function {
@@ -233,16 +255,24 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+        self.enforce_with_matcher(rvals, "m").await
+    }
+
+    async fn enforce_with_matcher<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+        m: &str,
+    ) -> Result<bool> {
         if !self.enabled {
             return Ok(true);
         }
 
         let mut scope: Scope = Scope::new();
 
-        let r_ast = get_or_err!(self, "r", ModelError::R, "request");
-        let p_ast = get_or_err!(self, "p", ModelError::P, "policy");
-        let m_ast = get_or_err!(self, "m", ModelError::M, "matcher");
-        let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
+        let r_ast = get_or_err!(self, "r", "r", ModelError::R, "request");
+        let e_ast = get_or_err!(self, "e", "e", ModelError::E, "effector");
+
+        let m_sec = get_or_err!(self, "m", ModelError::M, "matcher");
 
         if r_ast.tokens.len() != rvals.len() {
             return Err(
@@ -268,70 +298,97 @@ impl CoreApi for Enforcer {
             }
         }
 
-        let mut policy_effects: Vec<EffectKind> = vec![];
-        let policies = self.model.get_policy("p", "p");
-        let policy_len = policies.len();
-        let scope_size = scope.len();
+        let mut scope_size = scope.len();
 
-        if policy_len != 0 {
-            policy_effects = vec![EffectKind::Deny; policy_len];
-            for (i, pvals) in policies.iter().enumerate() {
-                if p_ast.tokens.len() != pvals.len() {
-                    return Err(PolicyError::UnmatchPolicyDefinition(
-                        p_ast.tokens.len(),
-                        pvals.len(),
-                    )
-                    .into());
-                }
-                for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
-                    scope.push_constant(ptoken, pval.to_owned());
-                }
+        for (m_k, m_ast) in m_sec {
+            if let Some(ptype) = extract_ptype_from_matcher(&m_ast.value) {
+                let p_ast = get_or_err!(self, "p", &ptype, ModelError::P, &ptype);
 
-                let mut expstring = m_ast.value.to_owned();
-                if ESC_E.is_match(&expstring) {
-                    expstring = escape_eval(expstring, &scope);
-                }
+                let policies = p_ast.get_policy();
+                let policies_len = policies.len();
+                let mut policy_effects = vec![EffectKind::Deny; policies_len];
 
+                if policies_len > 0 {
+                    for (i, pvals) in policies.iter().enumerate() {
+                        if p_ast.tokens.len() != pvals.len() {
+                            return Err(PolicyError::UnmatchPolicyDefinition(
+                                p_ast.tokens.len(),
+                                pvals.len(),
+                            )
+                            .into());
+                        }
+                        for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
+                            scope.push_constant(ptoken, pval.to_owned());
+                        }
+
+                        let mut expstring = m_ast.value.to_owned();
+                        if ESC_E.is_match(&expstring) {
+                            expstring = escape_eval(expstring, &scope);
+                        }
+
+                        let eval_result = self
+                            .engine
+                            .eval_with_scope::<bool>(&mut scope, &expstring)?;
+                        if !eval_result {
+                            policy_effects[i] = EffectKind::Indeterminate;
+                            scope.rewind(scope_size);
+                            continue;
+                        }
+                        if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
+                            let eft = &pvals[j];
+                            if eft == "allow" {
+                                policy_effects[i] = EffectKind::Allow;
+                            } else if eft == "deny" {
+                                policy_effects[i] = EffectKind::Deny;
+                            } else {
+                                policy_effects[i] = EffectKind::Indeterminate;
+                            }
+                        } else {
+                            policy_effects[i] = EffectKind::Allow;
+                        }
+                        scope.rewind(scope_size);
+                        if e_ast.value == "priority(p_eft) || deny" {
+                            break;
+                        }
+                    }
+
+                    scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, &policy_effects));
+                } else {
+                    for token in p_ast.tokens.iter() {
+                        scope.push_constant(token, String::new());
+                    }
+
+                    let eval_result = self
+                        .engine
+                        .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
+                    scope.rewind(scope_size);
+
+                    let policy_effects = if eval_result {
+                        &[EffectKind::Allow]
+                    } else {
+                        &[EffectKind::Indeterminate]
+                    };
+
+                    scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, policy_effects));
+                }
+            } else {
                 let eval_result = self
                     .engine
-                    .eval_with_scope::<bool>(&mut scope, &expstring)?;
-                if !eval_result {
-                    policy_effects[i] = EffectKind::Indeterminate;
-                    scope.rewind(scope_size);
-                    continue;
-                }
-                if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    let eft = &pvals[j];
-                    if eft == "allow" {
-                        policy_effects[i] = EffectKind::Allow;
-                    } else if eft == "deny" {
-                        policy_effects[i] = EffectKind::Deny;
-                    } else {
-                        policy_effects[i] = EffectKind::Indeterminate;
-                    }
+                    .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
+
+                let policy_effects = if eval_result {
+                    &[EffectKind::Allow]
                 } else {
-                    policy_effects[i] = EffectKind::Allow;
-                }
-                scope.rewind(scope_size);
-                if e_ast.value == "priority(p_eft) || deny" {
-                    break;
-                }
+                    &[EffectKind::Indeterminate]
+                };
+
+                scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, policy_effects));
             }
-        } else {
-            for token in p_ast.tokens.iter() {
-                scope.push_constant(token, String::new());
-            }
-            let eval_result = self
-                .engine
-                .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
-            if eval_result {
-                policy_effects.push(EffectKind::Allow);
-            } else {
-                policy_effects.push(EffectKind::Indeterminate);
-            }
+
+            scope_size += 1;
         }
 
-        Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
+        Ok(get_value!(scope, m))
     }
 
     fn build_role_links(&mut self) -> Result<()> {
@@ -1251,6 +1308,112 @@ mod tests {
                 .await
                 .unwrap(),
             true
+        );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_multiple_matcher() {
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub_rule, obj, act");
+        m.add_def("p", "p1", "sub_rule, obj, act");
+        m.add_def("p", "p2", "sub_rule, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def(
+            "m",
+            "m",
+            "!eval(p.sub_rule) && r.obj == p.obj && r.act == p.act",
+        );
+        m.add_def(
+            "m",
+            "m1",
+            "eval(p1.sub_rule) && r.obj == p1.obj && r.act == p1.act",
+        );
+
+        m.add_def(
+            "m",
+            "m2",
+            "m && m1 && eval(p2.sub_rule) && r.obj == p2.obj && r.act == p2.act",
+        );
+
+        let a = MemoryAdapter::default();
+
+        let mut e = Enforcer::new(m, a).await.unwrap();
+
+        // <= 60
+        e.add_named_policy(
+            "p",
+            vec!["r.sub.age > 60", "/data1", "read"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        // > 16
+        e.add_named_policy(
+            "p1",
+            vec!["r.sub.age > 16", "/data1", "read"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        // > 50
+        e.add_named_policy(
+            "p2",
+            vec!["r.sub.age > 50", "/data1", "read"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "alice", "age": 16}"#, "/data1", "read"], "m")
+                .await
+                .unwrap(),
+            true
+        );
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "alice", "age": 70}"#, "/data1", "read"], "m")
+                .await
+                .unwrap(),
+            false
+        );
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "bob", "age": 19}"#, "/data1", "read"], "m1")
+                .await
+                .unwrap(),
+            true
+        );
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "bob", "age": 15}"#, "/data1", "read"], "m1")
+                .await
+                .unwrap(),
+            false
+        );
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "bob", "age": 51}"#, "/data1", "read"], "m2")
+                .await
+                .unwrap(),
+            true
+        );
+
+        assert_eq!(
+            e.enforce_with_matcher(&[r#"{"name": "bob", "age": 61}"#, "/data1", "read"], "m2")
+                .await
+                .unwrap(),
+            false
         );
     }
 }

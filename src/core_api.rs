@@ -24,6 +24,11 @@ pub trait CoreApi: Sized + Send + Sync {
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
     fn set_effector(&mut self, e: Box<dyn Effector>);
     async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
+    async fn enforce_with_matcher<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+        m: &str,
+    ) -> Result<bool>;
     fn build_role_links(&mut self) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
     async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
