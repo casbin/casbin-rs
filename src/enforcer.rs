@@ -8,7 +8,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::{escape_eval, extract_ptype_from_matcher, ESC_E},
+    util::{escape_eval, extract_ptype_from_matcher, extract_ref_matchers, ESC_E},
     watcher::Watcher,
     Result,
 };
@@ -274,6 +274,7 @@ impl CoreApi for Enforcer {
         let e_ast = get_or_err!(self, "e", "e", ModelError::E, "effector");
 
         let m_sec = get_or_err!(self, "m", ModelError::M, "matcher");
+        let m_ast = get_or_err!(self, "m", m, ModelError::M, m);
 
         if r_ast.tokens.len() != rvals.len() {
             return Err(
@@ -300,16 +301,20 @@ impl CoreApi for Enforcer {
         }
 
         let mut scope_size = scope.len();
+        let refs = extract_ref_matchers(&m_ast.value);
 
-        for (m_k, m_ast) in m_sec {
-            if let Some(ptype) = extract_ptype_from_matcher(&m_ast.value) {
+        for (m_k, m_ast) in m_sec
+            .into_iter()
+            .filter(|(k, _)| refs.contains(k) || k == &m)
+        {
+            let policy_effects = if let Some(ptype) = extract_ptype_from_matcher(&m_ast.value) {
                 let p_ast = get_or_err!(self, "p", &ptype, ModelError::P, &ptype);
 
                 let policies = p_ast.get_policy();
                 let policies_len = policies.len();
-                let mut policy_effects = vec![EffectKind::Deny; policies_len];
 
                 if policies_len > 0 {
+                    let mut policy_effects = vec![EffectKind::Deny; policies_len];
                     for (i, pvals) in policies.iter().enumerate() {
                         if p_ast.tokens.len() != pvals.len() {
                             return Err(PolicyError::UnmatchPolicyDefinition(
@@ -353,7 +358,7 @@ impl CoreApi for Enforcer {
                         }
                     }
 
-                    scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, &policy_effects));
+                    policy_effects
                 } else {
                     for token in p_ast.tokens.iter() {
                         scope.push_constant(token, String::new());
@@ -364,28 +369,25 @@ impl CoreApi for Enforcer {
                         .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
                     scope.rewind(scope_size);
 
-                    let policy_effects = if eval_result {
-                        &[EffectKind::Allow]
+                    if eval_result {
+                        vec![EffectKind::Allow; 1]
                     } else {
-                        &[EffectKind::Indeterminate]
-                    };
-
-                    scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, policy_effects));
+                        vec![EffectKind::Indeterminate; 1]
+                    }
                 }
             } else {
                 let eval_result = self
                     .engine
                     .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
 
-                let policy_effects = if eval_result {
-                    &[EffectKind::Allow]
+                if eval_result {
+                    vec![EffectKind::Allow; 1]
                 } else {
-                    &[EffectKind::Indeterminate]
-                };
+                    vec![EffectKind::Indeterminate; 1]
+                }
+            };
 
-                scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, policy_effects));
-            }
-
+            scope.push_constant(m_k, self.eft.merge_effects(&e_ast.value, &policy_effects));
             scope_size += 1;
         }
 

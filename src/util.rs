@@ -8,6 +8,7 @@ lazy_static! {
         Regex::new(r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)").unwrap();
     pub(crate) static ref ESC_E: Regex = Regex::new(r"\beval\((?P<rule>[^)]*)\)").unwrap();
     static ref EXR_P: Regex = Regex::new(r"\b(?P<ptype>p\d*)_").unwrap();
+    static ref EXR_R: Regex = Regex::new(r"\b(?P<matcher>m\d*)\b").unwrap();
 }
 
 pub fn escape_assertion(s: String) -> String {
@@ -55,6 +56,16 @@ pub fn extract_ptype_from_matcher(m: &str) -> Option<String> {
     }
 
     ptype
+}
+
+pub fn extract_ref_matchers(m: &str) -> Vec<String> {
+    let mut res: Vec<String> = vec![];
+
+    for caps in EXR_R.captures_iter(m) {
+        res.push(caps["matcher"].to_string());
+    }
+
+    res
 }
 
 #[cfg(test)]
@@ -125,5 +136,20 @@ mod tests {
     fn test_extract_ptype_panic() {
         let m1 = "r_sub == p_sub && r_obj == p2_obj";
         assert!(extract_ptype_from_matcher(&m1) == Some("p".to_owned()));
+    }
+
+    #[test]
+    fn test_extract_ref_matchers() {
+        let m1 = "m&&m1&& m2&& m3 &&m5 &&m6u";
+        assert_eq!(
+            extract_ref_matchers(m1),
+            vec![
+                "m".to_owned(),
+                "m1".to_owned(),
+                "m2".to_owned(),
+                "m3".to_owned(),
+                "m5".to_owned()
+            ]
+        );
     }
 }
