@@ -98,6 +98,8 @@ pub trait MgmtApi: InternalApi {
         self.get_named_policy("p")
     }
 
+    fn get_all_policy(&self) -> Vec<Vec<String>>;
+
     fn get_named_policy(&self, ptype: &str) -> Vec<Vec<String>>;
 
     fn get_filtered_policy(
@@ -124,6 +126,8 @@ pub trait MgmtApi: InternalApi {
     fn get_grouping_policy(&self) -> Vec<Vec<String>> {
         self.get_named_grouping_policy("g")
     }
+
+    fn get_all_grouping_policy(&self) -> Vec<Vec<String>>;
 
     fn get_named_grouping_policy(&self, ptype: &str) -> Vec<Vec<String>>;
 
@@ -265,6 +269,20 @@ where
         self.get_model().get_policy("p", ptype)
     }
 
+    fn get_all_policy(&self) -> Vec<Vec<String>> {
+        let mut res: Vec<Vec<String>> = vec![];
+        if let Some(ast_map) = self.get_model().get_model().get("p") {
+            for (ptype, ast) in ast_map {
+                res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
+                    x.insert(0, ptype.clone());
+                    x
+                }))
+            }
+        }
+
+        res
+    }
+
     fn get_filtered_named_policy(
         &self,
         ptype: &str,
@@ -281,6 +299,20 @@ where
 
     fn get_named_grouping_policy(&self, ptype: &str) -> Vec<Vec<String>> {
         self.get_model().get_policy("g", ptype)
+    }
+
+    fn get_all_grouping_policy(&self) -> Vec<Vec<String>> {
+        let mut res: Vec<Vec<String>> = vec![];
+        if let Some(ast_map) = self.get_model().get_model().get("g") {
+            for (ptype, ast) in ast_map {
+                res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
+                    x.insert(0, ptype.clone());
+                    x
+                }))
+            }
+        }
+
+        res
     }
 
     fn get_filtered_named_grouping_policy(
