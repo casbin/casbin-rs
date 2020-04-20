@@ -39,7 +39,7 @@ macro_rules! get_or_err {
             .ok_or_else(|| {
                 Error::from($err(format!(
                     "Missing {}::{} section in conf file",
-                    $key1, $msg
+                    $msg, $key2
                 )))
             })?
     }};
@@ -271,7 +271,6 @@ impl CoreApi for Enforcer {
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", "r", ModelError::R, "request");
-        let e_ast = get_or_err!(self, "e", "e", ModelError::E, "effector");
 
         let m_sec = get_or_err!(self, "m", ModelError::M, "matcher");
         let m_ast = get_or_err!(self, "m", m, ModelError::M, m);
@@ -307,6 +306,8 @@ impl CoreApi for Enforcer {
             .into_iter()
             .filter(|(k, _)| refs.contains(k) || k == &m)
         {
+            let e_ast = get_or_err!(self, "e", &m_k.replace("m", "e"), ModelError::E, "effector");
+
             let policy_effects = if let Some(ptype) = extract_ptype_from_matcher(&m_ast.value) {
                 let p_ast = get_or_err!(self, "p", &ptype, ModelError::P, &ptype);
 
@@ -1302,6 +1303,8 @@ mod tests {
         m.add_def("p", "p1", "sub_rule, obj, act");
         m.add_def("p", "p2", "sub_rule, obj, act");
         m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def("e", "e1", "some(where (p.eft == allow))");
+        m.add_def("e", "e2", "some(where (p.eft == allow))");
         m.add_def(
             "m",
             "m",
