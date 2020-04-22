@@ -5,6 +5,7 @@ use crate::{
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{notify_watcher, Event, EventData, EventEmitter},
     error::{Error, ModelError, PolicyError, RequestError},
+    management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
     util::{escape_eval, ESC_E},
@@ -374,31 +375,10 @@ impl CoreApi for Enforcer {
 
         self.adapter.save_policy(&mut *self.model).await?;
 
-        let mut policies: Vec<Vec<String>> = self
-            .get_model()
-            .get_policy("p", "p")
-            .into_iter()
-            .map(|mut x| {
-                x.insert(0, "p".to_owned());
-                x
-            })
-            .collect();
+        let mut policies = self.get_all_policy();
+        let gpolicies = self.get_all_grouping_policy();
 
-        if let Some(ast_map) = self.get_model().get_model().get("g") {
-            for (ptype, ast) in ast_map {
-                let gpolicies: Vec<Vec<String>> = ast
-                    .get_policy()
-                    .clone()
-                    .into_iter()
-                    .map(|mut x| {
-                        x.insert(0, ptype.clone());
-                        x
-                    })
-                    .collect();
-
-                policies.extend(gpolicies);
-            }
-        }
+        policies.extend(gpolicies);
 
         self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
         Ok(())
