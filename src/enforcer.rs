@@ -1175,27 +1175,6 @@ mod tests {
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
-    #[should_panic]
-    async fn test_filtered_file_adapter_save_policy() {
-        let mut e = Enforcer::new(
-            "examples/rbac_with_domains_model.conf",
-            "examples/rbac_with_domains_policy.csv",
-        )
-        .await
-        .unwrap();
-
-        let filter = Filter {
-            p: vec!["", "domain1"],
-            g: vec!["", "", "domain1"],
-        };
-
-        e.save_policy().await.unwrap();
-        e.load_filtered_policy(filter).await.unwrap();
-        e.save_policy().await.unwrap();
-    }
-
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_policy_abac() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
