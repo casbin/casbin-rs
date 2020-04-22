@@ -123,6 +123,14 @@ impl CoreApi for Enforcer {
         e.on(Event::PolicyChange, notify_watcher);
 
         e.load_policy().await?;
+
+        if let Some(ast_map) = e.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&e.rm);
+                e.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
         Ok(e)
     }
 
@@ -183,7 +191,18 @@ impl CoreApi for Enforcer {
     #[inline]
     fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         self.rm = rm;
-        self.build_role_links()
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+
+        if let Some(ast_map) = self.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&self.rm);
+                self.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
+        Ok(())
     }
 
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
@@ -259,13 +278,6 @@ impl CoreApi for Enforcer {
                 self.engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             } else {
                 scope.push_constant(rtoken, rval.as_ref().to_owned());
-            }
-        }
-
-        if let Some(g_result) = self.model.get_model().get("g") {
-            for (key, ast) in g_result.iter() {
-                let rm = Arc::clone(&ast.rm);
-                self.engine.register_fn(key, generate_g_function!(rm));
             }
         }
 
@@ -1168,6 +1180,38 @@ mod tests {
             .await
             .unwrap());
         assert!(!e
+            .enforce(&["bob", "domain2", "data2", "write"])
+            .await
+            .unwrap());
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_set_role_manager() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_domains_model.conf",
+            "examples/rbac_with_domains_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        let new_rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
+
+        e.set_role_manager(new_rm).unwrap();
+
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "read"])
+            .await
+            .unwrap(),);
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["bob", "domain2", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(e
             .enforce(&["bob", "domain2", "data2", "write"])
             .await
             .unwrap());
