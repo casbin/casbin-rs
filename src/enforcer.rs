@@ -5,6 +5,7 @@ use crate::{
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{notify_watcher, Event, EventData, EventEmitter},
     error::{Error, ModelError, PolicyError, RequestError},
+    management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
     util::{escape_eval, ESC_E},
@@ -122,6 +123,14 @@ impl CoreApi for Enforcer {
         e.on(Event::PolicyChange, notify_watcher);
 
         e.load_policy().await?;
+
+        if let Some(ast_map) = e.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&e.rm);
+                e.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
         Ok(e)
     }
 
@@ -182,7 +191,18 @@ impl CoreApi for Enforcer {
     #[inline]
     fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
         self.rm = rm;
-        self.build_role_links()
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+
+        if let Some(ast_map) = self.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&self.rm);
+                self.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
+        Ok(())
     }
 
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
@@ -258,13 +278,6 @@ impl CoreApi for Enforcer {
                 self.engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             } else {
                 scope.push_constant(rtoken, rval.as_ref().to_owned());
-            }
-        }
-
-        if let Some(g_result) = self.model.get_model().get("g") {
-            for (key, ast) in g_result.iter() {
-                let rm = Arc::clone(&ast.rm);
-                self.engine.register_fn(key, generate_g_function!(rm));
             }
         }
 
@@ -374,31 +387,10 @@ impl CoreApi for Enforcer {
 
         self.adapter.save_policy(&mut *self.model).await?;
 
-        let mut policies: Vec<Vec<String>> = self
-            .get_model()
-            .get_policy("p", "p")
-            .into_iter()
-            .map(|mut x| {
-                x.insert(0, "p".to_owned());
-                x
-            })
-            .collect();
+        let mut policies = self.get_all_policy();
+        let gpolicies = self.get_all_grouping_policy();
 
-        if let Some(ast_map) = self.get_model().get_model().get("g") {
-            for (ptype, ast) in ast_map {
-                let gpolicies: Vec<Vec<String>> = ast
-                    .get_policy()
-                    .clone()
-                    .into_iter()
-                    .map(|mut x| {
-                        x.insert(0, ptype.clone());
-                        x
-                    })
-                    .collect();
-
-                policies.extend(gpolicies);
-            }
-        }
+        policies.extend(gpolicies);
 
         self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
         Ok(())
@@ -1195,8 +1187,7 @@ mod tests {
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
-    #[should_panic]
-    async fn test_filtered_file_adapter_save_policy() {
+    async fn test_set_role_manager() {
         let mut e = Enforcer::new(
             "examples/rbac_with_domains_model.conf",
             "examples/rbac_with_domains_policy.csv",
@@ -1204,14 +1195,26 @@ mod tests {
         .await
         .unwrap();
 
-        let filter = Filter {
-            p: vec!["", "domain1"],
-            g: vec!["", "", "domain1"],
-        };
+        let new_rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
 
-        e.save_policy().await.unwrap();
-        e.load_filtered_policy(filter).await.unwrap();
-        e.save_policy().await.unwrap();
+        e.set_role_manager(new_rm).unwrap();
+
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "read"])
+            .await
+            .unwrap(),);
+        assert!(e
+            .enforce(&["alice", "domain1", "data1", "write"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["bob", "domain2", "data2", "read"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["bob", "domain2", "data2", "write"])
+            .await
+            .unwrap());
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
