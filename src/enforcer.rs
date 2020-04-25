@@ -282,13 +282,17 @@ impl CoreApi for Enforcer {
         }
 
         let mut policy_effects: Vec<EffectKind> = vec![];
-        let policies = self.model.get_policy("p", "p");
+        let policies = p_ast.get_policy();
         let policy_len = policies.len();
         let scope_size = scope.len();
 
         if policy_len != 0 {
             policy_effects = vec![EffectKind::Deny; policy_len];
             for (i, pvals) in policies.iter().enumerate() {
+                if i != 0 {
+                    scope.rewind(scope_size);
+                }
+
                 if p_ast.tokens.len() != pvals.len() {
                     return Err(PolicyError::UnmatchPolicyDefinition(
                         p_ast.tokens.len(),
@@ -310,7 +314,6 @@ impl CoreApi for Enforcer {
                     .eval_with_scope::<bool>(&mut scope, &expstring)?;
                 if !eval_result {
                     policy_effects[i] = EffectKind::Indeterminate;
-                    scope.rewind(scope_size);
                     continue;
                 }
                 if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
@@ -325,9 +328,18 @@ impl CoreApi for Enforcer {
                 } else {
                     policy_effects[i] = EffectKind::Allow;
                 }
-                scope.rewind(scope_size);
                 if e_ast.value == "priority(p_eft) || deny" {
                     break;
+                } else if e_ast.value == "some(where (p_eft == allow))"
+                    && policy_effects[i] == EffectKind::Allow
+                {
+                    return Ok(true);
+                } else if policy_effects[i] == EffectKind::Deny
+                    && (e_ast.value == "!some(where (p_eft == deny))"
+                        || e_ast.value
+                            == "some(where (p_eft == allow)) && !some(where (p_eft == deny))")
+                {
+                    return Ok(false);
                 }
             }
         } else {
