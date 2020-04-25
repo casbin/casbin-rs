@@ -61,7 +61,7 @@ impl Effector for DefaultEffector {
 
             result
         } else {
-            panic!("unsupported effect");
+            panic!("unsupported effect: `{}`", expr);
         }
     }
 }
