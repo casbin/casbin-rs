@@ -336,11 +336,8 @@ impl CoreApi for Enforcer {
                     return Ok(true);
                 } else if e_ast.value == "!some(where (p_eft == deny))"
                     && policy_effects[i] == EffectKind::Deny
-                {
-                    return Ok(false);
-                } else if e_ast.value
-                    == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
-                    && policy_effects[i] == EffectKind::Deny
+                    || e_ast.value == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+                        && policy_effects[i] == EffectKind::Deny
                 {
                     return Ok(false);
                 }
