@@ -1148,13 +1148,11 @@ mod tests {
             .unwrap());
 
         assert_eq!(
-            sort_unstable(vec![
-                "user1".to_owned(),
-                "user2".to_owned(),
-                "user3".to_owned()
-            ]),
-            e.get_implicit_users_for_permission(vec!["data2".to_owned(), "writer".to_owned()])
-                .await
+            vec!["user1".to_owned(), "user2".to_owned(), "user3".to_owned()],
+            sort_unstable(
+                e.get_implicit_users_for_permission(vec!["data2".to_owned(), "writer".to_owned()])
+                    .await
+            )
         );
     }
 }
