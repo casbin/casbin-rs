@@ -14,7 +14,10 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use rhai::{Array, Engine, RegisterFn, Scope};
+use rhai::{
+    packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
+    Array, Engine, RegisterFn, Scope,
+};
 
 use std::{
     collections::HashMap,
@@ -70,7 +73,7 @@ pub struct Enforcer {
     pub(crate) auto_notify_watcher: bool,
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
-    pub(crate) engine: Engine<'static>,
+    pub(crate) engine: Engine,
 }
 
 impl EventEmitter<Event> for Enforcer {
@@ -99,7 +102,13 @@ impl CoreApi for Enforcer {
         let fm = FunctionMap::default();
         let eft = Box::new(DefaultEffector::default());
         let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
+
         let mut engine = Engine::new_raw();
+
+        engine.load_package(ArithmeticPackage::new().get());
+        engine.load_package(LogicPackage::new().get());
+        engine.load_package(BasicArrayPackage::new().get());
+        engine.load_package(BasicMapPackage::new().get());
 
         for (key, func) in fm.get_functions() {
             engine.register_fn(key, *func);
