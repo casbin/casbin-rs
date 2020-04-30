@@ -59,7 +59,7 @@ pub enum Error {
     RbacError(#[from] RbacError),
 
     #[error(transparent)]
-    RhaiError(#[from] EvalAltResult),
+    RhaiError(#[from] Box<EvalAltResult>),
 
     #[error(transparent)]
     RequestError(#[from] RequestError),
