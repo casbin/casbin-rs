@@ -276,13 +276,24 @@ where
     }
 
     async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String> {
-        let subjects = self.get_all_subjects();
+        let mut subjects = self.get_all_subjects();
         let roles = self.get_all_roles();
 
+        subjects.extend(
+            roles
+                .iter()
+                .map(|role| {
+                    self.get_role_manager()
+                        .read()
+                        .unwrap()
+                        .get_users(role, None)
+                })
+                .flatten(),
+        );
+
         let users: Vec<String> = subjects
-            .iter()
+            .into_iter()
             .filter(|subject| !roles.contains(subject))
-            .map(String::from)
             .collect();
 
         let mut res: Vec<String> = vec![];
@@ -290,7 +301,7 @@ where
             let mut req = permission.clone();
             req.insert(0, user.to_string());
             if let Ok(r) = self.enforce(&req).await {
-                if r {
+                if r && !res.contains(user) {
                     res.push(user.to_owned());
                 }
             }
@@ -1078,6 +1089,72 @@ mod tests {
         assert_eq!(
             vec!["/pen/:id", "pen_group"],
             sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
+        );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_implicit_users_for_permission() {
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("g", "g", "_, _");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def(
+            "m",
+            "m",
+            "g(r.sub, p.sub) && r.obj == p.obj && regexMatch(r.act, p.act)",
+        );
+
+        let a = MemoryAdapter::default();
+
+        let mut e = Enforcer::new(m, a).await.unwrap();
+
+        assert!(e
+            .add_policy(vec![
+                "role::r1".to_owned(),
+                "data1".to_owned(),
+                "(read)|(writer)".to_owned()
+            ])
+            .await
+            .unwrap());
+
+        assert!(e
+            .add_policy(vec![
+                "role::r2".to_owned(),
+                "data2".to_owned(),
+                "writer".to_owned()
+            ])
+            .await
+            .unwrap());
+
+        assert!(e
+            .add_policy(vec![
+                "user1".to_owned(),
+                "data2".to_owned(),
+                "writer".to_owned()
+            ])
+            .await
+            .unwrap());
+
+        assert!(e
+            .add_grouping_policy(vec!["user2".to_owned(), "role::r2".to_owned(),])
+            .await
+            .unwrap());
+
+        assert!(e
+            .add_grouping_policy(vec!["user3".to_owned(), "role::r2".to_owned(),])
+            .await
+            .unwrap());
+
+        assert_eq!(
+            sort_unstable(vec![
+                "user1".to_owned(),
+                "user2".to_owned(),
+                "user3".to_owned()
+            ]),
+            e.get_implicit_users_for_permission(vec!["data2".to_owned(), "writer".to_owned()])
+                .await
         );
     }
 }
