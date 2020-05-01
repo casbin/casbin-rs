@@ -31,7 +31,7 @@ pub use enforcer::Enforcer;
 pub use error::Error;
 pub use internal_api::InternalApi;
 pub use management_api::MgmtApi;
-pub use model::{Assertion, DefaultModel, Model};
+pub use model::{function_map, Assertion, DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};
 pub use rbac_api::RbacApi;
 pub use watcher::Watcher;

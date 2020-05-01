@@ -27,7 +27,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = "0.6.1"
+casbin = "0.6.2"
 async-std = { version = "1.5.0", features = ["attributes"] }
 ```
 
@@ -49,9 +49,9 @@ async fn main() -> Result<()> {
 2. Add an enforcement hook into your code right before the access happens:
 
     ```rust
-    sub = "alice"; // the user that wants to access a resource.
-    obj = "data1"; // the resource that is going to be accessed.
-    act = "read"; // the operation that the user performs on the resource.
+    let sub = "alice"; // the user that wants to access a resource.
+    let obj = "data1"; // the resource that is going to be accessed.
+    let act = "read"; // the operation that the user performs on the resource.
 
     if let Ok(authorized) = e.enforce(&[sub, obj, act]).await {
         if authorized {

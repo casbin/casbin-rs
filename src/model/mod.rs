@@ -7,7 +7,7 @@ use std::{
 
 mod assertion;
 mod default_model;
-mod function_map;
+pub mod function_map;
 
 pub use assertion::{Assertion, AssertionMap};
 pub use default_model::DefaultModel;
