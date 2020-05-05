@@ -39,8 +39,10 @@ impl DefaultRoleManager {
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (_, r) in &mut self.all_roles.iter().filter(|(key, _)| {
-                key.as_str() != name && matching_fn(name.to_owned(), (*key).to_owned())
+            for (_, r) in &mut self.all_roles.iter().filter(|(k, r)| {
+                k.as_str() != name
+                    && matching_fn(name.to_owned(), (*k).to_owned())
+                    && !r.read().unwrap().has_direct_role(name)
             }) {
                 role.write().unwrap().add_role(Arc::clone(r));
             }
@@ -74,7 +76,11 @@ impl RoleManager for DefaultRoleManager {
         }
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
-        role1.write().unwrap().add_role(role2);
+
+        role1.write().unwrap().add_role(Arc::clone(&role2));
+        if role2.read().unwrap().has_direct_role(&name1) {
+            role2.write().unwrap().delete_role(role1);
+        }
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {

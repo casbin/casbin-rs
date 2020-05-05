@@ -1187,6 +1187,14 @@ mod tests {
             vec!["*", "book_admin", "pen_admin"],
             sort_unstable(e.get_implicit_roles_for_user("bob", None))
         );
+        assert_eq!(
+            vec![""; 0],
+            sort_unstable(e.get_implicit_roles_for_user("book_admin", None))
+        );
+        assert_eq!(
+            vec![""; 0],
+            sort_unstable(e.get_implicit_roles_for_user("pen_admin", None))
+        );
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
