@@ -39,14 +39,10 @@ impl DefaultRoleManager {
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (n, r) in &mut self
-                .all_roles
-                .iter()
-                .filter(|(key, _)| key.as_str() != name)
-            {
-                if matching_fn(name.to_owned(), n.to_owned()) {
-                    role.write().unwrap().add_role(Arc::clone(r));
-                }
+            for (_, r) in &mut self.all_roles.iter().filter(|(key, _)| {
+                key.as_str() != name && matching_fn(name.to_owned(), (*key).to_owned())
+            }) {
+                role.write().unwrap().add_role(Arc::clone(r));
             }
         }
 
