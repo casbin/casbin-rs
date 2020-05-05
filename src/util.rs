@@ -33,7 +33,7 @@ pub fn escape_eval(mut m: String, scope: &Scope) -> String {
                 .replace(m.as_str(), escape_assertion(format!("({})", &val)).as_str())
                 .to_string();
         } else {
-            panic!("eval(*) must make sure * can be evaluated");
+            panic!("{} not found in scope", &caps["rule"]);
         }
     }
     m

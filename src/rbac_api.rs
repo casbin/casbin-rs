@@ -244,17 +244,20 @@ where
 
     fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
         let mut res: HashSet<String> = HashSet::new();
-        let roles = self
-            .get_role_manager()
-            .write()
-            .unwrap()
-            .get_roles(name, domain);
-        res.extend(roles.clone());
-
-        roles.iter().for_each(|role| {
-            res.extend(self.get_implicit_roles_for_user(role, domain));
-        });
-
+        let mut q: Vec<String> = vec![name.to_owned()];
+        while !q.is_empty() {
+            let name = q.swap_remove(0);
+            let roles = self
+                .get_role_manager()
+                .write()
+                .unwrap()
+                .get_roles(&name, domain);
+            for r in roles.into_iter() {
+                if res.insert(r.to_owned()) {
+                    q.push(r);
+                }
+            }
+        }
         res.into_iter().collect()
     }
 
@@ -1089,6 +1092,100 @@ mod tests {
         assert_eq!(
             vec!["/pen/:id", "pen_group"],
             sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
+        );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_pattern_matching_fn_with_domain() {
+        let mut e = Enforcer::new(
+            "examples/rbac_with_pattern_domain_model.conf",
+            "examples/rbac_with_pattern_domain_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        use crate::model::key_match2;
+
+        e.add_matching_fn(key_match2).unwrap();
+
+        assert!(e
+            .enforce(&["alice", "domain2", "/pen/1", "GET"])
+            .await
+            .unwrap());
+        assert!(e
+            .enforce(&["alice", "domain1", "/book/1", "GET"])
+            .await
+            .unwrap());
+
+        assert!(e
+            .enforce(&["alice", "domain1", "/book/2", "GET"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain_unknown", "/book/2", "GET"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["alice", "domain2", "/pen/2", "GET"])
+            .await
+            .unwrap());
+
+        assert!(e
+            .enforce(&["bob", "domain2", "/pen/2", "GET"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain_unknown", "/pen/2", "GET"])
+            .await
+            .unwrap());
+        assert!(!e
+            .enforce(&["bob", "domain1", "/book/2", "GET"])
+            .await
+            .unwrap());
+
+        assert_eq!(
+            vec!["/book/:id", "book_group"],
+            sort_unstable(e.get_implicit_roles_for_user("/book/1", Some("domain1")))
+        );
+
+        assert_eq!(
+            vec!["/pen/:id", "pen_group"],
+            sort_unstable(e.get_implicit_roles_for_user("/pen/1", Some("domain2")))
+        );
+    }
+
+    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
+    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    async fn test_pattern_matching_basic_role() {
+        let mut e = Enforcer::new(
+            "examples/rbac_basic_role_model.conf",
+            "examples/rbac_basic_role_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        use crate::model::key_match;
+
+        e.add_matching_fn(key_match).unwrap();
+
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).await.unwrap());
+        assert!(e.enforce(&["alice", "/book/1", "GET"]).await.unwrap());
+        assert!(e.enforce(&["bob", "/pen/1", "GET"]).await.unwrap());
+        assert!(e.enforce(&["bob", "/book/1", "GET"]).await.unwrap());
+
+        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).await.unwrap());
+        assert!(!e.enforce(&["alice", "/book/2", "GET"]).await.unwrap());
+        assert!(!e.enforce(&["bob", "/pen/2", "GET"]).await.unwrap());
+        assert!(!e.enforce(&["bob", "/book/2", "GET"]).await.unwrap());
+
+        assert_eq!(
+            vec!["*", "book_admin", "pen_admin"],
+            sort_unstable(e.get_implicit_roles_for_user("alice", None))
+        );
+        assert_eq!(
+            vec!["*", "book_admin", "pen_admin"],
+            sort_unstable(e.get_implicit_roles_for_user("bob", None))
         );
     }
 
