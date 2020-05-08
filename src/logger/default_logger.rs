@@ -24,10 +24,20 @@ impl Logger for DefaultLogger {
         let mut text: String = String::from(if is_cached { "[CACHE]" } else { "" });
 
         if authorized {
-            text = format!("{} [Request: {:?} ---> {}]", text, rvals, true);
+            text = format!(
+                "{} [Request: {:?} ---> Response: {}]",
+                text,
+                rvals.join(", "),
+                true
+            );
             info!("{}", text);
         } else {
-            text = format!("{} [Request: {:?} ---> {}]", text, rvals, false);
+            text = format!(
+                "{} [Request: {:?} ---> Response: {}]",
+                text,
+                rvals.join(", "),
+                false
+            );
             error!("{}", text);
         }
     }
