@@ -55,6 +55,13 @@ where
 }
 
 #[async_trait]
+impl TryIntoAdapter for () {
+    async fn try_into_adapter(self) -> Result<Box<dyn Adapter>> {
+        Ok(Box::new(NullAdapter))
+    }
+}
+
+#[async_trait]
 impl<T> TryIntoModel for T
 where
     T: Model + 'static,
