@@ -59,7 +59,13 @@ pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: EventData) {
     }
 }
 
-pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: EventData) {
+#[allow(unused_variables)]
+pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, d: EventData) {
+    #[cfg(feature = "logging")]
+    {
+        ce.get_logger().print_mgmt_log(&d);
+    }
+
     #[cfg(feature = "runtime-tokio")]
     {
         tokio::runtime::Builder::new()
