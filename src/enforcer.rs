@@ -69,7 +69,7 @@ macro_rules! generate_g_function {
     }};
 }
 
-type EventCallback = fn(&mut Enforcer, Option<EventData>);
+type EventCallback = fn(&mut Enforcer, EventData);
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
@@ -90,7 +90,7 @@ pub struct Enforcer {
 }
 
 impl EventEmitter<Event> for Enforcer {
-    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+    fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
         self.events.entry(e).or_insert_with(Vec::new).push(f)
     }
 
@@ -98,7 +98,7 @@ impl EventEmitter<Event> for Enforcer {
         self.events.remove(&e);
     }
 
-    fn emit(&mut self, e: Event, d: Option<EventData>) {
+    fn emit(&mut self, e: Event, d: EventData) {
         if let Some(cbs) = self.events.get(&e) {
             for cb in cbs.clone().iter() {
                 cb(self, d.clone())
@@ -422,7 +422,7 @@ impl CoreApi for Enforcer {
 
         #[cfg(feature = "logging")]
         {
-            self.logger.print(
+            self.logger.print_enforce_log(
                 rvals.iter().map(|x| String::from(x.as_ref())).collect(),
                 res,
                 false,
@@ -481,7 +481,7 @@ impl CoreApi for Enforcer {
 
         policies.extend(gpolicies);
 
-        self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
+        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
         Ok(())
     }
 

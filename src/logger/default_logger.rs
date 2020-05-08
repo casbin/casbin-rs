@@ -1,4 +1,4 @@
-use crate::logger::Logger;
+use crate::{emitter::EventData, logger::Logger};
 
 use log::{error, info};
 
@@ -16,7 +16,7 @@ impl Logger for DefaultLogger {
         self.enabled
     }
 
-    fn print(&self, rvals: Vec<String>, authorized: bool, is_cached: bool) {
+    fn print_enforce_log(&self, rvals: Vec<String>, authorized: bool, is_cached: bool) {
         if !self.is_enabled() {
             return;
         }
@@ -25,7 +25,7 @@ impl Logger for DefaultLogger {
 
         if authorized {
             text = format!(
-                "{} [Request: {:?} ---> Response: {}]",
+                "{} Request: {:?}, Response: {}",
                 text,
                 rvals.join(", "),
                 true
@@ -33,12 +33,20 @@ impl Logger for DefaultLogger {
             info!("{}", text);
         } else {
             text = format!(
-                "{} [Request: {:?} ---> Response: {}]",
+                "{} Request: {:?}, Response: {}",
                 text,
                 rvals.join(", "),
                 false
             );
             error!("{}", text);
         }
+    }
+
+    fn print_mgmt_log(&self, event_data: &EventData) {
+        if !self.is_enabled() {
+            return;
+        }
+
+        info!("{}", event_data);
     }
 }

@@ -24,7 +24,7 @@ use std::{
     time::Duration,
 };
 
-type EventCallback = fn(&mut CachedEnforcer, Option<EventData>);
+type EventCallback = fn(&mut CachedEnforcer, EventData);
 
 pub struct CachedEnforcer {
     pub(crate) enforcer: Enforcer,
@@ -33,7 +33,7 @@ pub struct CachedEnforcer {
 }
 
 impl EventEmitter<Event> for CachedEnforcer {
-    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+    fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
         self.events.entry(e).or_insert_with(Vec::new).push(f)
     }
 
@@ -41,7 +41,7 @@ impl EventEmitter<Event> for CachedEnforcer {
         self.events.remove(&e);
     }
 
-    fn emit(&mut self, e: Event, d: Option<EventData>) {
+    fn emit(&mut self, e: Event, d: EventData) {
         if let Some(cbs) = self.events.get(&e) {
             for cb in cbs.clone().iter() {
                 cb(self, d.clone())
@@ -62,7 +62,7 @@ impl CoreApi for CachedEnforcer {
             events: HashMap::new(),
         };
 
-        cached_enforcer.on(Event::PolicyChange, clear_cache);
+        cached_enforcer.on(Event::ClearCache, clear_cache);
 
         Ok(cached_enforcer)
     }
@@ -180,7 +180,9 @@ impl CoreApi for CachedEnforcer {
         #[cfg(feature = "logging")]
         {
             self.enforcer.enable_log(log_enabled);
-            self.enforcer.get_logger().print(key, res, is_cached);
+            self.enforcer
+                .get_logger()
+                .print_enforce_log(key, res, is_cached);
         }
 
         Ok(res)

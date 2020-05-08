@@ -27,7 +27,7 @@ globset = "0.4.5"
 thiserror = "1.0.14"
 
 [features]
-default = ["runtime-async-std"]
+default = ["runtime-async-std", "logging"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util", "tokio/stream", "tokio/rt-threaded", "tokio/blocking"]
 runtime-async-std = ["async-std"]
