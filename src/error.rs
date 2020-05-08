@@ -46,25 +46,25 @@ pub struct AdapterError(pub Box<dyn StdError + Send + Sync>);
 /// General casbin error
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error(transparent)]
+    #[error("Casbin Io Error: `{0:?}`")]
     IoError(#[from] IoError),
 
-    #[error(transparent)]
+    #[error("Casbin Model Error: `{0:?}`")]
     ModelError(#[from] ModelError),
 
-    #[error(transparent)]
+    #[error("Casbin Policy Error: `{0:?}`")]
     PolicyError(#[from] PolicyError),
 
-    #[error(transparent)]
+    #[error("Casbin Role Manager Error: `{0:?}`")]
     RbacError(#[from] RbacError),
 
-    #[error(transparent)]
+    #[error("Casbin Evaluation Error: `{0:?}`")]
     RhaiError(#[from] Box<EvalAltResult>),
 
-    #[error(transparent)]
+    #[error("Casbin Request Error: `{0:?}`")]
     RequestError(#[from] RequestError),
 
-    #[error(transparent)]
+    #[error("Casbin Adapter Error: `{0:?}`")]
     AdapterError(#[from] AdapterError),
 }
 
