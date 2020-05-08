@@ -9,6 +9,8 @@ mod effector;
 mod emitter;
 mod enforcer;
 mod internal_api;
+#[cfg(feature = "logging")]
+mod logger;
 mod management_api;
 mod model;
 mod rbac;
@@ -30,6 +32,8 @@ pub use emitter::{Event, EventData, EventEmitter, EventKey};
 pub use enforcer::Enforcer;
 pub use error::Error;
 pub use internal_api::InternalApi;
+#[cfg(feature = "logging")]
+pub use logger::{DefaultLogger, Logger};
 pub use management_api::MgmtApi;
 pub use model::{function_map, Assertion, DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};

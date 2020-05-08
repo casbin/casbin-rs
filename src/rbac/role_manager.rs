@@ -8,5 +8,4 @@ pub trait RoleManager: Send + Sync {
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool;
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String>;
-    fn print_roles(&self);
 }

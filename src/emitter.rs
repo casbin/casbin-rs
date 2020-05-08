@@ -5,6 +5,7 @@ use std::hash::Hash;
 #[derive(Hash, PartialEq, Eq)]
 pub enum Event {
     PolicyChange,
+    Enforce,
 }
 
 pub trait EventKey: Hash + PartialEq + Eq + Send + Sync {}

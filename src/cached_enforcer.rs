@@ -13,6 +13,9 @@ use crate::{
     Result,
 };
 
+#[cfg(feature = "logging")]
+use crate::Logger;
+
 use async_trait::async_trait;
 
 use std::{
@@ -128,6 +131,18 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_adapter(a).await
     }
 
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn get_logger(&self) -> &dyn Logger {
+        self.enforcer.get_logger()
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn set_logger(&mut self, l: Box<dyn Logger>) {
+        self.enforcer.set_logger(l);
+    }
+
     #[inline]
     fn set_effector(&mut self, e: Box<dyn Effector>) {
         self.enforcer.set_effector(e);
@@ -135,14 +150,40 @@ impl CoreApi for CachedEnforcer {
 
     async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        #[allow(unused_variables)]
+        let log_enabled = {
+            #[cfg(feature = "logging")]
+            {
+                if self.enforcer.get_logger().is_enabled() {
+                    self.enforcer.enable_log(false);
+                    true
+                } else {
+                    false
+                }
+            }
 
-        if let Some(result) = self.cache.get(&key).await {
-            Ok(*result)
+            #[cfg(not(feature = "logging"))]
+            {
+                false
+            }
+        };
+
+        #[allow(unused_variables)]
+        let (res, is_cached) = if let Some(result) = self.cache.get(&key).await {
+            (*result, true)
         } else {
             let result = self.enforcer.enforce(rvals).await?;
-            self.cache.set(key, result).await;
-            Ok(result)
+            self.cache.set(key.clone(), result).await;
+            (result, false)
+        };
+
+        #[cfg(feature = "logging")]
+        {
+            self.enforcer.enable_log(log_enabled);
+            self.enforcer.get_logger().print(key, res, is_cached);
         }
+
+        Ok(res)
     }
 
     /// CachedEnforcer should use `enforce_mut` instead so that
@@ -179,6 +220,12 @@ impl CoreApi for CachedEnforcer {
     #[inline]
     fn clear_policy(&mut self) {
         self.enforcer.clear_policy();
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn enable_log(&mut self, enabled: bool) {
+        self.enforcer.enable_log(enabled);
     }
 
     #[inline]
