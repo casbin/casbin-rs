@@ -261,7 +261,7 @@ impl CoreApi for Enforcer {
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
         if !self.enabled {
             return Ok(true);
         }
@@ -366,6 +366,10 @@ impl CoreApi for Enforcer {
         }
 
         Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
+    }
+
+    async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+        self.enforce(rvals).await
     }
 
     fn build_role_links(&mut self) -> Result<()> {
@@ -522,7 +526,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])
@@ -655,7 +659,7 @@ mod tests {
         );
 
         let adapter = FileAdapter::new("examples/keymatch_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
             e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
@@ -863,7 +867,7 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert!(e
             .enforce(&vec!["192.168.2.123", "data1", "read"])

@@ -133,7 +133,7 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_effector(e);
     }
 
-    async fn enforce<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
 
         if let Some(result) = self.cache.get(&key).await {
@@ -143,6 +143,12 @@ impl CoreApi for CachedEnforcer {
             self.cache.set(key, result).await;
             Ok(result)
         }
+    }
+
+    /// CachedEnforcer should use `enforce_mut` instead so that
+    /// enforce result can be saved to cache
+    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+        self.enforcer.enforce(rvals).await
     }
 
     #[inline]
