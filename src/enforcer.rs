@@ -15,9 +15,17 @@ use crate::{
 
 use async_trait::async_trait;
 use rhai::{
+    def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
     Array, Engine, RegisterFn, Scope,
 };
+
+def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
+    ArithmeticPackage::init(lib);
+    LogicPackage::init(lib);
+    BasicArrayPackage::init(lib);
+    BasicMapPackage::init(lib);
+});
 
 use std::{
     collections::HashMap,
@@ -105,10 +113,7 @@ impl CoreApi for Enforcer {
 
         let mut engine = Engine::new_raw();
 
-        engine.load_package(ArithmeticPackage::new().get());
-        engine.load_package(LogicPackage::new().get());
-        engine.load_package(BasicArrayPackage::new().get());
-        engine.load_package(BasicMapPackage::new().get());
+        engine.load_package(CasbinPackage::new().get());
 
         for (key, func) in fm.get_functions() {
             engine.register_fn(key, *func);
