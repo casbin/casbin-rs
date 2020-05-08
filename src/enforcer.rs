@@ -13,11 +13,22 @@ use crate::{
     Result,
 };
 
+#[cfg(feature = "logging")]
+use crate::{DefaultLogger, Logger};
+
 use async_trait::async_trait;
 use rhai::{
+    def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
     Array, Engine, RegisterFn, Scope,
 };
+
+def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
+    ArithmeticPackage::init(lib);
+    LogicPackage::init(lib);
+    BasicArrayPackage::init(lib);
+    BasicMapPackage::init(lib);
+});
 
 use std::{
     collections::HashMap,
@@ -58,7 +69,7 @@ macro_rules! generate_g_function {
     }};
 }
 
-type EventCallback = fn(&mut Enforcer, Option<EventData>);
+type EventCallback = fn(&mut Enforcer, EventData);
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
@@ -74,10 +85,12 @@ pub struct Enforcer {
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
     pub(crate) engine: Engine,
+    #[cfg(feature = "logging")]
+    pub(crate) logger: Box<dyn Logger>,
 }
 
 impl EventEmitter<Event> for Enforcer {
-    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+    fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
         self.events.entry(e).or_insert_with(Vec::new).push(f)
     }
 
@@ -85,7 +98,7 @@ impl EventEmitter<Event> for Enforcer {
         self.events.remove(&e);
     }
 
-    fn emit(&mut self, e: Event, d: Option<EventData>) {
+    fn emit(&mut self, e: Event, d: EventData) {
         if let Some(cbs) = self.events.get(&e) {
             for cb in cbs.clone().iter() {
                 cb(self, d.clone())
@@ -94,174 +107,8 @@ impl EventEmitter<Event> for Enforcer {
     }
 }
 
-#[async_trait]
-impl CoreApi for Enforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
-        let model = m.try_into_model().await?;
-        let adapter = a.try_into_adapter().await?;
-        let fm = FunctionMap::default();
-        let eft = Box::new(DefaultEffector::default());
-        let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
-
-        let mut engine = Engine::new_raw();
-
-        engine.load_package(ArithmeticPackage::new().get());
-        engine.load_package(LogicPackage::new().get());
-        engine.load_package(BasicArrayPackage::new().get());
-        engine.load_package(BasicMapPackage::new().get());
-
-        for (key, func) in fm.get_functions() {
-            engine.register_fn(key, *func);
-        }
-
-        let mut e = Self {
-            model,
-            adapter,
-            fm,
-            eft,
-            rm,
-            enabled: true,
-            auto_save: true,
-            auto_build_role_links: true,
-            auto_notify_watcher: true,
-            watcher: None,
-            events: HashMap::new(),
-            engine,
-        };
-
-        e.on(Event::PolicyChange, notify_watcher);
-
-        e.load_policy().await?;
-
-        if let Some(ast_map) = e.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&e.rm);
-                e.engine.register_fn(key, generate_g_function!(rm));
-            }
-        }
-
-        Ok(e)
-    }
-
-    #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
-        self.fm.add_function(fname, f);
-        self.engine.register_fn(fname, f);
-    }
-
-    #[inline]
-    fn get_model(&self) -> &dyn Model {
-        &*self.model
-    }
-
-    #[inline]
-    fn get_mut_model(&mut self) -> &mut dyn Model {
-        &mut *self.model
-    }
-
-    #[inline]
-    fn get_adapter(&self) -> &dyn Adapter {
-        &*self.adapter
-    }
-
-    #[inline]
-    fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
-        &mut *self.adapter
-    }
-
-    #[inline]
-    fn set_watcher(&mut self, w: Box<dyn Watcher>) {
-        self.watcher = Some(w);
-    }
-
-    #[inline]
-    fn get_watcher(&self) -> Option<&dyn Watcher> {
-        if let Some(ref watcher) = self.watcher {
-            Some(&**watcher)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
-        if let Some(ref mut watcher) = self.watcher {
-            Some(&mut **watcher)
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>> {
-        Arc::clone(&self.rm)
-    }
-
-    #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
-        self.rm = rm;
-        if self.auto_build_role_links {
-            self.build_role_links()?;
-        }
-
-        if let Some(ast_map) = self.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&self.rm);
-                self.engine.register_fn(key, generate_g_function!(rm));
-            }
-        }
-
-        Ok(())
-    }
-
-    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
-        self.rm.write().unwrap().add_matching_fn(f);
-        self.build_role_links()
-    }
-
-    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
-        self.model = m.try_into_model().await?;
-        self.load_policy().await?;
-        Ok(())
-    }
-
-    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
-        self.adapter = a.try_into_adapter().await?;
-        self.load_policy().await?;
-        Ok(())
-    }
-
-    #[inline]
-    fn set_effector(&mut self, e: Box<dyn Effector>) {
-        self.eft = e;
-    }
-
-    /// Enforce decides whether a "subject" can access a "object" with the operation "action",
-    /// input parameters are usually: (sub, obj, act).
-    ///
-    /// # Examples
-    /// ```
-    /// use casbin::prelude::*;
-    /// #[cfg(feature = "runtime-async-std")]
-    /// #[async_std::main]
-    /// async fn main() -> Result<()> {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
-    ///     Ok(())
-    /// }
-    ///
-    /// #[cfg(feature = "runtime-tokio")]
-    /// #[tokio::main]
-    /// async fn main() -> Result<()> {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
-    ///
-    ///     Ok(())
-    /// }
-    /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
-    /// fn main() {}
-    /// ```
-    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+impl Enforcer {
+    async fn private_enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
         if !self.enabled {
             return Ok(true);
         }
@@ -367,6 +214,223 @@ impl CoreApi for Enforcer {
 
         Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
     }
+}
+
+#[async_trait]
+impl CoreApi for Enforcer {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+        let model = m.try_into_model().await?;
+        let adapter = a.try_into_adapter().await?;
+        let fm = FunctionMap::default();
+        let eft = Box::new(DefaultEffector::default());
+        let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
+
+        let mut engine = Engine::new_raw();
+
+        engine.load_package(CasbinPackage::new().get());
+
+        for (key, func) in fm.get_functions() {
+            engine.register_fn(key, *func);
+        }
+
+        let mut e = {
+            #[cfg(feature = "logging")]
+            {
+                let logger = Box::new(DefaultLogger::default());
+                Self {
+                    model,
+                    adapter,
+                    fm,
+                    eft,
+                    rm,
+                    enabled: true,
+                    auto_save: true,
+                    auto_build_role_links: true,
+                    auto_notify_watcher: true,
+                    watcher: None,
+                    events: HashMap::new(),
+                    engine,
+                    logger,
+                }
+            }
+
+            #[cfg(not(feature = "logging"))]
+            {
+                Self {
+                    model,
+                    adapter,
+                    fm,
+                    eft,
+                    rm,
+                    enabled: true,
+                    auto_save: true,
+                    auto_build_role_links: true,
+                    auto_notify_watcher: true,
+                    watcher: None,
+                    events: HashMap::new(),
+                    engine,
+                }
+            }
+        };
+
+        e.on(Event::PolicyChange, notify_watcher);
+
+        e.load_policy().await?;
+
+        if let Some(ast_map) = e.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&e.rm);
+                e.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
+        Ok(e)
+    }
+
+    #[inline]
+    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+        self.fm.add_function(fname, f);
+        self.engine.register_fn(fname, f);
+    }
+
+    #[inline]
+    fn get_model(&self) -> &dyn Model {
+        &*self.model
+    }
+
+    #[inline]
+    fn get_mut_model(&mut self) -> &mut dyn Model {
+        &mut *self.model
+    }
+
+    #[inline]
+    fn get_adapter(&self) -> &dyn Adapter {
+        &*self.adapter
+    }
+
+    #[inline]
+    fn get_mut_adapter(&mut self) -> &mut dyn Adapter {
+        &mut *self.adapter
+    }
+
+    #[inline]
+    fn set_watcher(&mut self, w: Box<dyn Watcher>) {
+        self.watcher = Some(w);
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn get_logger(&self) -> &dyn Logger {
+        &*self.logger
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn set_logger(&mut self, l: Box<dyn Logger>) {
+        self.logger = l;
+    }
+
+    #[inline]
+    fn get_watcher(&self) -> Option<&dyn Watcher> {
+        if let Some(ref watcher) = self.watcher {
+            Some(&**watcher)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
+        if let Some(ref mut watcher) = self.watcher {
+            Some(&mut **watcher)
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>> {
+        Arc::clone(&self.rm)
+    }
+
+    #[inline]
+    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+        self.rm = rm;
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+
+        if let Some(ast_map) = self.model.get_model().get("g") {
+            for (key, _) in ast_map.iter() {
+                let rm = Arc::clone(&self.rm);
+                self.engine.register_fn(key, generate_g_function!(rm));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+        self.rm.write().unwrap().add_matching_fn(f);
+        self.build_role_links()
+    }
+
+    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
+        self.model = m.try_into_model().await?;
+        self.load_policy().await?;
+        Ok(())
+    }
+
+    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()> {
+        self.adapter = a.try_into_adapter().await?;
+        self.load_policy().await?;
+        Ok(())
+    }
+
+    #[inline]
+    fn set_effector(&mut self, e: Box<dyn Effector>) {
+        self.eft = e;
+    }
+
+    /// Enforce decides whether a "subject" can access a "object" with the operation "action",
+    /// input parameters are usually: (sub, obj, act).
+    ///
+    /// # Examples
+    /// ```
+    /// use casbin::prelude::*;
+    /// #[cfg(feature = "runtime-async-std")]
+    /// #[async_std::main]
+    /// async fn main() -> Result<()> {
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
+    ///     Ok(())
+    /// }
+    ///
+    /// #[cfg(feature = "runtime-tokio")]
+    /// #[tokio::main]
+    /// async fn main() -> Result<()> {
+    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"]).await?);
+    ///
+    ///     Ok(())
+    /// }
+    /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
+    /// fn main() {}
+    /// ```
+    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+        let res = self.private_enforce(rvals).await?;
+
+        #[cfg(feature = "logging")]
+        {
+            self.logger.print_enforce_log(
+                rvals.iter().map(|x| String::from(x.as_ref())).collect(),
+                res,
+                false,
+            );
+        }
+
+        Ok(res)
+    }
 
     async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         self.enforce(rvals).await
@@ -417,7 +481,7 @@ impl CoreApi for Enforcer {
 
         policies.extend(gpolicies);
 
-        self.emit(Event::PolicyChange, Some(EventData::SavePolicy(policies)));
+        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
         Ok(())
     }
 
@@ -429,6 +493,12 @@ impl CoreApi for Enforcer {
     #[inline]
     fn enable_enforce(&mut self, enabled: bool) {
         self.enabled = enabled;
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn enable_log(&mut self, enabled: bool) {
+        self.logger.enable_log(enabled);
     }
 
     #[inline]

@@ -62,7 +62,7 @@ impl InternalApi for Enforcer {
 
         let rule_added = self.get_mut_model().add_policy(sec, ptype, rule.clone());
         if rule_added && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, Some(EventData::AddPolicy(rule)));
+            self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
         }
 
         Ok(rule_added)
@@ -85,7 +85,7 @@ impl InternalApi for Enforcer {
 
         let rules_added = self.get_mut_model().add_policies(sec, ptype, rules.clone());
         if rules_added && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, Some(EventData::AddPolicies(rules)));
+            self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
         }
 
         Ok(rules_added)
@@ -108,7 +108,7 @@ impl InternalApi for Enforcer {
 
         let rule_removed = self.get_mut_model().remove_policy(sec, ptype, rule.clone());
         if rule_removed && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, Some(EventData::RemovePolicy(rule)));
+            self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
         }
 
         Ok(rule_removed)
@@ -133,7 +133,7 @@ impl InternalApi for Enforcer {
             .get_mut_model()
             .remove_policies(sec, ptype, rules.clone());
         if rules_removed && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, Some(EventData::RemovePolicies(rules)));
+            self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
         }
 
         Ok(rules_removed)
@@ -161,7 +161,7 @@ impl InternalApi for Enforcer {
         if rules_removed && self.has_auto_notify_watcher_enabled() {
             self.emit(
                 Event::PolicyChange,
-                Some(EventData::RemoveFilteredPolicy(rules.clone())),
+                EventData::RemoveFilteredPolicy(rules.clone()),
             );
         }
 
@@ -182,7 +182,7 @@ impl InternalApi for CachedEnforcer {
             return Ok(false);
         }
 
-        self.emit(Event::PolicyChange, None);
+        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok(rule_added)
     }
@@ -201,7 +201,7 @@ impl InternalApi for CachedEnforcer {
             return Ok(false);
         }
 
-        self.emit(Event::PolicyChange, None);
+        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok(all_added)
     }
@@ -220,7 +220,7 @@ impl InternalApi for CachedEnforcer {
             return Ok(false);
         }
 
-        self.emit(Event::PolicyChange, None);
+        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok(all_removed)
     }
@@ -239,7 +239,7 @@ impl InternalApi for CachedEnforcer {
             return Ok(false);
         }
 
-        self.emit(Event::PolicyChange, None);
+        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok(rule_removed)
     }
@@ -259,7 +259,7 @@ impl InternalApi for CachedEnforcer {
             return Ok((false, vec![]));
         }
 
-        self.emit(Event::PolicyChange, None);
+        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok((rules_removed, rules))
     }

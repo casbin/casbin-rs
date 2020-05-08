@@ -168,13 +168,6 @@ impl RoleManager for DefaultRoleManager {
     fn clear(&mut self) {
         self.all_roles.clear();
     }
-
-    fn print_roles(&self) {
-        #[cfg(feature = "logging")]
-        {
-            println!("{:?}", self.all_roles);
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

@@ -2,6 +2,9 @@ use crate::{
     Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel, Watcher,
 };
 
+#[cfg(feature = "logging")]
+use crate::Logger;
+
 use async_trait::async_trait;
 
 use std::sync::{Arc, RwLock};
@@ -19,6 +22,10 @@ pub trait CoreApi: Sized + Send + Sync {
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher>;
     fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>>;
     fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()>;
+    #[cfg(feature = "logging")]
+    fn get_logger(&self) -> &dyn Logger;
+    #[cfg(feature = "logging")]
+    fn set_logger(&mut self, logger: Box<dyn Logger>);
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()>;
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
@@ -31,6 +38,8 @@ pub trait CoreApi: Sized + Send + Sync {
     fn is_filtered(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     fn clear_policy(&mut self);
+    #[cfg(feature = "logging")]
+    fn enable_log(&mut self, enabled: bool);
     fn enable_auto_save(&mut self, auto_save: bool);
     fn enable_enforce(&mut self, enabled: bool);
     fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool);

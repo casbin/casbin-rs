@@ -1,10 +1,11 @@
 use crate::{cached_api::CachedApi, core_api::CoreApi};
 
-use std::hash::Hash;
+use std::{fmt, hash::Hash};
 
 #[derive(Hash, PartialEq, Eq)]
 pub enum Event {
     PolicyChange,
+    ClearCache,
 }
 
 pub trait EventKey: Hash + PartialEq + Eq + Send + Sync {}
@@ -18,24 +19,47 @@ pub enum EventData {
     RemovePolicies(Vec<Vec<String>>),
     RemoveFilteredPolicy(Vec<Vec<String>>),
     SavePolicy(Vec<Vec<String>>),
+    ClearCache,
+}
+
+impl fmt::Display for EventData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use EventData::*;
+        match *self {
+            AddPolicy(ref p) => write!(f, "Event: AddPolicy, Data: {:?}", p.join(", ")),
+            AddPolicies(ref p) => write!(f, "Event: AddPolicies, Added: {}", p.len()),
+            RemovePolicy(ref p) => write!(f, "Event: RemovePolicy, Data: {:?}", p.join(", ")),
+            RemovePolicies(ref p) => write!(f, "Event: RemovePolicies, Removed: {}", p.len()),
+            RemoveFilteredPolicy(ref p) => {
+                write!(f, "Event: RemoveFilteredPolicy, Removed: {}", p.len())
+            }
+            SavePolicy(ref p) => write!(f, "Event: SavePolicy, Saved: {}", p.len()),
+            ClearCache => write!(f, "Event: ClearCache, Data: ClearCache"),
+        }
+    }
 }
 
 pub trait EventEmitter<K>
 where
     K: EventKey,
 {
-    fn on(&mut self, e: K, f: fn(&mut Self, Option<EventData>));
+    fn on(&mut self, e: K, f: fn(&mut Self, EventData));
     fn off(&mut self, e: K);
-    fn emit(&mut self, e: K, d: Option<EventData>);
+    fn emit(&mut self, e: K, d: EventData);
 }
 
-pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: Option<EventData>) {
+pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: EventData) {
+    #[cfg(feature = "logging")]
+    {
+        e.get_logger().print_mgmt_log(&d);
+    }
+
     if let Some(w) = e.get_mut_watcher() {
         w.update(d);
     }
 }
 
-pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: Option<EventData>) {
+pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: EventData) {
     #[cfg(feature = "runtime-tokio")]
     {
         tokio::runtime::Builder::new()

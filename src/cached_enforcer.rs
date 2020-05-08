@@ -13,6 +13,9 @@ use crate::{
     Result,
 };
 
+#[cfg(feature = "logging")]
+use crate::Logger;
+
 use async_trait::async_trait;
 
 use std::{
@@ -21,7 +24,7 @@ use std::{
     time::Duration,
 };
 
-type EventCallback = fn(&mut CachedEnforcer, Option<EventData>);
+type EventCallback = fn(&mut CachedEnforcer, EventData);
 
 pub struct CachedEnforcer {
     pub(crate) enforcer: Enforcer,
@@ -30,7 +33,7 @@ pub struct CachedEnforcer {
 }
 
 impl EventEmitter<Event> for CachedEnforcer {
-    fn on(&mut self, e: Event, f: fn(&mut Self, Option<EventData>)) {
+    fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
         self.events.entry(e).or_insert_with(Vec::new).push(f)
     }
 
@@ -38,7 +41,7 @@ impl EventEmitter<Event> for CachedEnforcer {
         self.events.remove(&e);
     }
 
-    fn emit(&mut self, e: Event, d: Option<EventData>) {
+    fn emit(&mut self, e: Event, d: EventData) {
         if let Some(cbs) = self.events.get(&e) {
             for cb in cbs.clone().iter() {
                 cb(self, d.clone())
@@ -59,7 +62,7 @@ impl CoreApi for CachedEnforcer {
             events: HashMap::new(),
         };
 
-        cached_enforcer.on(Event::PolicyChange, clear_cache);
+        cached_enforcer.on(Event::ClearCache, clear_cache);
 
         Ok(cached_enforcer)
     }
@@ -128,6 +131,18 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_adapter(a).await
     }
 
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn get_logger(&self) -> &dyn Logger {
+        self.enforcer.get_logger()
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn set_logger(&mut self, l: Box<dyn Logger>) {
+        self.enforcer.set_logger(l);
+    }
+
     #[inline]
     fn set_effector(&mut self, e: Box<dyn Effector>) {
         self.enforcer.set_effector(e);
@@ -135,14 +150,42 @@ impl CoreApi for CachedEnforcer {
 
     async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        #[allow(unused_variables)]
+        let log_enabled = {
+            #[cfg(feature = "logging")]
+            {
+                if self.enforcer.get_logger().is_enabled() {
+                    self.enforcer.enable_log(false);
+                    true
+                } else {
+                    false
+                }
+            }
 
-        if let Some(result) = self.cache.get(&key).await {
-            Ok(*result)
+            #[cfg(not(feature = "logging"))]
+            {
+                false
+            }
+        };
+
+        #[allow(unused_variables)]
+        let (res, is_cached) = if let Some(result) = self.cache.get(&key).await {
+            (*result, true)
         } else {
             let result = self.enforcer.enforce(rvals).await?;
-            self.cache.set(key, result).await;
-            Ok(result)
+            self.cache.set(key.clone(), result).await;
+            (result, false)
+        };
+
+        #[cfg(feature = "logging")]
+        {
+            self.enforcer.enable_log(log_enabled);
+            self.enforcer
+                .get_logger()
+                .print_enforce_log(key, res, is_cached);
         }
+
+        Ok(res)
     }
 
     /// CachedEnforcer should use `enforce_mut` instead so that
@@ -179,6 +222,12 @@ impl CoreApi for CachedEnforcer {
     #[inline]
     fn clear_policy(&mut self) {
         self.enforcer.clear_policy();
+    }
+
+    #[cfg(feature = "logging")]
+    #[inline]
+    fn enable_log(&mut self, enabled: bool) {
+        self.enforcer.enable_log(enabled);
     }
 
     #[inline]
