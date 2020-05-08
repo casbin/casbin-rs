@@ -169,11 +169,11 @@ impl CoreApi for CachedEnforcer {
         };
 
         #[allow(unused_variables)]
-        let (res, is_cached) = if let Some(result) = self.cache.get(&key).await {
+        let (res, is_cached) = if let Some(result) = self.cache.get(&key) {
             (*result, true)
         } else {
             let result = self.enforcer.enforce(rvals).await?;
-            self.cache.set(key.clone(), result).await;
+            self.cache.set(key.clone(), result);
             (result, false)
         };
 

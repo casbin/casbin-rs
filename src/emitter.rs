@@ -66,19 +66,5 @@ pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, d: EventData) {
         ce.get_logger().print_mgmt_log(&d);
     }
 
-    #[cfg(feature = "runtime-tokio")]
-    {
-        tokio::runtime::Builder::new()
-            .basic_scheduler()
-            .threaded_scheduler()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async { ce.get_mut_cache().clear().await });
-    }
-
-    #[cfg(feature = "runtime-async-std")]
-    {
-        async_std::task::block_on(async { ce.get_mut_cache().clear().await });
-    }
+    ce.get_mut_cache().clear();
 }
