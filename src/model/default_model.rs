@@ -322,8 +322,11 @@ impl Model for DefaultModel {
 mod tests {
     use crate::prelude::*;
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model() {
         let m = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -342,8 +345,11 @@ mod tests {
         assert!(e.enforce(&vec!["bob", "data2", "write"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model_no_policy() {
         let m = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -362,8 +368,11 @@ mod tests {
         assert!(!e.enforce(&vec!["bob", "data2", "write"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model_with_root() {
         let m = DefaultModel::from_file("examples/basic_with_root_model.conf")
             .await
@@ -386,8 +395,11 @@ mod tests {
         assert!(!e.enforce(&vec!["bob", "data2", "read"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model_with_root_no_policy() {
         let m = DefaultModel::from_file("examples/basic_with_root_model.conf")
             .await
@@ -410,8 +422,11 @@ mod tests {
         assert!(!e.enforce(&vec!["bob", "data2", "read"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model_without_users() {
         let m = DefaultModel::from_file("examples/basic_without_users_model.conf")
             .await
@@ -426,8 +441,11 @@ mod tests {
         assert!(e.enforce(&vec!["data2", "write"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_basic_model_without_resources() {
         let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
             .await
@@ -442,8 +460,11 @@ mod tests {
         assert!(!e.enforce(&vec!["bob", "read"]).await.unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -486,8 +507,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_resource_roles() {
         let m = DefaultModel::from_file("examples/rbac_with_resource_roles_model.conf")
             .await
@@ -530,8 +554,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_domains() {
         let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
             .await
@@ -591,8 +618,11 @@ mod tests {
     }
 
     use crate::MgmtApi;
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_domains_runtime() {
         let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
             .await
@@ -823,8 +853,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_domains_at_runtime_mock_adapter() {
         let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
             .await
@@ -901,8 +934,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_deny() {
         let m = DefaultModel::from_file("examples/rbac_with_deny_model.conf")
             .await
@@ -945,8 +981,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_not_deny() {
         let m = DefaultModel::from_file("examples/rbac_with_not_deny_model.conf")
             .await
@@ -961,8 +1000,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_with_custom_data() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -1056,8 +1098,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_rbac_model_using_in_op() {
         let m = DefaultModel::from_file("examples/rbac_model_matcher_using_in_op.conf")
             .await
@@ -1100,8 +1145,11 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
     async fn test_abac() {
         let m = DefaultModel::from_file("examples/abac_model.conf")
             .await

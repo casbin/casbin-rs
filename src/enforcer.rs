@@ -573,8 +573,14 @@ mod tests {
         assert!(is_sync::<Enforcer>());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_enforcer_swap_adapter_type() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -604,8 +610,14 @@ mod tests {
             .unwrap())
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_key_match_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -737,8 +749,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_key_match_model_in_memory_deny() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -761,8 +779,14 @@ mod tests {
     }
 
     use crate::RbacApi;
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_rbac_model_in_memory_indeterminate() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -792,8 +816,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_rbac_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -882,8 +912,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_not_used_rbac_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -952,8 +988,14 @@ mod tests {
     }
 
     #[cfg(feature = "ip")]
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_ip_match_model() {
         let m = DefaultModel::from_file("examples/ipmatch_model.conf")
             .await
@@ -1028,8 +1070,14 @@ mod tests {
     }
 
     use crate::MgmtApi;
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_enable_auto_save() {
         let m = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1125,8 +1173,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_role_links() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -1142,8 +1196,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_and_set_model() {
         let m1 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1169,8 +1229,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_and_set_adapter_in_mem() {
         let m1 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1205,8 +1271,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_keymatch_custom_model() {
         use crate::model::key_match;
 
@@ -1259,8 +1331,14 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_filtered_file_adapter() {
         let mut e = Enforcer::new(
             "examples/rbac_with_domains_model.conf",
@@ -1303,8 +1381,14 @@ mod tests {
             .unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_set_role_manager() {
         let mut e = Enforcer::new(
             "examples/rbac_with_domains_model.conf",
@@ -1335,8 +1419,14 @@ mod tests {
             .unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_policy_abac() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
