@@ -42,6 +42,7 @@ impl DefaultModel {
         Ok(model)
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub async fn from_str(s: &str) -> Result<DefaultModel> {
         let cfg = Config::from_str(s).await?;
 
