@@ -358,7 +358,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_modify_grouping_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -466,7 +466,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_modify_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -548,7 +548,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_get_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -752,7 +752,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_get_list() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -771,7 +771,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_modify_policies_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -932,7 +932,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_modify_grouping_policies_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await

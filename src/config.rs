@@ -215,7 +215,7 @@ mod tests {
     use super::*;
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_get() {
         let mut config = Config::from_file("examples/testini.ini").await.unwrap();
 
@@ -259,7 +259,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_from_text() {
         let text: &str = r#"
                 # test config

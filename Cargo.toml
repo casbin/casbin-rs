@@ -40,6 +40,10 @@ watcher = []
 [profile.release.build-override]
 opt-level = 0
 
-[dev-dependencies]
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "0.3.10"
 async-std = { git = "https://github.com/async-rs/async-std", features = [ "attributes" ] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 tokio = { version = "0.2.11", features = [ "full" ] }
+async-std = { git = "https://github.com/async-rs/async-std", features = [ "attributes" ] }

@@ -323,7 +323,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_role_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -480,7 +480,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_role_api_threads() {
         use std::sync::{Arc, RwLock};
         use std::thread;
@@ -824,7 +824,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_permission_api() {
         let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
             .await
@@ -922,7 +922,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_implicit_role_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -951,7 +951,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_implicit_permission_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -986,7 +986,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_implicit_user_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -1040,7 +1040,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_implicit_permission_api_with_domain() {
         let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
             .await
@@ -1060,7 +1060,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_pattern_matching_fn() {
         let mut e = Enforcer::new(
             "examples/rbac_with_pattern_model.conf",
@@ -1096,7 +1096,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_pattern_matching_fn_with_domain() {
         let mut e = Enforcer::new(
             "examples/rbac_with_pattern_domain_model.conf",
@@ -1156,7 +1156,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_pattern_matching_basic_role() {
         let mut e = Enforcer::new(
             "examples/rbac_basic_role_model.conf",
@@ -1198,7 +1198,7 @@ mod tests {
     }
 
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg_attr(all(feature = "runtime-tokio", not(target_os = "wasm32")), tokio::test)]
     async fn test_implicit_users_for_permission() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");

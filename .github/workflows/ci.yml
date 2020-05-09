@@ -49,6 +49,14 @@ jobs:
           command: test
           args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging
 
+      - name: Cargo Check Wasm
+        uses: actions-rs/cargo@v1
+        with:
+          command:  check
+          target: wasm32-unknown-unknown
+          override: true
+          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging
+
       - name: Cargo Clippy
         uses: actions-rs/cargo@v1
         with:
