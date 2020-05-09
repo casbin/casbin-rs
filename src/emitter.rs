@@ -51,6 +51,7 @@ where
     fn emit(&mut self, e: K, d: EventData);
 }
 
+#[cfg(feature = "watcher")]
 pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: EventData) {
     #[cfg(feature = "logging")]
     {

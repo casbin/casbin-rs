@@ -27,7 +27,7 @@ globset = { version = "0.4.5", optional = true }
 thiserror = "1.0.14"
 
 [features]
-default = ["runtime-async-std"]
+default = ["runtime-async-std", "cached"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util"]
 runtime-async-std = ["async-std"]
@@ -35,6 +35,7 @@ logging = ["log"]
 ip = ["ip_network"]
 glob = ["globset"]
 cached = ["ttl_cache"]
+watcher = []
 
 [profile.release.build-override]
 opt-level = 0

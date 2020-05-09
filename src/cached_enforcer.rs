@@ -9,9 +9,11 @@ use crate::{
     enforcer::Enforcer,
     model::Model,
     rbac::RoleManager,
-    watcher::Watcher,
     Result,
 };
+
+#[cfg(feature = "watcher")]
+use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::Logger;
@@ -92,16 +94,19 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.get_mut_adapter()
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.enforcer.set_watcher(w);
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_watcher(&self) -> Option<&dyn Watcher> {
         self.enforcer.get_watcher()
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
         self.enforcer.get_mut_watcher()
@@ -246,6 +251,7 @@ impl CoreApi for CachedEnforcer {
             .enable_auto_build_role_links(auto_build_role_links);
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool) {
         self.enforcer
@@ -257,6 +263,7 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.has_auto_save_enabled()
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn has_auto_notify_watcher_enabled(&self) -> bool {
         self.enforcer.has_auto_notify_watcher_enabled()

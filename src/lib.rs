@@ -19,6 +19,7 @@ mod model;
 mod rbac;
 mod rbac_api;
 mod util;
+#[cfg(feature = "watcher")]
 mod watcher;
 
 pub mod error;
@@ -44,6 +45,7 @@ pub use management_api::MgmtApi;
 pub use model::{function_map, Assertion, DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};
 pub use rbac_api::RbacApi;
+#[cfg(feature = "watcher")]
 pub use watcher::Watcher;
 
 pub type Result<T> = std::result::Result<T, Error>;

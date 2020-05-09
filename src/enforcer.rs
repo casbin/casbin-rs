@@ -3,15 +3,20 @@ use crate::{
     convert::{TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
-    emitter::{notify_watcher, Event, EventData, EventEmitter},
+    emitter::{Event, EventData, EventEmitter},
     error::{Error, ModelError, PolicyError, RequestError},
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
     util::{escape_eval, ESC_E},
-    watcher::Watcher,
     Result,
 };
+
+#[cfg(feature = "watcher")]
+use crate::emitter::notify_watcher;
+
+#[cfg(feature = "watcher")]
+use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::{DefaultLogger, Logger};
@@ -81,7 +86,9 @@ pub struct Enforcer {
     pub(crate) enabled: bool,
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
+    #[cfg(feature = "watcher")]
     pub(crate) auto_notify_watcher: bool,
+    #[cfg(feature = "watcher")]
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
     pub(crate) engine: Engine,
@@ -246,7 +253,9 @@ impl CoreApi for Enforcer {
                     enabled: true,
                     auto_save: true,
                     auto_build_role_links: true,
+                    #[cfg(feature = "watcher")]
                     auto_notify_watcher: true,
+                    #[cfg(feature = "watcher")]
                     watcher: None,
                     events: HashMap::new(),
                     engine,
@@ -265,7 +274,9 @@ impl CoreApi for Enforcer {
                     enabled: true,
                     auto_save: true,
                     auto_build_role_links: true,
+                    #[cfg(feature = "watcher")]
                     auto_notify_watcher: true,
+                    #[cfg(feature = "watcher")]
                     watcher: None,
                     events: HashMap::new(),
                     engine,
@@ -273,7 +284,10 @@ impl CoreApi for Enforcer {
             }
         };
 
-        e.on(Event::PolicyChange, notify_watcher);
+        #[cfg(feature = "watcher")]
+        {
+            e.on(Event::PolicyChange, notify_watcher);
+        }
 
         e.load_policy().await?;
 
@@ -313,6 +327,7 @@ impl CoreApi for Enforcer {
         &mut *self.adapter
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
@@ -330,6 +345,7 @@ impl CoreApi for Enforcer {
         self.logger = l;
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_watcher(&self) -> Option<&dyn Watcher> {
         if let Some(ref watcher) = self.watcher {
@@ -339,6 +355,7 @@ impl CoreApi for Enforcer {
         }
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
         if let Some(ref mut watcher) = self.watcher {
@@ -481,7 +498,10 @@ impl CoreApi for Enforcer {
 
         policies.extend(gpolicies);
 
-        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+        #[cfg(feature = "watcher")]
+        {
+            self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+        }
         Ok(())
     }
 
@@ -511,6 +531,7 @@ impl CoreApi for Enforcer {
         self.auto_build_role_links = auto_build_role_links;
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool) {
         if !auto_notify_watcher {
@@ -526,6 +547,7 @@ impl CoreApi for Enforcer {
         self.auto_save
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn has_auto_notify_watcher_enabled(&self) -> bool {
         self.auto_notify_watcher
