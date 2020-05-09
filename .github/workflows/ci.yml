@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Auto Build CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@master
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
+          override: true
+
+      - name: Install Dependencies
+        run: sudo apt-get install libssl-dev
+
+      - name: Cargo Clean
+        uses: actions-rs/cargo@v1
+        with:
+          command: clean
+
+      - name: Cargo Build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      # Todo: https://github.com/rust-lang/cargo/issues/2980
+      - name: Cargo Test For All Features Using async-std
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --features runtime-async-std, cached, glob, ip, watcher, logging
+
+      - name: Cargo Test For All Features Using tokio
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-default-features --features runtime-tokio, cached, glob, ip, watcher, logging
+
+      - name: Cargo Clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+
+      - name: Cargo Fmt Check
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
