@@ -1,10 +1,11 @@
-#[cfg(feature = "runtime-async-std")]
+#[cfg(all(feature = "runtime-async-std", feature = "ip"))]
 use async_std::net::IpAddr;
 
 #[cfg(feature = "runtime-tokio")]
 use std::net::IpAddr;
 
 use globset::GlobBuilder;
+#[cfg(feature = "ip")]
 use ip_network::IpNetwork;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -27,8 +28,12 @@ impl Default for FunctionMap {
         fm.insert("keyMatch2".to_owned(), key_match2);
         fm.insert("keyMatch3".to_owned(), key_match3);
         fm.insert("regexMatch".to_owned(), regex_match);
-        fm.insert("ipMatch".to_owned(), ip_match);
         fm.insert("globMatch".to_owned(), glob_match);
+
+        #[cfg(feature = "ip")]
+        {
+            fm.insert("ipMatch".to_owned(), ip_match);
+        }
 
         FunctionMap { fm }
     }
@@ -92,6 +97,7 @@ pub fn regex_match(key1: String, key2: String) -> bool {
 
 // ip_match determines whether IP address ip1 matches the pattern of IP address ip2, ip2 can be an IP address or a CIDR pattern.
 // For example, "192.168.2.123" matches "192.168.2.0/24"
+#[cfg(feature = "ip")]
 pub fn ip_match(key1: String, key2: String) -> bool {
     let key2_split = key2.splitn(2, '/').collect::<Vec<&str>>();
     let ip_addr2 = key2_split[0];
