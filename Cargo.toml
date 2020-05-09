@@ -23,7 +23,7 @@ async-std = { version = "1.6.0-beta.1", optional = true }
 async-trait = "0.1.24"
 log = { version = "0.4.8", optional = true }
 tokio = { version = "0.2.11", optional = true, default-features = false }
-globset = "0.4.5"
+globset = { version = "0.4.5", optional = true }
 thiserror = "1.0.14"
 
 [features]
@@ -33,6 +33,7 @@ runtime-tokio = ["tokio/fs", "tokio/io-util", "tokio/stream", "tokio/rt-threaded
 runtime-async-std = ["async-std"]
 logging = ["log"]
 ip = ["ip_network"]
+glob = ["globset"]
 
 [profile.release.build-override]
 opt-level = 0

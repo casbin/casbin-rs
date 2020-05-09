@@ -4,6 +4,7 @@ use async_std::net::IpAddr;
 #[cfg(feature = "runtime-tokio")]
 use std::net::IpAddr;
 
+#[cfg(feature = "glob")]
 use globset::GlobBuilder;
 #[cfg(feature = "ip")]
 use ip_network::IpNetwork;
@@ -28,7 +29,11 @@ impl Default for FunctionMap {
         fm.insert("keyMatch2".to_owned(), key_match2);
         fm.insert("keyMatch3".to_owned(), key_match3);
         fm.insert("regexMatch".to_owned(), regex_match);
-        fm.insert("globMatch".to_owned(), glob_match);
+
+        #[cfg(feature = "glob")]
+        {
+            fm.insert("globMatch".to_owned(), glob_match);
+        }
 
         #[cfg(feature = "ip")]
         {
@@ -126,6 +131,7 @@ pub fn ip_match(key1: String, key2: String) -> bool {
 }
 
 // glob_match determines whether key1 matches the pattern of key2 using glob pattern
+#[cfg(feature = "glob")]
 pub fn glob_match(key1: String, key2: String) -> bool {
     GlobBuilder::new(key2.as_str())
         .literal_separator(true)
