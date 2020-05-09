@@ -951,6 +951,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "ip")]
     #[cfg_attr(feature = "runtime-async-std", async_std::test)]
     #[cfg_attr(feature = "runtime-tokio", tokio::test)]
     async fn test_ip_match_model() {

@@ -64,6 +64,8 @@ mod tests {
     use super::*;
     use std::thread::sleep;
 
+    #[cfg(feature = "cached")]
+    #[test]
     fn test_set_and_get() {
         let mut cache = DefaultCache::new(1);
 
@@ -71,6 +73,8 @@ mod tests {
         assert!(cache.get(&vec!["alice", "/data1", "read"]) == Some(&false));
     }
 
+    #[cfg(feature = "cached")]
+    #[test]
     fn test_set_ttl() {
         let mut cache = DefaultCache::new(1);
         cache.set_ttl(Duration::from_secs(2));
@@ -84,6 +88,8 @@ mod tests {
         assert!(!cache.has(&vec!["alice", "/data1", "read"]));
     }
 
+    #[cfg(feature = "cached")]
+    #[test]
     fn test_capacity() {
         let mut cache = DefaultCache::new(1);
 
@@ -93,6 +99,8 @@ mod tests {
         assert!(cache.has(&vec!["bob", "/data2", "write"]));
     }
 
+    #[cfg(feature = "cached")]
+    #[test]
     fn test_set_capacity() {
         let mut cache = DefaultCache::new(1);
         cache.set_capacity(2);

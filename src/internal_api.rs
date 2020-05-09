@@ -5,7 +5,7 @@ use crate::{
     Result,
 };
 
-#[cfg(feature = "watcher")]
+#[cfg(any(feature = "watcher", feature = "cached"))]
 use crate::emitter::EventData;
 
 #[cfg(feature = "cached")]

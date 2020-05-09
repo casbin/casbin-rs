@@ -1,4 +1,4 @@
-#[cfg(feature = "watcher")]
+#[cfg(any(feature = "watcher", feature = "cached"))]
 use crate::core_api::CoreApi;
 
 #[cfg(feature = "cached")]
