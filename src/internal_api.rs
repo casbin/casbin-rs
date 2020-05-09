@@ -1,10 +1,12 @@
 use crate::{
-    cached_enforcer::CachedEnforcer,
     core_api::CoreApi,
     emitter::{Event, EventData, EventEmitter},
     enforcer::Enforcer,
     Result,
 };
+
+#[cfg(feature = "cached")]
+use crate::cached_enforcer::CachedEnforcer;
 
 use async_trait::async_trait;
 
@@ -169,6 +171,7 @@ impl InternalApi for Enforcer {
     }
 }
 
+#[cfg(feature = "cached")]
 #[async_trait]
 impl InternalApi for CachedEnforcer {
     async fn add_policy_internal(

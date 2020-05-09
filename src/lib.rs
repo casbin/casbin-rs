@@ -1,6 +1,9 @@
 mod adapter;
+#[cfg(feature = "cached")]
 mod cache;
+#[cfg(feature = "cached")]
 mod cached_api;
+#[cfg(feature = "cached")]
 mod cached_enforcer;
 mod config;
 mod convert;
@@ -22,8 +25,11 @@ pub mod error;
 pub mod prelude;
 
 pub use adapter::{Adapter, FileAdapter, Filter, MemoryAdapter, NullAdapter};
+#[cfg(feature = "cached")]
 pub use cache::{Cache, DefaultCache};
+#[cfg(feature = "cached")]
 pub use cached_api::CachedApi;
+#[cfg(feature = "cached")]
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use core_api::CoreApi;

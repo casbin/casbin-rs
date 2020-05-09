@@ -63,6 +63,7 @@ fn b_benchmark_basic_model(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benmark_cached_basic_model(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -89,6 +90,7 @@ fn b_benchmark_rbac_model(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -139,6 +141,7 @@ fn b_benchmark_rbac_model_small(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["user501", "data9", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_small(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
@@ -213,6 +216,7 @@ fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["user5001", "data15", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_medium(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
@@ -287,6 +291,7 @@ fn b_benchmark_rbac_model_large(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["user50001", "data1500", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_large(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
@@ -335,6 +340,7 @@ fn b_benchmark_rbac_with_resource_roles(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_with_resource_roles(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -357,6 +363,7 @@ fn b_benchmark_rbac_model_with_domains(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "domain1", "data1", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_with_domains(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -375,6 +382,7 @@ fn b_benchmark_abac_model(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", r#"{"Owner": "alice"}"#, "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_abac_model(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new("examples/abac_model.conf", ())).unwrap();
@@ -393,6 +401,7 @@ fn b_benchmark_key_match(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "/alice_data/resource1", "GET"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_key_match(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -415,6 +424,7 @@ fn b_benchmark_rbac_with_deny(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_with_deny(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(
@@ -437,6 +447,7 @@ fn b_benchmark_priority_model(b: &mut Bencher) {
     b.iter(|| await_future(e.enforce(&["alice", "data1", "read"])).unwrap());
 }
 
+#[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_priority_model(b: &mut Bencher) {
     let mut e = await_future(CachedEnforcer::new(

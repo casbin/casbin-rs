@@ -16,7 +16,7 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 regex = "1.3.1"
 rhai = { version = "0.13.0", default-features = false, features = ["sync", "only_i32", "no_function", "no_float"] }
 ip_network = { version = "0.3.4", optional = true }
-ttl_cache = "0.5.1"
+ttl_cache = { version = "0.5.1", optional = true }
 lazy_static = "1.4.0"
 indexmap = "1.3.1"
 async-std = { version = "1.6.0-beta.1", optional = true }
@@ -34,6 +34,7 @@ runtime-async-std = ["async-std"]
 logging = ["log"]
 ip = ["ip_network"]
 glob = ["globset"]
+cached = ["ttl_cache"]
 
 [profile.release.build-override]
 opt-level = 0

@@ -1,4 +1,7 @@
-use crate::{cached_api::CachedApi, core_api::CoreApi};
+use crate::core_api::CoreApi;
+
+#[cfg(feature = "cached")]
+use crate::cached_api::CachedApi;
 
 use std::{fmt, hash::Hash};
 
@@ -59,6 +62,7 @@ pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: EventData) {
     }
 }
 
+#[cfg(feature = "cached")]
 #[allow(unused_variables)]
 pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, d: EventData) {
     #[cfg(feature = "logging")]

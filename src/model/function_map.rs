@@ -181,6 +181,7 @@ mod tests {
         assert!(!key_match3("/baz".to_owned(), "/foo".to_owned()));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     fn test_ip_match() {
         assert!(ip_match("::1".to_owned(), "::0:1".to_owned()));
@@ -200,18 +201,21 @@ mod tests {
         ));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     #[should_panic]
     fn test_ip_match_panic_1() {
         assert!(ip_match("I am alice".to_owned(), "127.0.0.1".to_owned()));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     #[should_panic]
     fn test_ip_match_panic_2() {
         assert!(ip_match("127.0.0.1".to_owned(), "I am alice".to_owned()));
     }
 
+    #[cfg(feature = "glob")]
     #[test]
     fn test_glob_match() {
         assert!(glob_match("/abc/123".to_owned(), "/abc/*".to_owned()));
