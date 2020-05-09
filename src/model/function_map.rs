@@ -1,7 +1,7 @@
 #[cfg(all(feature = "runtime-async-std", feature = "ip"))]
 use async_std::net::IpAddr;
 
-#[cfg(feature = "runtime-tokio")]
+#[cfg(all(feature = "runtime-tokio", feature = "ip"))]
 use std::net::IpAddr;
 
 #[cfg(feature = "glob")]
