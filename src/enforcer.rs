@@ -12,8 +12,8 @@ use crate::{
     Result,
 };
 
-#[cfg(feature = "watcher")]
-use crate::emitter::notify_watcher;
+#[cfg(any(feature = "logging", feature = "watcher"))]
+use crate::emitter::notify_logger_and_watcher;
 
 #[cfg(feature = "watcher")]
 use crate::watcher::Watcher;
@@ -284,9 +284,9 @@ impl CoreApi for Enforcer {
             }
         };
 
-        #[cfg(feature = "watcher")]
+        #[cfg(any(feature = "logging", feature = "watcher"))]
         {
-            e.on(Event::PolicyChange, notify_watcher);
+            e.on(Event::PolicyChange, notify_logger_and_watcher);
         }
 
         e.load_policy().await?;
@@ -498,7 +498,7 @@ impl CoreApi for Enforcer {
 
         policies.extend(gpolicies);
 
-        #[cfg(feature = "watcher")]
+        #[cfg(any(feature = "logging", feature = "watcher"))]
         {
             self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
         }
@@ -537,7 +537,7 @@ impl CoreApi for Enforcer {
         if !auto_notify_watcher {
             self.off(Event::PolicyChange);
         } else {
-            self.on(Event::PolicyChange, notify_watcher);
+            self.on(Event::PolicyChange, notify_logger_and_watcher);
         }
         self.auto_notify_watcher = auto_notify_watcher;
     }
