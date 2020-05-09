@@ -573,6 +573,7 @@ mod tests {
         assert!(is_sync::<Enforcer>());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -610,6 +611,7 @@ mod tests {
             .unwrap())
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -749,6 +751,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -779,6 +782,7 @@ mod tests {
     }
 
     use crate::RbacApi;
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -816,6 +820,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -912,6 +917,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -988,6 +994,7 @@ mod tests {
     }
 
     #[cfg(feature = "ip")]
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1069,7 +1076,7 @@ mod tests {
             .unwrap());
     }
 
-    use crate::MgmtApi;
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1173,6 +1180,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1196,6 +1204,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1229,6 +1238,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1271,6 +1281,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1331,6 +1342,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1381,6 +1393,7 @@ mod tests {
             .unwrap());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1419,6 +1432,7 @@ mod tests {
             .unwrap());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test

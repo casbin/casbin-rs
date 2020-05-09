@@ -357,11 +357,15 @@ mod tests {
         v
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_modify_grouping_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -468,11 +472,15 @@ mod tests {
         assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_modify_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -553,11 +561,15 @@ mod tests {
         assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_policy_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -760,11 +772,15 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_list() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -782,11 +798,15 @@ mod tests {
         assert_eq!(vec!["data2_admin"], e.get_all_roles());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_modify_policies_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -946,11 +966,15 @@ mod tests {
         assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_modify_grouping_policies_api() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await

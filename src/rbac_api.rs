@@ -322,6 +322,7 @@ mod tests {
         v
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -485,6 +486,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -835,6 +837,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -939,6 +942,7 @@ mod tests {
         assert_eq!(false, e.enforce(&vec!["eve", "write"]).await.unwrap());
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -974,6 +978,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1015,6 +1020,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1075,6 +1081,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1101,6 +1108,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1143,6 +1151,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1209,6 +1218,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
@@ -1257,6 +1267,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test

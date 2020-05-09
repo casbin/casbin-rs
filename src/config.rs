@@ -214,11 +214,15 @@ impl Config {
 mod tests {
     use super::*;
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get() {
         let mut config = Config::from_file("examples/testini.ini").await.unwrap();
 
@@ -261,11 +265,15 @@ mod tests {
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
         async_std::test
     )]
-    #[cfg_attr(all(feature = "runtime-tokio", not(target_arch = "wasm32")), tokio::test)]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_from_text() {
         let text: &str = r#"
                 # test config
