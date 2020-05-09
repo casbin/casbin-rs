@@ -25,7 +25,10 @@ mod watcher;
 pub mod error;
 pub mod prelude;
 
-pub use adapter::{Adapter, FileAdapter, Filter, MemoryAdapter, NullAdapter};
+#[cfg(not(target_arch = "wasm32"))]
+pub use adapter::FileAdapter;
+pub use adapter::{Adapter, Filter, MemoryAdapter, NullAdapter};
+
 #[cfg(feature = "cached")]
 pub use cache::{Cache, DefaultCache};
 #[cfg(feature = "cached")]

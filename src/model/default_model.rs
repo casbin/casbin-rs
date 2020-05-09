@@ -9,7 +9,7 @@ use crate::{
 
 use indexmap::{IndexMap, IndexSet};
 
-#[cfg(feature = "runtime-async-std")]
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::path::Path;
 
 #[cfg(feature = "runtime-tokio")]
@@ -26,6 +26,7 @@ pub struct DefaultModel {
 }
 
 impl DefaultModel {
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn from_file<P: AsRef<Path>>(p: P) -> Result<DefaultModel> {
         let cfg = Config::from_file(p).await?;
 
@@ -41,7 +42,7 @@ impl DefaultModel {
         Ok(model)
     }
 
-    pub async fn from_str(&mut self, s: &str) -> Result<DefaultModel> {
+    pub async fn from_str(s: &str) -> Result<DefaultModel> {
         let cfg = Config::from_str(s).await?;
 
         let mut model = DefaultModel::default();

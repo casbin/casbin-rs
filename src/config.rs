@@ -2,19 +2,20 @@ use crate::Result;
 
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
-    fs::File,
     io::prelude::*,
     io::{BufReader, Cursor, Error as IoError, ErrorKind},
-    path::Path,
 };
+
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
+use async_std::{fs::File, path::Path};
 
 #[cfg(feature = "runtime-tokio")]
 use std::{io::Cursor, path::Path};
 #[cfg(feature = "runtime-tokio")]
-use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind},
-};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind};
+
+#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
+use tokio::fs::File;
 
 use std::collections::HashMap;
 
@@ -28,6 +29,7 @@ pub(crate) struct Config {
 }
 
 impl Config {
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) async fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
@@ -47,6 +49,7 @@ impl Config {
         Ok(c)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     async fn parse<P: AsRef<Path>>(&mut self, p: P) -> Result<()> {
         let mut f = File::open(p).await?;
         let mut c = Vec::new();
