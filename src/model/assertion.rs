@@ -4,6 +4,9 @@ use crate::{
     Result,
 };
 
+#[cfg(feature = "incremental")]
+use crate::emitter::EventData;
+
 use indexmap::{IndexMap, IndexSet};
 
 use std::sync::{Arc, RwLock};
@@ -65,6 +68,61 @@ impl Assertion {
             }
         }
         self.rm = Arc::clone(&rm);
+        Ok(())
+    }
+
+    #[cfg(feature = "incremental")]
+    pub fn build_incremental_role_links(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+        d: EventData,
+    ) -> Result<()> {
+        let count = self.value.chars().filter(|&c| c == '_').count();
+
+        if let Some((insert, rules)) = match d {
+            EventData::AddPolicy(_, _, rule) => Some((true, vec![rule])),
+            EventData::AddPolicies(_, _, rules) => Some((true, rules)),
+            EventData::RemovePolicy(_, _, rule) => Some((false, vec![rule])),
+            EventData::RemovePolicies(_, _, rules) => Some((false, rules)),
+            EventData::RemoveFilteredPolicy(_, _, rules) => Some((false, rules)),
+            _ => None,
+        } {
+            for rule in rules {
+                if count < 2 {
+                    return Err(ModelError::P(
+                        r#"the number of "_" in role definition should be at least 2"#.to_owned(),
+                    )
+                    .into());
+                }
+                if rule.len() < count {
+                    return Err(PolicyError::UnmatchPolicyDefinition(count, rule.len()).into());
+                }
+                if count == 2 {
+                    if insert {
+                        rm.write().unwrap().add_link(&rule[0], &rule[1], None);
+                    } else {
+                        rm.write().unwrap().delete_link(&rule[0], &rule[1], None)?;
+                    }
+                } else if count == 3 {
+                    if insert {
+                        rm.write()
+                            .unwrap()
+                            .add_link(&rule[0], &rule[1], Some(&rule[2]));
+                    } else {
+                        rm.write()
+                            .unwrap()
+                            .delete_link(&rule[0], &rule[1], Some(&rule[2]))?;
+                    }
+                } else if count >= 4 {
+                    return Err(
+                        ModelError::P("Multiple domains are not supported".to_owned()).into(),
+                    );
+                }
+            }
+
+            self.rm = Arc::clone(&rm);
+        }
+
         Ok(())
     }
 }

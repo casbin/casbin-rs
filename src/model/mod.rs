@@ -1,5 +1,8 @@
 use crate::{rbac::RoleManager, Result};
 
+#[cfg(feature = "incremental")]
+use crate::emitter::EventData;
+
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
@@ -18,6 +21,12 @@ pub trait Model: Send + Sync {
     fn get_model(&self) -> &HashMap<String, AssertionMap>;
     fn get_mut_model(&mut self) -> &mut HashMap<String, AssertionMap>;
     fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()>;
+    #[cfg(feature = "incremental")]
+    fn build_incremental_role_links(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+        d: EventData,
+    ) -> Result<()>;
     fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool;
     fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool;
     fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>>;

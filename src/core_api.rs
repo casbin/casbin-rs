@@ -6,6 +6,9 @@ use crate::Watcher;
 #[cfg(feature = "logging")]
 use crate::Logger;
 
+#[cfg(feature = "incremental")]
+use crate::emitter::EventData;
+
 use async_trait::async_trait;
 
 use std::sync::{Arc, RwLock};
@@ -37,6 +40,8 @@ pub trait CoreApi: Sized + Send + Sync {
     async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool>;
     async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
     fn build_role_links(&mut self) -> Result<()>;
+    #[cfg(feature = "incremental")]
+    fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
     async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
     fn is_filtered(&self) -> bool;

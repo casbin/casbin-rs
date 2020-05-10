@@ -459,6 +459,13 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
+    #[cfg(feature = "incremental")]
+    fn build_incremental_role_links(&mut self, d: EventData) -> Result<()> {
+        self.model
+            .build_incremental_role_links(Arc::clone(&self.rm), d)?;
+        Ok(())
+    }
+
     async fn load_policy(&mut self) -> Result<()> {
         self.model.clear_policy();
         self.adapter.load_policy(&mut *self.model).await?;
