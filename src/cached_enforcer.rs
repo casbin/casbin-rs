@@ -204,6 +204,7 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.build_role_links()
     }
 
+    #[cfg(feature = "incremental")]
     #[inline]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()> {
         self.enforcer.build_incremental_role_links(d)
