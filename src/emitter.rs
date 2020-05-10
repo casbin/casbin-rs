@@ -17,11 +17,11 @@ impl<T> EventKey for T where T: Hash + PartialEq + Eq + Send + Sync {}
 
 #[derive(Clone)]
 pub enum EventData {
-    AddPolicy(Vec<String>),
-    AddPolicies(Vec<Vec<String>>),
-    RemovePolicy(Vec<String>),
-    RemovePolicies(Vec<Vec<String>>),
-    RemoveFilteredPolicy(Vec<Vec<String>>),
+    AddPolicy(String, String, Vec<String>),
+    AddPolicies(String, String, Vec<Vec<String>>),
+    RemovePolicy(String, String, Vec<String>),
+    RemovePolicies(String, String, Vec<Vec<String>>),
+    RemoveFilteredPolicy(String, String, Vec<Vec<String>>),
     SavePolicy(Vec<Vec<String>>),
     ClearCache,
 }
@@ -30,13 +30,41 @@ impl fmt::Display for EventData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use EventData::*;
         match *self {
-            AddPolicy(ref p) => write!(f, "Event: AddPolicy, Data: {:?}", p.join(", ")),
-            AddPolicies(ref p) => write!(f, "Event: AddPolicies, Added: {}", p.len()),
-            RemovePolicy(ref p) => write!(f, "Event: RemovePolicy, Data: {:?}", p.join(", ")),
-            RemovePolicies(ref p) => write!(f, "Event: RemovePolicies, Removed: {}", p.len()),
-            RemoveFilteredPolicy(ref p) => {
-                write!(f, "Event: RemoveFilteredPolicy, Removed: {}", p.len())
-            }
+            AddPolicy(ref sec, ref ptype, ref p) => write!(
+                f,
+                "Event: AddPolicy, Assertion: {}::{},  Data: {:?}",
+                sec,
+                ptype,
+                p.join(", ")
+            ),
+            AddPolicies(ref sec, ref ptype, ref p) => write!(
+                f,
+                "Event: AddPolicies, Assertion: {}::{}, Added: {}",
+                sec,
+                ptype,
+                p.len()
+            ),
+            RemovePolicy(ref sec, ref ptype, ref p) => write!(
+                f,
+                "Event: RemovePolicy, Assertion: {}::{}, Data: {:?}",
+                sec,
+                ptype,
+                p.join(", ")
+            ),
+            RemovePolicies(ref sec, ref ptype, ref p) => write!(
+                f,
+                "Event: RemovePolicies, Assertion: {}::{}, Removed: {}",
+                sec,
+                ptype,
+                p.len()
+            ),
+            RemoveFilteredPolicy(ref sec, ref ptype, ref p) => write!(
+                f,
+                "Event: RemoveFilteredPolicy, Assertion: {}::{}, Removed: {}",
+                sec,
+                ptype,
+                p.len()
+            ),
             SavePolicy(ref p) => write!(f, "Event: SavePolicy, Saved: {}", p.len()),
             ClearCache => write!(f, "Event: ClearCache, Data: ClearCache"),
         }
