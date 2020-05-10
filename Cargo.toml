@@ -36,6 +36,7 @@ ip = ["ip_network"]
 glob = ["globset"]
 cached = ["ttl_cache"]
 watcher = []
+incremental = []
 
 [profile.release.build-override]
 opt-level = 0

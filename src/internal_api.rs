@@ -77,16 +77,17 @@ impl InternalApi for Enforcer {
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
+            let event_data = EventData::AddPolicy(sec.to_owned(), ptype.to_owned(), rule);
             #[cfg(feature = "watcher")]
             {
                 if rule_added && self.has_auto_notify_watcher_enabled() {
-                    self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
             #[cfg(not(feature = "watcher"))]
             {
                 if rule_added {
-                    self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
         }
@@ -121,16 +122,17 @@ impl InternalApi for Enforcer {
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
+            let event_data = EventData::AddPolicies(sec.to_owned(), ptype.to_owned(), rules);
             #[cfg(feature = "watcher")]
             {
                 if rules_added && self.has_auto_notify_watcher_enabled() {
-                    self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
             #[cfg(not(feature = "watcher"))]
             {
                 if rules_added {
-                    self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
         }
@@ -165,16 +167,17 @@ impl InternalApi for Enforcer {
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
+            let event_data = EventData::RemovePolicy(sec.to_owned(), ptype.to_owned(), rule);
             #[cfg(feature = "watcher")]
             {
                 if rule_removed && self.has_auto_notify_watcher_enabled() {
-                    self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
             #[cfg(not(feature = "watcher"))]
             {
                 if rule_removed {
-                    self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
         }
@@ -210,16 +213,17 @@ impl InternalApi for Enforcer {
 
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
+            let event_data = EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), rules);
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
-                    self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
             #[cfg(not(feature = "watcher"))]
             {
                 if rules_removed {
-                    self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
         }
@@ -249,22 +253,18 @@ impl InternalApi for Enforcer {
 
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
+            let event_data =
+                EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), rules.clone());
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
-                    self.emit(
-                        Event::PolicyChange,
-                        EventData::RemoveFilteredPolicy(rules.clone()),
-                    );
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
             #[cfg(not(feature = "watcher"))]
             {
                 if rules_removed {
-                    self.emit(
-                        Event::PolicyChange,
-                        EventData::RemoveFilteredPolicy(rules.clone()),
-                    );
+                    self.emit(Event::PolicyChange, event_data);
                 }
             }
         }

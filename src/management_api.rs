@@ -1,5 +1,8 @@
 use crate::{InternalApi, Result};
 
+#[cfg(feature = "incremental")]
+use crate::emitter::EventData;
+
 use async_trait::async_trait;
 
 #[async_trait]
@@ -203,8 +206,33 @@ where
         ptype: &str,
         params: Vec<String>,
     ) -> Result<bool> {
-        let rule_added = self.add_policy_internal("g", ptype, params).await?;
-        self.build_role_links()?;
+        let rule_added = self
+            .add_policy_internal("g", ptype, {
+                #[cfg(not(feature = "incremental"))]
+                {
+                    params
+                }
+
+                #[cfg(feature = "incremental")]
+                {
+                    params.clone()
+                }
+            })
+            .await?;
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+
+        #[cfg(feature = "incremental")]
+        {
+            let sec = "g".to_owned();
+            let ptype = ptype.to_owned();
+            let d = EventData::AddPolicy(sec, ptype, params);
+
+            self.build_incremental_role_links(d)?;
+        }
+
         Ok(rule_added)
     }
 
@@ -213,8 +241,32 @@ where
         ptype: &str,
         paramss: Vec<Vec<String>>,
     ) -> Result<bool> {
-        let all_added = self.add_policies_internal("g", ptype, paramss).await?;
-        self.build_role_links()?;
+        let all_added = self
+            .add_policies_internal("g", ptype, {
+                #[cfg(not(feature = "incremental"))]
+                {
+                    paramss
+                }
+
+                #[cfg(feature = "incremental")]
+                {
+                    paramss.clone()
+                }
+            })
+            .await?;
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+
+        #[cfg(feature = "incremental")]
+        {
+            let sec = "g".to_owned();
+            let ptype = ptype.to_owned();
+            let d = EventData::AddPolicies(sec, ptype, paramss);
+
+            self.build_incremental_role_links(d)?;
+        }
         Ok(all_added)
     }
 
@@ -223,8 +275,33 @@ where
         ptype: &str,
         params: Vec<String>,
     ) -> Result<bool> {
-        let rule_removed = self.remove_policy_internal("g", ptype, params).await?;
-        self.build_role_links()?;
+        let rule_removed = self
+            .remove_policy_internal("g", ptype, {
+                #[cfg(not(feature = "incremental"))]
+                {
+                    params
+                }
+
+                #[cfg(feature = "incremental")]
+                {
+                    params.clone()
+                }
+            })
+            .await?;
+
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+
+        #[cfg(feature = "incremental")]
+        {
+            let sec = "g".to_owned();
+            let ptype = ptype.to_owned();
+            let d = EventData::RemovePolicy(sec, ptype, params);
+
+            self.build_incremental_role_links(d)?;
+        }
         Ok(rule_removed)
     }
 
@@ -233,8 +310,31 @@ where
         ptype: &str,
         paramss: Vec<Vec<String>>,
     ) -> Result<bool> {
-        let all_removed = self.remove_policies_internal("g", ptype, paramss).await?;
-        self.build_role_links()?;
+        let all_removed = self
+            .remove_policies_internal("g", ptype, {
+                #[cfg(not(feature = "incremental"))]
+                {
+                    paramss
+                }
+
+                #[cfg(feature = "incremental")]
+                {
+                    paramss.clone()
+                }
+            })
+            .await?;
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            let sec = "g".to_owned();
+            let ptype = ptype.to_owned();
+            let d = EventData::RemovePolicies(sec, ptype, paramss);
+
+            self.build_incremental_role_links(d)?;
+        }
         Ok(all_removed)
     }
 
@@ -244,10 +344,24 @@ where
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
-        let (rule_removed, _) = self
+        #[allow(unused_variables)]
+        let (rule_removed, rules) = self
             .remove_filtered_policy_internal("g", ptype, field_index, field_values)
             .await?;
-        self.build_role_links()?;
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+
+        #[cfg(feature = "incremental")]
+        {
+            let sec = "g".to_owned();
+            let ptype = ptype.to_owned();
+            let d = EventData::RemovePolicies(sec, ptype, rules);
+
+            self.build_incremental_role_links(d)?;
+        }
+
         Ok(rule_removed)
     }
 
@@ -269,10 +383,12 @@ where
 
     fn get_all_policy(&self) -> Vec<Vec<String>> {
         let mut res: Vec<Vec<String>> = vec![];
-        if let Some(ast_map) = self.get_model().get_model().get("p") {
+        let sec = "p".to_owned();
+        if let Some(ast_map) = self.get_model().get_model().get(&sec) {
             for (ptype, ast) in ast_map {
                 res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
                     x.insert(0, ptype.clone());
+                    x.insert(0, sec.clone());
                     x
                 }))
             }
@@ -301,10 +417,12 @@ where
 
     fn get_all_grouping_policy(&self) -> Vec<Vec<String>> {
         let mut res: Vec<Vec<String>> = vec![];
-        if let Some(ast_map) = self.get_model().get_model().get("g") {
+        let sec = "g".to_owned();
+        if let Some(ast_map) = self.get_model().get_model().get(&sec) {
             for (ptype, ast) in ast_map {
                 res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
                     x.insert(0, ptype.clone());
+                    x.insert(0, sec.clone());
                     x
                 }))
             }

@@ -16,7 +16,7 @@ use crate::{
 use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
-use crate::Logger;
+use crate::logger::Logger;
 
 use async_trait::async_trait;
 
@@ -202,6 +202,11 @@ impl CoreApi for CachedEnforcer {
     #[inline]
     fn build_role_links(&mut self) -> Result<()> {
         self.enforcer.build_role_links()
+    }
+
+    #[inline]
+    fn build_incremental_role_links(&mut self, d: EventData) -> Result<()> {
+        self.enforcer.build_incremental_role_links(d)
     }
 
     #[inline]

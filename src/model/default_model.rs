@@ -7,6 +7,9 @@ use crate::{
     Result,
 };
 
+#[cfg(feature = "incremental")]
+use crate::emitter::EventData;
+
 use indexmap::{IndexMap, IndexSet};
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
@@ -146,6 +149,34 @@ impl Model for DefaultModel {
                 ast.build_role_links(Arc::clone(&rm))?;
             }
         }
+        Ok(())
+    }
+
+    #[cfg(feature = "incremental")]
+    fn build_incremental_role_links(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+        d: EventData,
+    ) -> Result<()> {
+        let ast = match d {
+            EventData::AddPolicy(ref sec, ref ptype, _)
+            | EventData::AddPolicies(ref sec, ref ptype, _)
+            | EventData::RemovePolicy(ref sec, ref ptype, _)
+            | EventData::RemovePolicies(ref sec, ref ptype, _)
+            | EventData::RemoveFilteredPolicy(ref sec, ref ptype, _)
+                if sec == "g" =>
+            {
+                self.model
+                    .get_mut(sec)
+                    .and_then(|ast_map| ast_map.get_mut(ptype))
+            }
+            _ => None,
+        };
+
+        if let Some(ast) = ast {
+            ast.build_incremental_role_links(rm, d)?;
+        }
+
         Ok(())
     }
 
