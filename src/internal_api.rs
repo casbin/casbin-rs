@@ -1,10 +1,15 @@
 use crate::{
-    cached_enforcer::CachedEnforcer,
     core_api::CoreApi,
-    emitter::{Event, EventData, EventEmitter},
+    emitter::{Event, EventEmitter},
     enforcer::Enforcer,
     Result,
 };
+
+#[cfg(any(feature = "watcher", feature = "cached", feature = "logging"))]
+use crate::emitter::EventData;
+
+#[cfg(feature = "cached")]
+use crate::cached_enforcer::CachedEnforcer;
 
 use async_trait::async_trait;
 
@@ -60,9 +65,30 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rule_added = self.get_mut_model().add_policy(sec, ptype, rule.clone());
-        if rule_added && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
+        let rule_added = self.get_mut_model().add_policy(sec, ptype, {
+            #[cfg(any(feature = "watcher", feature = "logging"))]
+            {
+                rule.clone()
+            }
+            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            {
+                rule
+            }
+        });
+        #[cfg(any(feature = "watcher", feature = "logging"))]
+        {
+            #[cfg(feature = "watcher")]
+            {
+                if rule_added && self.has_auto_notify_watcher_enabled() {
+                    self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
+                }
+            }
+            #[cfg(not(feature = "watcher"))]
+            {
+                if rule_added {
+                    self.emit(Event::PolicyChange, EventData::AddPolicy(rule));
+                }
+            }
         }
 
         Ok(rule_added)
@@ -83,9 +109,30 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rules_added = self.get_mut_model().add_policies(sec, ptype, rules.clone());
-        if rules_added && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
+        let rules_added = self.get_mut_model().add_policies(sec, ptype, {
+            #[cfg(any(feature = "watcher", feature = "logging"))]
+            {
+                rules.clone()
+            }
+            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            {
+                rules
+            }
+        });
+        #[cfg(any(feature = "watcher", feature = "logging"))]
+        {
+            #[cfg(feature = "watcher")]
+            {
+                if rules_added && self.has_auto_notify_watcher_enabled() {
+                    self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
+                }
+            }
+            #[cfg(not(feature = "watcher"))]
+            {
+                if rules_added {
+                    self.emit(Event::PolicyChange, EventData::AddPolicies(rules));
+                }
+            }
         }
 
         Ok(rules_added)
@@ -106,9 +153,30 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rule_removed = self.get_mut_model().remove_policy(sec, ptype, rule.clone());
-        if rule_removed && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
+        let rule_removed = self.get_mut_model().remove_policy(sec, ptype, {
+            #[cfg(any(feature = "watcher", feature = "logging"))]
+            {
+                rule.clone()
+            }
+            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            {
+                rule
+            }
+        });
+        #[cfg(any(feature = "watcher", feature = "logging"))]
+        {
+            #[cfg(feature = "watcher")]
+            {
+                if rule_removed && self.has_auto_notify_watcher_enabled() {
+                    self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
+                }
+            }
+            #[cfg(not(feature = "watcher"))]
+            {
+                if rule_removed {
+                    self.emit(Event::PolicyChange, EventData::RemovePolicy(rule));
+                }
+            }
         }
 
         Ok(rule_removed)
@@ -129,11 +197,31 @@ impl InternalApi for Enforcer {
             return Ok(false);
         }
 
-        let rules_removed = self
-            .get_mut_model()
-            .remove_policies(sec, ptype, rules.clone());
-        if rules_removed && self.has_auto_notify_watcher_enabled() {
-            self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
+        let rules_removed = self.get_mut_model().remove_policies(sec, ptype, {
+            #[cfg(any(feature = "watcher", feature = "logging"))]
+            {
+                rules.clone()
+            }
+            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            {
+                rules
+            }
+        });
+
+        #[cfg(any(feature = "watcher", feature = "logging"))]
+        {
+            #[cfg(feature = "watcher")]
+            {
+                if rules_removed && self.has_auto_notify_watcher_enabled() {
+                    self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
+                }
+            }
+            #[cfg(not(feature = "watcher"))]
+            {
+                if rules_removed {
+                    self.emit(Event::PolicyChange, EventData::RemovePolicies(rules));
+                }
+            }
         }
 
         Ok(rules_removed)
@@ -158,17 +246,34 @@ impl InternalApi for Enforcer {
         let (rules_removed, rules) =
             self.get_mut_model()
                 .remove_filtered_policy(sec, ptype, field_index, field_values);
-        if rules_removed && self.has_auto_notify_watcher_enabled() {
-            self.emit(
-                Event::PolicyChange,
-                EventData::RemoveFilteredPolicy(rules.clone()),
-            );
+
+        #[cfg(any(feature = "watcher", feature = "logging"))]
+        {
+            #[cfg(feature = "watcher")]
+            {
+                if rules_removed && self.has_auto_notify_watcher_enabled() {
+                    self.emit(
+                        Event::PolicyChange,
+                        EventData::RemoveFilteredPolicy(rules.clone()),
+                    );
+                }
+            }
+            #[cfg(not(feature = "watcher"))]
+            {
+                if rules_removed {
+                    self.emit(
+                        Event::PolicyChange,
+                        EventData::RemoveFilteredPolicy(rules.clone()),
+                    );
+                }
+            }
         }
 
         Ok((rules_removed, rules))
     }
 }
 
+#[cfg(feature = "cached")]
 #[async_trait]
 impl InternalApi for CachedEnforcer {
     async fn add_policy_internal(

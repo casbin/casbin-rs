@@ -1,6 +1,9 @@
 mod adapter;
+#[cfg(feature = "cached")]
 mod cache;
+#[cfg(feature = "cached")]
 mod cached_api;
+#[cfg(feature = "cached")]
 mod cached_enforcer;
 mod config;
 mod convert;
@@ -16,14 +19,21 @@ mod model;
 mod rbac;
 mod rbac_api;
 mod util;
+#[cfg(feature = "watcher")]
 mod watcher;
 
 pub mod error;
 pub mod prelude;
 
-pub use adapter::{Adapter, FileAdapter, Filter, MemoryAdapter, NullAdapter};
+#[cfg(not(target_arch = "wasm32"))]
+pub use adapter::FileAdapter;
+pub use adapter::{Adapter, Filter, MemoryAdapter, NullAdapter};
+
+#[cfg(feature = "cached")]
 pub use cache::{Cache, DefaultCache};
+#[cfg(feature = "cached")]
 pub use cached_api::CachedApi;
+#[cfg(feature = "cached")]
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use core_api::CoreApi;
@@ -38,6 +48,7 @@ pub use management_api::MgmtApi;
 pub use model::{function_map, Assertion, DefaultModel, Model};
 pub use rbac::{DefaultRoleManager, RoleManager};
 pub use rbac_api::RbacApi;
+#[cfg(feature = "watcher")]
 pub use watcher::Watcher;
 
 pub type Result<T> = std::result::Result<T, Error>;

@@ -1,4 +1,7 @@
-use crate::{Adapter, DefaultModel, FileAdapter, Model, NullAdapter, Result};
+use crate::{Adapter, DefaultModel, Model, NullAdapter, Result};
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::FileAdapter;
 
 use async_trait::async_trait;
 
@@ -15,7 +18,14 @@ pub trait TryIntoAdapter: Send + Sync {
 #[async_trait]
 impl TryIntoModel for &'static str {
     async fn try_into_model(self) -> Result<Box<dyn Model>> {
-        Ok(Box::new(DefaultModel::from_file(self).await?))
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(Box::new(DefaultModel::from_file(self).await?))
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            Ok(Box::new(DefaultModel::from_str(self).await?))
+        }
     }
 }
 
@@ -36,7 +46,15 @@ where
 #[async_trait]
 impl TryIntoAdapter for &'static str {
     async fn try_into_adapter(self) -> Result<Box<dyn Adapter>> {
-        Ok(Box::new(FileAdapter::new(self)))
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            Ok(Box::new(FileAdapter::new(self)))
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            Ok(Box::new(NullAdapter))
+        }
     }
 }
 

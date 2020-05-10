@@ -1,4 +1,8 @@
-use crate::{cached_api::CachedApi, core_api::CoreApi};
+#[cfg(any(feature = "watcher", feature = "cached", feature = "logging"))]
+use crate::core_api::CoreApi;
+
+#[cfg(feature = "cached")]
+use crate::cached_api::CachedApi;
 
 use std::{fmt, hash::Hash};
 
@@ -48,37 +52,28 @@ where
     fn emit(&mut self, e: K, d: EventData);
 }
 
-pub(crate) fn notify_watcher<T: CoreApi>(e: &mut T, d: EventData) {
+#[cfg(any(feature = "logging", feature = "watcher"))]
+pub(crate) fn notify_logger_and_watcher<T: CoreApi>(e: &mut T, d: EventData) {
     #[cfg(feature = "logging")]
     {
         e.get_logger().print_mgmt_log(&d);
     }
 
-    if let Some(w) = e.get_mut_watcher() {
-        w.update(d);
+    #[cfg(feature = "watcher")]
+    {
+        if let Some(w) = e.get_mut_watcher() {
+            w.update(d);
+        }
     }
 }
 
-#[allow(unused_variables)]
+#[cfg(all(feature = "cached", feature = "logging"))]
 pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, d: EventData) {
-    #[cfg(feature = "logging")]
-    {
-        ce.get_logger().print_mgmt_log(&d);
-    }
+    ce.get_logger().print_mgmt_log(&d);
+    ce.get_mut_cache().clear();
+}
 
-    #[cfg(feature = "runtime-tokio")]
-    {
-        tokio::runtime::Builder::new()
-            .basic_scheduler()
-            .threaded_scheduler()
-            .enable_all()
-            .build()
-            .unwrap()
-            .block_on(async { ce.get_mut_cache().clear().await });
-    }
-
-    #[cfg(feature = "runtime-async-std")]
-    {
-        async_std::task::block_on(async { ce.get_mut_cache().clear().await });
-    }
+#[cfg(all(feature = "cached", not(feature = "logging")))]
+pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: EventData) {
+    ce.get_mut_cache().clear();
 }

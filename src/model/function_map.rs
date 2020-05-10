@@ -1,10 +1,12 @@
-#[cfg(feature = "runtime-async-std")]
+#[cfg(all(feature = "runtime-async-std", feature = "ip"))]
 use async_std::net::IpAddr;
 
-#[cfg(feature = "runtime-tokio")]
+#[cfg(all(feature = "runtime-tokio", feature = "ip"))]
 use std::net::IpAddr;
 
+#[cfg(feature = "glob")]
 use globset::GlobBuilder;
+#[cfg(feature = "ip")]
 use ip_network::IpNetwork;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -27,8 +29,16 @@ impl Default for FunctionMap {
         fm.insert("keyMatch2".to_owned(), key_match2);
         fm.insert("keyMatch3".to_owned(), key_match3);
         fm.insert("regexMatch".to_owned(), regex_match);
-        fm.insert("ipMatch".to_owned(), ip_match);
-        fm.insert("globMatch".to_owned(), glob_match);
+
+        #[cfg(feature = "glob")]
+        {
+            fm.insert("globMatch".to_owned(), glob_match);
+        }
+
+        #[cfg(feature = "ip")]
+        {
+            fm.insert("ipMatch".to_owned(), ip_match);
+        }
 
         FunctionMap { fm }
     }
@@ -92,6 +102,7 @@ pub fn regex_match(key1: String, key2: String) -> bool {
 
 // ip_match determines whether IP address ip1 matches the pattern of IP address ip2, ip2 can be an IP address or a CIDR pattern.
 // For example, "192.168.2.123" matches "192.168.2.0/24"
+#[cfg(feature = "ip")]
 pub fn ip_match(key1: String, key2: String) -> bool {
     let key2_split = key2.splitn(2, '/').collect::<Vec<&str>>();
     let ip_addr2 = key2_split[0];
@@ -120,6 +131,7 @@ pub fn ip_match(key1: String, key2: String) -> bool {
 }
 
 // glob_match determines whether key1 matches the pattern of key2 using glob pattern
+#[cfg(feature = "glob")]
 pub fn glob_match(key1: String, key2: String) -> bool {
     GlobBuilder::new(key2.as_str())
         .literal_separator(true)
@@ -169,6 +181,7 @@ mod tests {
         assert!(!key_match3("/baz".to_owned(), "/foo".to_owned()));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     fn test_ip_match() {
         assert!(ip_match("::1".to_owned(), "::0:1".to_owned()));
@@ -188,18 +201,21 @@ mod tests {
         ));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     #[should_panic]
     fn test_ip_match_panic_1() {
         assert!(ip_match("I am alice".to_owned(), "127.0.0.1".to_owned()));
     }
 
+    #[cfg(feature = "ip")]
     #[test]
     #[should_panic]
     fn test_ip_match_panic_2() {
         assert!(ip_match("127.0.0.1".to_owned(), "I am alice".to_owned()));
     }
 
+    #[cfg(feature = "glob")]
     #[test]
     fn test_glob_match() {
         assert!(glob_match("/abc/123".to_owned(), "/abc/*".to_owned()));

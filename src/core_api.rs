@@ -1,6 +1,7 @@
-use crate::{
-    Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel, Watcher,
-};
+use crate::{Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel};
+
+#[cfg(feature = "watcher")]
+use crate::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::Logger;
@@ -17,8 +18,11 @@ pub trait CoreApi: Sized + Send + Sync {
     fn get_mut_model(&mut self) -> &mut dyn Model;
     fn get_adapter(&self) -> &dyn Adapter;
     fn get_mut_adapter(&mut self) -> &mut dyn Adapter;
+    #[cfg(feature = "watcher")]
     fn set_watcher(&mut self, w: Box<dyn Watcher>);
+    #[cfg(feature = "watcher")]
     fn get_watcher(&self) -> Option<&dyn Watcher>;
+    #[cfg(feature = "watcher")]
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher>;
     fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>>;
     fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()>;
@@ -43,7 +47,9 @@ pub trait CoreApi: Sized + Send + Sync {
     fn enable_auto_save(&mut self, auto_save: bool);
     fn enable_enforce(&mut self, enabled: bool);
     fn enable_auto_build_role_links(&mut self, auto_build_role_links: bool);
+    #[cfg(feature = "watcher")]
     fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool);
     fn has_auto_save_enabled(&self) -> bool;
+    #[cfg(feature = "watcher")]
     fn has_auto_notify_watcher_enabled(&self) -> bool;
 }

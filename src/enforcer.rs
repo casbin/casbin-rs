@@ -3,15 +3,20 @@ use crate::{
     convert::{TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
-    emitter::{notify_watcher, Event, EventData, EventEmitter},
+    emitter::{Event, EventData, EventEmitter},
     error::{Error, ModelError, PolicyError, RequestError},
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
     util::{escape_eval, ESC_E},
-    watcher::Watcher,
     Result,
 };
+
+#[cfg(any(feature = "logging", feature = "watcher"))]
+use crate::emitter::notify_logger_and_watcher;
+
+#[cfg(feature = "watcher")]
+use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::{DefaultLogger, Logger};
@@ -81,7 +86,9 @@ pub struct Enforcer {
     pub(crate) enabled: bool,
     pub(crate) auto_save: bool,
     pub(crate) auto_build_role_links: bool,
+    #[cfg(feature = "watcher")]
     pub(crate) auto_notify_watcher: bool,
+    #[cfg(feature = "watcher")]
     pub(crate) watcher: Option<Box<dyn Watcher>>,
     pub(crate) events: HashMap<Event, Vec<EventCallback>>,
     pub(crate) engine: Engine,
@@ -246,7 +253,9 @@ impl CoreApi for Enforcer {
                     enabled: true,
                     auto_save: true,
                     auto_build_role_links: true,
+                    #[cfg(feature = "watcher")]
                     auto_notify_watcher: true,
+                    #[cfg(feature = "watcher")]
                     watcher: None,
                     events: HashMap::new(),
                     engine,
@@ -265,7 +274,9 @@ impl CoreApi for Enforcer {
                     enabled: true,
                     auto_save: true,
                     auto_build_role_links: true,
+                    #[cfg(feature = "watcher")]
                     auto_notify_watcher: true,
+                    #[cfg(feature = "watcher")]
                     watcher: None,
                     events: HashMap::new(),
                     engine,
@@ -273,7 +284,10 @@ impl CoreApi for Enforcer {
             }
         };
 
-        e.on(Event::PolicyChange, notify_watcher);
+        #[cfg(any(feature = "logging", feature = "watcher"))]
+        {
+            e.on(Event::PolicyChange, notify_logger_and_watcher);
+        }
 
         e.load_policy().await?;
 
@@ -313,6 +327,7 @@ impl CoreApi for Enforcer {
         &mut *self.adapter
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn set_watcher(&mut self, w: Box<dyn Watcher>) {
         self.watcher = Some(w);
@@ -330,6 +345,7 @@ impl CoreApi for Enforcer {
         self.logger = l;
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_watcher(&self) -> Option<&dyn Watcher> {
         if let Some(ref watcher) = self.watcher {
@@ -339,6 +355,7 @@ impl CoreApi for Enforcer {
         }
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher> {
         if let Some(ref mut watcher) = self.watcher {
@@ -481,7 +498,10 @@ impl CoreApi for Enforcer {
 
         policies.extend(gpolicies);
 
-        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+        #[cfg(any(feature = "logging", feature = "watcher"))]
+        {
+            self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+        }
         Ok(())
     }
 
@@ -511,12 +531,13 @@ impl CoreApi for Enforcer {
         self.auto_build_role_links = auto_build_role_links;
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn enable_auto_notify_watcher(&mut self, auto_notify_watcher: bool) {
         if !auto_notify_watcher {
             self.off(Event::PolicyChange);
         } else {
-            self.on(Event::PolicyChange, notify_watcher);
+            self.on(Event::PolicyChange, notify_logger_and_watcher);
         }
         self.auto_notify_watcher = auto_notify_watcher;
     }
@@ -526,6 +547,7 @@ impl CoreApi for Enforcer {
         self.auto_save
     }
 
+    #[cfg(feature = "watcher")]
     #[inline]
     fn has_auto_notify_watcher_enabled(&self) -> bool {
         self.auto_notify_watcher
@@ -551,8 +573,15 @@ mod tests {
         assert!(is_sync::<Enforcer>());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_enforcer_swap_adapter_type() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -582,8 +611,15 @@ mod tests {
             .unwrap())
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_key_match_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -715,8 +751,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_key_match_model_in_memory_deny() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -739,8 +782,15 @@ mod tests {
     }
 
     use crate::RbacApi;
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_rbac_model_in_memory_indeterminate() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -770,8 +820,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_rbac_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -860,8 +917,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_not_used_rbac_model_in_memory() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
@@ -929,8 +993,16 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(feature = "ip")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_ip_match_model() {
         let m = DefaultModel::from_file("examples/ipmatch_model.conf")
             .await
@@ -1004,9 +1076,15 @@ mod tests {
             .unwrap());
     }
 
-    use crate::MgmtApi;
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_enable_auto_save() {
         let m = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1102,8 +1180,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_role_links() {
         let m = DefaultModel::from_file("examples/rbac_model.conf")
             .await
@@ -1119,8 +1204,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_and_set_model() {
         let m1 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1146,8 +1238,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_get_and_set_adapter_in_mem() {
         let m1 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1182,8 +1281,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_keymatch_custom_model() {
         use crate::model::key_match;
 
@@ -1236,8 +1342,15 @@ mod tests {
         );
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_filtered_file_adapter() {
         let mut e = Enforcer::new(
             "examples/rbac_with_domains_model.conf",
@@ -1280,8 +1393,15 @@ mod tests {
             .unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_set_role_manager() {
         let mut e = Enforcer::new(
             "examples/rbac_with_domains_model.conf",
@@ -1312,8 +1432,15 @@ mod tests {
             .unwrap());
     }
 
-    #[cfg_attr(feature = "runtime-async-std", async_std::test)]
-    #[cfg_attr(feature = "runtime-tokio", tokio::test)]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
     async fn test_policy_abac() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
