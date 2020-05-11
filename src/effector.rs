@@ -34,7 +34,6 @@ impl Effector for DefaultEffector {
             "!some(where (p_eft == deny))" => true,
             _ => panic!("unsupported effect: `{}`", expr),
         };
-
         while let Some(eft) = rx.recv().await {
             if &expr == "some(where (p_eft == allow))" && eft == EffectKind::Allow {
                 result = true;
@@ -58,7 +57,6 @@ impl Effector for DefaultEffector {
                 break;
             }
         }
-
         result
     }
 }

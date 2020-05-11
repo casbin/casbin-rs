@@ -235,9 +235,7 @@ impl Enforcer {
                 tx.send(eft).await?;
             }
         }
-
         std::mem::drop(tx);
-
         Ok(self.eft.merge_effects(&e_ast.value, rx).await)
     }
 }
