@@ -370,16 +370,8 @@ impl InternalApi for Enforcer {
 
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), {
-                #[cfg(feature = "incremental")]
-                {
-                    rules.clone()
-                }
-                #[cfg(not(feature = "incremental"))]
-                {
-                    rules
-                }
-            });
+            let event_data =
+                EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), rules.clone());
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
