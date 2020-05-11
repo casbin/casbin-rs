@@ -6,6 +6,8 @@ compile_error!("one of 'runtime-async-std' or 'runtime-tokio' features must be e
 #[cfg(all(feature = "runtime-tokio", feature = "runtime-async-std"))]
 compile_error!("only one of 'runtime-async-std' or 'runtime-tokio' features must be enabled");
 
+#[cfg(all(feature = "runtime-async-std", feature = "ip"))]
+use async_std::net::IpAddr;
 #[cfg(all(feature = "runtime-async-std", target_arch = "wasm32"))]
 pub(crate) use async_std::task::spawn_local as spawn;
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
@@ -24,6 +26,8 @@ pub(crate) use async_std::{
 
 #[cfg(feature = "runtime-tokio")]
 pub(crate) use std::io::Cursor;
+#[cfg(all(feature = "runtime-tokio", feature = "ip"))]
+pub(crate) use std::net::IpAddr;
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 pub(crate) use std::path::Path;
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]

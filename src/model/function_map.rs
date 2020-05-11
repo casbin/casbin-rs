@@ -1,8 +1,8 @@
-#[cfg(all(feature = "runtime-async-std", feature = "ip"))]
-use async_std::net::IpAddr;
-
-#[cfg(all(feature = "runtime-tokio", feature = "ip"))]
-use std::net::IpAddr;
+#[cfg(all(
+    any(feature = "runtime-async-std", feature = "runtime-tokio"),
+    feature = "ip"
+))]
+use crate::runtime::IpAddr;
 
 #[cfg(feature = "glob")]
 use globset::GlobBuilder;
