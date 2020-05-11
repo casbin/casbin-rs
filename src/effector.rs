@@ -48,7 +48,7 @@ impl Effector for DefaultEffector {
                 } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
                     if eft == EffectKind::Allow {
                         result = true;
-                    } else {
+                    } else if eft == EffectKind::Deny {
                         result = false;
                         break;
                     }
