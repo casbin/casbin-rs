@@ -11,7 +11,7 @@ use tokio::{sync::mpsc::Receiver, task::spawn};
 #[async_trait]
 pub trait Effector: Send + Sync {
     #[allow(unused_mut)]
-    async fn merge_effects(&self, expr: &str, rx: Receiver<EffectKind>) -> bool;
+    async fn merge_effects(&self, expr: &str, mut rx: Receiver<EffectKind>) -> bool;
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -45,15 +45,13 @@ impl Effector for DefaultEffector {
                 } else if &expr == "!some(where (p_eft == deny))" && eft == EffectKind::Deny {
                     result = false;
                     break;
-                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
-                    && eft == EffectKind::Allow
-                {
-                    result = true;
-                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
-                    && eft == EffectKind::Deny
-                {
-                    result = false;
-                    break;
+                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
+                    if eft == EffectKind::Allow {
+                        result = true;
+                    } else {
+                        result = false;
+                        break;
+                    }
                 } else if &expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
                     if eft == EffectKind::Allow {
                         result = true
@@ -66,12 +64,10 @@ impl Effector for DefaultEffector {
 
             result
         });
-
         #[cfg(feature = "runtime-async-std")]
         {
             fut.await
         }
-
         #[cfg(feature = "runtime-tokio")]
         {
             match fut.await {
