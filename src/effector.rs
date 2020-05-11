@@ -38,32 +38,28 @@ impl Effector for DefaultEffector {
             };
 
             while let Some(eft) = rx.recv().await {
-                if &expr == "some(where (p_eft == allow))" {
+                if &expr == "some(where (p_eft == allow))" && eft == EffectKind::Allow {
+                    result = true;
+                    break;
+                } else if &expr == "!some(where (p_eft == deny))" && eft == EffectKind::Deny {
+                    result = false;
+                    break;
+                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+                    && eft == EffectKind::Allow
+                {
+                    result = true;
+                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+                    && eft == EffectKind::Deny
+                {
+                    result = false;
+                    break;
+                } else if &expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
                     if eft == EffectKind::Allow {
-                        result = true;
-                        break;
+                        result = true
+                    } else {
+                        result = false
                     }
-                } else if &expr == "!some(where (p_eft == deny))" {
-                    if eft == EffectKind::Deny {
-                        result = false;
-                        break;
-                    }
-                } else if &expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
-                    if eft == EffectKind::Allow {
-                        result = true;
-                    } else if eft == EffectKind::Deny {
-                        result = false;
-                        break;
-                    }
-                } else if &expr == "priority(p_eft) || deny" {
-                    if eft != EffectKind::Indeterminate {
-                        if eft == EffectKind::Allow {
-                            result = true
-                        } else {
-                            result = false
-                        }
-                        break;
-                    }
+                    break;
                 }
             }
 
