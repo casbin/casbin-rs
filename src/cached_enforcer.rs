@@ -274,6 +274,11 @@ impl CoreApi for CachedEnforcer {
     fn has_auto_notify_watcher_enabled(&self) -> bool {
         self.enforcer.has_auto_notify_watcher_enabled()
     }
+
+    #[inline]
+    fn has_auto_build_role_links_enabled(&self) -> bool {
+        self.enforcer.has_auto_build_role_links_enabled()
+    }
 }
 
 impl CachedApi for CachedEnforcer {
