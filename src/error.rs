@@ -73,6 +73,7 @@ pub enum Error {
     #[error("Casbin Adapter Error: `{0:?}`")]
     AdapterError(#[from] AdapterError),
 
+    #[cfg(feature = "runtime-tokio")]
     #[error("Tokio Channel Error: `{0:?}`")]
     ChannelError(#[from] SendError<EffectKind>),
 }
