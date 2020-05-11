@@ -389,7 +389,11 @@ impl CoreApi for Enforcer {
 
     fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
         self.rm.write().unwrap().add_matching_fn(f);
-        self.build_role_links()
+        if self.auto_build_role_links {
+            self.build_role_links()?;
+        }
+
+        Ok(())
     }
 
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
@@ -558,6 +562,11 @@ impl CoreApi for Enforcer {
     #[inline]
     fn has_auto_notify_watcher_enabled(&self) -> bool {
         self.auto_notify_watcher
+    }
+
+    #[inline]
+    fn has_auto_build_role_links_enabled(&self) -> bool {
+        self.auto_build_role_links
     }
 }
 

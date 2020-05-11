@@ -57,4 +57,5 @@ pub trait CoreApi: Sized + Send + Sync {
     fn has_auto_save_enabled(&self) -> bool;
     #[cfg(feature = "watcher")]
     fn has_auto_notify_watcher_enabled(&self) -> bool;
+    fn has_auto_build_role_links_enabled(&self) -> bool;
 }

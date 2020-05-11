@@ -5,7 +5,12 @@ use crate::{
     Result,
 };
 
-#[cfg(any(feature = "watcher", feature = "cached", feature = "logging"))]
+#[cfg(any(
+    feature = "watcher",
+    feature = "cached",
+    feature = "logging",
+    feature = "incremental"
+))]
 use crate::emitter::EventData;
 
 #[cfg(feature = "cached")]
@@ -66,18 +71,31 @@ impl InternalApi for Enforcer {
         }
 
         let rule_added = self.get_mut_model().add_policy(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging"))]
+            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
             {
                 rule.clone()
             }
-            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            #[cfg(all(
+                not(feature = "watcher"),
+                not(feature = "logging"),
+                not(feature = "incremental")
+            ))]
             {
                 rule
             }
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::AddPolicy(sec.to_owned(), ptype.to_owned(), rule);
+            let event_data = EventData::AddPolicy(sec.to_owned(), ptype.to_owned(), {
+                #[cfg(feature = "incremental")]
+                {
+                    rule.clone()
+                }
+                #[cfg(not(feature = "incremental"))]
+                {
+                    rule
+                }
+            });
             #[cfg(feature = "watcher")]
             {
                 if rule_added && self.has_auto_notify_watcher_enabled() {
@@ -90,6 +108,21 @@ impl InternalApi for Enforcer {
                     self.emit(Event::PolicyChange, event_data);
                 }
             }
+        }
+        if sec != "g" || !self.has_auto_build_role_links_enabled() {
+            return Ok(rule_added);
+        }
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            self.build_incremental_role_links(EventData::AddPolicy(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rule,
+            ))?;
         }
 
         Ok(rule_added)
@@ -111,18 +144,31 @@ impl InternalApi for Enforcer {
         }
 
         let rules_added = self.get_mut_model().add_policies(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging"))]
+            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
             {
                 rules.clone()
             }
-            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            #[cfg(all(
+                not(feature = "watcher"),
+                not(feature = "logging"),
+                not(feature = "incremental")
+            ))]
             {
                 rules
             }
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::AddPolicies(sec.to_owned(), ptype.to_owned(), rules);
+            let event_data = EventData::AddPolicies(sec.to_owned(), ptype.to_owned(), {
+                #[cfg(feature = "incremental")]
+                {
+                    rules.clone()
+                }
+                #[cfg(not(feature = "incremental"))]
+                {
+                    rules
+                }
+            });
             #[cfg(feature = "watcher")]
             {
                 if rules_added && self.has_auto_notify_watcher_enabled() {
@@ -135,6 +181,21 @@ impl InternalApi for Enforcer {
                     self.emit(Event::PolicyChange, event_data);
                 }
             }
+        }
+        if sec != "g" || !self.has_auto_build_role_links_enabled() {
+            return Ok(rules_added);
+        }
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            self.build_incremental_role_links(EventData::AddPolicies(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rules,
+            ))?;
         }
 
         Ok(rules_added)
@@ -156,18 +217,31 @@ impl InternalApi for Enforcer {
         }
 
         let rule_removed = self.get_mut_model().remove_policy(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging"))]
+            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
             {
                 rule.clone()
             }
-            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            #[cfg(all(
+                not(feature = "watcher"),
+                not(feature = "logging"),
+                not(feature = "incremental")
+            ))]
             {
                 rule
             }
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::RemovePolicy(sec.to_owned(), ptype.to_owned(), rule);
+            let event_data = EventData::RemovePolicy(sec.to_owned(), ptype.to_owned(), {
+                #[cfg(feature = "incremental")]
+                {
+                    rule.clone()
+                }
+                #[cfg(not(feature = "incremental"))]
+                {
+                    rule
+                }
+            });
             #[cfg(feature = "watcher")]
             {
                 if rule_removed && self.has_auto_notify_watcher_enabled() {
@@ -180,6 +254,21 @@ impl InternalApi for Enforcer {
                     self.emit(Event::PolicyChange, event_data);
                 }
             }
+        }
+        if sec != "g" || !self.has_auto_build_role_links_enabled() {
+            return Ok(rule_removed);
+        }
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            self.build_incremental_role_links(EventData::RemovePolicy(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rule,
+            ))?;
         }
 
         Ok(rule_removed)
@@ -201,11 +290,15 @@ impl InternalApi for Enforcer {
         }
 
         let rules_removed = self.get_mut_model().remove_policies(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging"))]
+            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
             {
                 rules.clone()
             }
-            #[cfg(all(not(feature = "watcher"), not(feature = "logging")))]
+            #[cfg(all(
+                not(feature = "watcher"),
+                not(feature = "logging"),
+                not(feature = "incremental")
+            ))]
             {
                 rules
             }
@@ -213,7 +306,16 @@ impl InternalApi for Enforcer {
 
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), rules);
+            let event_data = EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), {
+                #[cfg(feature = "incremental")]
+                {
+                    rules.clone()
+                }
+                #[cfg(not(feature = "incremental"))]
+                {
+                    rules
+                }
+            });
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
@@ -226,6 +328,21 @@ impl InternalApi for Enforcer {
                     self.emit(Event::PolicyChange, event_data);
                 }
             }
+        }
+        if sec != "g" || !self.has_auto_build_role_links_enabled() {
+            return Ok(rules_removed);
+        }
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            self.build_incremental_role_links(EventData::RemovePolicies(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rules,
+            ))?;
         }
 
         Ok(rules_removed)
@@ -253,8 +370,16 @@ impl InternalApi for Enforcer {
 
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data =
-                EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), rules.clone());
+            let event_data = EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), {
+                #[cfg(feature = "incremental")]
+                {
+                    rules.clone()
+                }
+                #[cfg(not(feature = "incremental"))]
+                {
+                    rules
+                }
+            });
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
@@ -267,6 +392,21 @@ impl InternalApi for Enforcer {
                     self.emit(Event::PolicyChange, event_data);
                 }
             }
+        }
+        if sec != "g" || !self.has_auto_build_role_links_enabled() {
+            return Ok((rules_removed, rules));
+        }
+        #[cfg(not(feature = "incremental"))]
+        {
+            self.build_role_links()?;
+        }
+        #[cfg(feature = "incremental")]
+        {
+            self.build_incremental_role_links(EventData::RemoveFilteredPolicy(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rules.clone(),
+            ))?;
         }
 
         Ok((rules_removed, rules))
