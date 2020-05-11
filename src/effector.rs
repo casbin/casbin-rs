@@ -12,7 +12,6 @@ use tokio::{sync::mpsc::Receiver, task::spawn};
 pub trait Effector: Send + Sync {
     #[allow(unused_mut)]
     async fn merge_effects(&self, expr: &str, rx: Receiver<EffectKind>) -> bool;
-    fn clone_box(&self) -> Box<dyn Effector>;
 }
 
 #[derive(PartialEq, Clone, Debug)]
@@ -22,7 +21,7 @@ pub enum EffectKind {
     Deny = 2,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default)]
 pub struct DefaultEffector;
 
 #[async_trait]
@@ -80,9 +79,5 @@ impl Effector for DefaultEffector {
                 Err(err) => panic!("effector stream error: {}", err),
             }
         }
-    }
-
-    fn clone_box(&self) -> Box<dyn Effector> {
-        Box::new(self.clone())
     }
 }

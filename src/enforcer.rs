@@ -236,10 +236,9 @@ impl Enforcer {
             }
         }
 
-        let effector = self.eft.clone_box();
         std::mem::drop(tx);
 
-        Ok(effector.merge_effects(&e_ast.value, rx).await)
+        Ok(self.eft.merge_effects(&e_ast.value, rx).await)
     }
 }
 
