@@ -154,7 +154,8 @@ impl Enforcer {
         let policies_len = policies.len();
         let scope_size = scope.len();
 
-        let (mut tx, rx) = channel(if policies_len > 0 { policies_len } else { 1 });
+        #[allow(unused_mut)]
+        let (mut tx, mut rx) = channel(if policies_len > 0 { policies_len } else { 1 });
 
         if policies_len != 0 {
             for (i, pvals) in policies.iter().enumerate() {

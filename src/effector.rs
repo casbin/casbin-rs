@@ -8,6 +8,7 @@ use tokio::{sync::mpsc::Receiver, task};
 
 #[async_trait]
 pub trait Effector: Send + Sync {
+    #[allow(unused_mut)]
     async fn merge_effects(&self, expr: &str, rx: Receiver<EffectKind>) -> bool;
     fn clone_box(&self) -> Box<dyn Effector>;
 }
@@ -24,6 +25,7 @@ pub struct DefaultEffector;
 
 #[async_trait]
 impl Effector for DefaultEffector {
+    #[allow(unused_mut)]
     async fn merge_effects(&self, expr: &str, mut rx: Receiver<EffectKind>) -> bool {
         let expr = expr.to_string();
         let fut = task::spawn(async move {
@@ -68,7 +70,7 @@ impl Effector for DefaultEffector {
             result
         });
 
-        #[cfg(feature = "runtime-async_std")]
+        #[cfg(feature = "runtime-async-std")]
         {
             fut.await
         }
