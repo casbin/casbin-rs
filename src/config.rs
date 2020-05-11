@@ -1,21 +1,4 @@
-use crate::Result;
-
-#[cfg(feature = "runtime-async-std")]
-use async_std::{
-    io::prelude::*,
-    io::{BufReader, Cursor, Error as IoError, ErrorKind},
-};
-
-#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
-use async_std::{fs::File, path::Path};
-
-#[cfg(feature = "runtime-tokio")]
-use std::{io::Cursor, path::Path};
-#[cfg(feature = "runtime-tokio")]
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind};
-
-#[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-use tokio::fs::File;
+use crate::{runtime::*, Result};
 
 use std::collections::HashMap;
 
@@ -113,7 +96,7 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    return Err(IoError::new(
+                    return Err(Error::new(
                         ErrorKind::Other,
                         format!("parse content error, line={}", line),
                     )

@@ -18,6 +18,7 @@ mod management_api;
 mod model;
 mod rbac;
 mod rbac_api;
+mod runtime;
 mod util;
 #[cfg(feature = "watcher")]
 mod watcher;

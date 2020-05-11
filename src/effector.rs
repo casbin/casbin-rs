@@ -1,10 +1,6 @@
+use crate::runtime::Receiver;
+
 use async_trait::async_trait;
-
-#[cfg(feature = "runtime-async-std")]
-use async_std::sync::Receiver;
-
-#[cfg(feature = "runtime-tokio")]
-use tokio::sync::mpsc::Receiver;
 
 #[async_trait]
 pub trait Effector: Send + Sync {

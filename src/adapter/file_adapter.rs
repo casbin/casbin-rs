@@ -2,28 +2,8 @@ use crate::{
     adapter::{Adapter, Filter},
     error::ModelError,
     model::Model,
+    runtime::*,
     Result,
-};
-
-#[cfg(feature = "runtime-async-std")]
-use async_std::{
-    fs::File,
-    io::prelude::*,
-    io::{BufReader, Error as IoError, ErrorKind},
-    path::Path,
-    prelude::*,
-};
-
-#[cfg(feature = "runtime-tokio")]
-use std::{
-    io::{Error as IoError, ErrorKind},
-    path::Path,
-};
-#[cfg(feature = "runtime-tokio")]
-use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    stream::StreamExt,
 };
 
 use async_trait::async_trait;
@@ -111,7 +91,7 @@ where
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
             return Err(
-                IoError::new(ErrorKind::Other, "save policy failed, file path is empty").into(),
+                Error::new(ErrorKind::Other, "save policy failed, file path is empty").into(),
             );
         }
 

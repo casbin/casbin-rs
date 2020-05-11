@@ -8,6 +8,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
+    runtime::{channel, spawn},
     util::{escape_eval, ESC_E},
     Result,
 };
@@ -20,12 +21,6 @@ use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::{DefaultLogger, Logger};
-
-#[cfg(feature = "runtime-async-std")]
-use async_std::sync::channel;
-
-#[cfg(feature = "runtime-tokio")]
-use tokio::sync::mpsc::channel;
 
 use async_trait::async_trait;
 use rhai::{
@@ -154,15 +149,15 @@ impl Enforcer {
         let policies_len = policies.len();
         let scope_size = scope.len();
 
-        #[allow(unused_mut)]
-        let (mut tx, mut rx) = channel(if policies_len > 0 { policies_len } else { 1 });
+        let (tx, rx) = channel(if policies_len > 0 { policies_len } else { 1 });
 
         if policies_len != 0 {
             for (i, pvals) in policies.iter().enumerate() {
                 if i != 0 {
                     scope.rewind(scope_size);
                 }
-
+                #[allow(unused_mut)]
+                let mut tx = tx.clone();
                 if p_ast.tokens.len() != pvals.len() {
                     return Err(PolicyError::UnmatchPolicyDefinition(
                         p_ast.tokens.len(),
@@ -185,11 +180,15 @@ impl Enforcer {
                 if !eval_result {
                     #[cfg(feature = "runtime-async-std")]
                     {
-                        tx.send(EffectKind::Indeterminate).await;
+                        spawn(async move {
+                            tx.send(EffectKind::Indeterminate).await;
+                        });
                     }
                     #[cfg(feature = "runtime-tokio")]
                     {
-                        tx.send(EffectKind::Indeterminate).await?;
+                        spawn(async move {
+                            tx.send(EffectKind::Indeterminate).await.unwrap();
+                        });
                     }
                     continue;
                 }
@@ -207,14 +206,20 @@ impl Enforcer {
                 };
                 #[cfg(feature = "runtime-async-std")]
                 {
-                    tx.send(eft).await;
+                    spawn(async move {
+                        tx.send(eft).await;
+                    });
                 }
                 #[cfg(feature = "runtime-tokio")]
                 {
-                    tx.send(eft).await?;
+                    spawn(async move {
+                        tx.send(eft).await.unwrap();
+                    });
                 }
             }
         } else {
+            #[allow(unused_mut)]
+            let mut tx = tx.clone();
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
@@ -228,11 +233,15 @@ impl Enforcer {
             };
             #[cfg(feature = "runtime-async-std")]
             {
-                tx.send(eft).await;
+                spawn(async move {
+                    tx.send(eft).await;
+                });
             }
             #[cfg(feature = "runtime-tokio")]
             {
-                tx.send(eft).await?;
+                spawn(async move {
+                    tx.send(eft).await.unwrap();
+                });
             }
         }
         std::mem::drop(tx);
