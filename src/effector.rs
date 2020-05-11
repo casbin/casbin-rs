@@ -1,10 +1,12 @@
 use async_trait::async_trait;
 
-#[cfg(feature = "runtime-async-std")]
-use async_std::{sync::Receiver, task};
+#[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
+use async_std::{sync::Receiver, task::spawn};
+#[cfg(all(feature = "runtime-async-std", target_arch = "wasm32"))]
+use async_std::{sync::Receiver, task::spawn_local as spawn};
 
 #[cfg(feature = "runtime-tokio")]
-use tokio::{sync::mpsc::Receiver, task};
+use tokio::{sync::mpsc::Receiver, task::spawn};
 
 #[async_trait]
 pub trait Effector: Send + Sync {
@@ -28,7 +30,7 @@ impl Effector for DefaultEffector {
     #[allow(unused_mut)]
     async fn merge_effects(&self, expr: &str, mut rx: Receiver<EffectKind>) -> bool {
         let expr = expr.to_string();
-        let fut = task::spawn(async move {
+        let fut = spawn(async move {
             let mut result = match &*expr {
                 "some(where (p_eft == allow))"
                 | "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
