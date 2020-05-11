@@ -13,7 +13,7 @@ pub trait Effector: Send + Sync {
     fn clone_box(&self) -> Box<dyn Effector>;
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum EffectKind {
     Allow = 0,
     Indeterminate = 1,
@@ -77,7 +77,10 @@ impl Effector for DefaultEffector {
 
         #[cfg(feature = "runtime-tokio")]
         {
-            fut.await.unwrap()
+            match fut.await {
+                Ok(result) => result,
+                Err(err) => panic!("effector stream error: {}", err),
+            }
         }
     }
 

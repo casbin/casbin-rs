@@ -183,20 +183,35 @@ impl Enforcer {
                     .engine
                     .eval_with_scope::<bool>(&mut scope, &expstring)?;
                 if !eval_result {
-                    tx.send(EffectKind::Indeterminate).await;
-                    continue;
-                }
-                if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    let eft = &pvals[j];
-                    if eft == "allow" {
-                        tx.send(EffectKind::Allow).await;
-                    } else if eft == "deny" {
-                        tx.send(EffectKind::Deny).await;
-                    } else {
+                    #[cfg(feature = "runtime-async-std")]
+                    {
                         tx.send(EffectKind::Indeterminate).await;
                     }
+                    #[cfg(feature = "runtime-tokio")]
+                    {
+                        tx.send(EffectKind::Indeterminate).await?;
+                    }
+                    continue;
+                }
+                let eft = if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
+                    let eft = &pvals[j];
+                    if eft == "allow" {
+                        EffectKind::Allow
+                    } else if eft == "deny" {
+                        EffectKind::Deny
+                    } else {
+                        EffectKind::Indeterminate
+                    }
                 } else {
-                    tx.send(EffectKind::Allow).await;
+                    EffectKind::Allow
+                };
+                #[cfg(feature = "runtime-async-std")]
+                {
+                    tx.send(eft).await;
+                }
+                #[cfg(feature = "runtime-tokio")]
+                {
+                    tx.send(eft).await?;
                 }
             }
         } else {
@@ -206,10 +221,18 @@ impl Enforcer {
             let eval_result = self
                 .engine
                 .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
-            if eval_result {
-                tx.send(EffectKind::Allow).await;
+            let eft = if eval_result {
+                EffectKind::Allow
             } else {
-                tx.send(EffectKind::Deny).await;
+                EffectKind::Deny
+            };
+            #[cfg(feature = "runtime-async-std")]
+            {
+                tx.send(eft).await;
+            }
+            #[cfg(feature = "runtime-tokio")]
+            {
+                tx.send(eft).await?;
             }
         }
 

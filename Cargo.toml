@@ -27,7 +27,7 @@ globset = { version = "0.4.5", optional = true }
 thiserror = "1.0.14"
 
 [features]
-default = ["runtime-async-std", "incremental"]
+default = ["runtime-tokio", "incremental"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util", "tokio/sync"]
 runtime-async-std = ["async-std/std", "async-std/unstable"]
