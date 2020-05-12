@@ -70,21 +70,19 @@ impl EffectorStream for DefaultEffectStream {
                 self.done = true;
                 self.res = false;
             }
-        } else if self.expr == "priority(p_eft) || deny" {
-            if eft != EffectKind::Indeterminate {
-                if eft == EffectKind::Allow {
-                    self.res = true;
-                } else {
-                    self.res = false;
-                }
-                self.done = true;
+        } else if self.expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
+            if eft == EffectKind::Allow {
+                self.res = true;
+            } else {
+                self.res = false;
             }
+            self.done = true;
         }
 
         if cap == self.effects.len() {
             self.done = true;
         }
 
-        return (self.done, self.res);
+        (self.done, self.res)
     }
 }
