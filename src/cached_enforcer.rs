@@ -14,6 +14,9 @@ use crate::{
     Result,
 };
 
+#[cfg(any(feature = "logging", feature = "watcher"))]
+use crate::emitter::notify_logger_and_watcher;
+
 #[cfg(feature = "watcher")]
 use crate::watcher::Watcher;
 
@@ -83,6 +86,7 @@ impl CoreApi for CachedEnforcer {
         };
 
         cached_enforcer.on(Event::ClearCache, clear_cache);
+        cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
 
         Ok(cached_enforcer)
     }
