@@ -1,11 +1,5 @@
-#[cfg(feature = "runtime-tokio")]
-use crate::effector::EffectKind;
-
 use rhai::EvalAltResult;
 use thiserror::Error;
-
-#[cfg(feature = "runtime-tokio")]
-use tokio::sync::mpsc::error::SendError;
 
 use std::{error::Error as StdError, io::Error as IoError};
 
@@ -72,10 +66,6 @@ pub enum Error {
 
     #[error("Casbin Adapter Error: `{0:?}`")]
     AdapterError(#[from] AdapterError),
-
-    #[cfg(feature = "runtime-tokio")]
-    #[error("Tokio Channel Error: `{0:?}`")]
-    ChannelError(#[from] SendError<EffectKind>),
 }
 
 #[cfg(test)]
