@@ -45,6 +45,7 @@ impl Effector for DefaultEffector {
 
 impl EffectorStream for DefaultEffectStream {
     fn current(&self) -> bool {
+        assert!(self.done);
         self.res
     }
 
@@ -78,7 +79,9 @@ impl EffectorStream for DefaultEffectStream {
                 }
                 self.done = true;
             }
-        } else if cap == self.effects.len() {
+        }
+
+        if cap == self.effects.len() {
             self.done = true;
         }
 
