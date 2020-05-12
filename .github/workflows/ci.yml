@@ -41,13 +41,13 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
+          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
       - name: Cargo Test For All Features Using tokio
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental
+          args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
 
       # - name: Cargo Check Wasm
       #   uses: actions-rs/cargo@v1
