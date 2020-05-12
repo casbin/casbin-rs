@@ -1,67 +1,87 @@
-pub trait Effector: Send + Sync {
-    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool;
-}
-
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum EffectKind {
     Allow = 0,
     Indeterminate = 1,
     Deny = 2,
 }
 
+pub trait Effector: Send + Sync {
+    fn new_stream(&self, expr: &str, cap: usize) -> Box<dyn EffectorStream>;
+}
+
+pub trait EffectorStream: Send + Sync {
+    fn merged_effect(&self) -> bool;
+    fn push_effect(&mut self, eft: EffectKind) -> (bool, bool);
+}
+
+pub struct DefaultEffectStream {
+    done: bool,
+    res: bool,
+    expr: String,
+    effects: Vec<EffectKind>,
+}
+
 #[derive(Default)]
 pub struct DefaultEffector;
 
 impl Effector for DefaultEffector {
-    fn merge_effects(&self, expr: &str, effects: Vec<EffectKind>) -> bool {
-        if expr == "some(where (p_eft == allow))" {
-            let mut result = false;
-            for eft in effects {
+    fn new_stream(&self, expr: &str, cap: usize) -> Box<dyn EffectorStream> {
+        let res = match &*expr {
+            "some(where (p_eft == allow))"
+            | "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+            | "priority(p_eft) || deny" => false,
+            "!some(where (p_eft == deny))" => true,
+            _ => panic!("unsupported effect: `{}`", expr),
+        };
+
+        Box::new(DefaultEffectStream {
+            done: false,
+            res,
+            expr: expr.to_owned(),
+            effects: Vec::with_capacity(cap),
+        })
+    }
+}
+
+impl EffectorStream for DefaultEffectStream {
+    fn merged_effect(&self) -> bool {
+        self.res
+    }
+
+    fn push_effect(&mut self, eft: EffectKind) -> (bool, bool) {
+        let cap = self.effects.capacity();
+        self.effects.push(eft);
+
+        if self.expr == "some(where (p_eft == allow))" {
+            if eft == EffectKind::Allow {
+                self.done = true;
+                self.res = true;
+            }
+        } else if self.expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
+            if eft == EffectKind::Allow {
+                self.res = true;
+            } else if eft == EffectKind::Deny {
+                self.done = true;
+                self.res = false;
+            }
+        } else if self.expr == "!some(where (p_eft == deny))" {
+            if eft == EffectKind::Deny {
+                self.done = true;
+                self.res = false;
+            }
+        } else if self.expr == "priority(p_eft) || deny" {
+            if eft != EffectKind::Indeterminate {
                 if eft == EffectKind::Allow {
-                    result = true;
-                    break;
+                    self.res = true;
+                } else {
+                    self.res = false;
                 }
             }
-
-            result
-        } else if expr == "!some(where (p_eft == deny))" {
-            let mut result = true;
-            for eft in effects {
-                if eft == EffectKind::Deny {
-                    result = false;
-                    break;
-                }
-            }
-
-            result
-        } else if expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
-            let mut result = false;
-            for eft in effects {
-                if eft == EffectKind::Allow {
-                    result = true;
-                } else if eft == EffectKind::Deny {
-                    result = false;
-                    break;
-                }
-            }
-
-            result
-        } else if expr == "priority(p_eft) || deny" {
-            let mut result = false;
-            for eft in effects {
-                if eft != EffectKind::Indeterminate {
-                    if eft == EffectKind::Allow {
-                        result = true
-                    } else {
-                        result = false
-                    }
-                    break;
-                }
-            }
-
-            result
-        } else {
-            panic!("unsupported effect: `{}`", expr);
+            self.done = true;
+        } else if cap == self.effects.len() {
+            self.done = true;
         }
+
+        return (self.done, self.res);
     }
 }

@@ -144,13 +144,14 @@ impl Enforcer {
             }
         }
 
-        let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = p_ast.get_policy();
         let policy_len = policies.len();
+        let mut eft_stream = self
+            .eft
+            .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
         let scope_size = scope.len();
 
         if policy_len != 0 {
-            policy_effects = vec![EffectKind::Deny; policy_len];
             for (i, pvals) in policies.iter().enumerate() {
                 if i != 0 {
                     scope.rewind(scope_size);
@@ -175,34 +176,31 @@ impl Enforcer {
                 let eval_result = self
                     .engine
                     .eval_with_scope::<bool>(&mut scope, &expstring)?;
-                if !eval_result {
-                    policy_effects[i] = EffectKind::Indeterminate;
-                    continue;
-                }
-                if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    let eft = &pvals[j];
-                    if eft == "allow" {
-                        policy_effects[i] = EffectKind::Allow;
-                    } else if eft == "deny" {
-                        policy_effects[i] = EffectKind::Deny;
+                let mut eft = if !eval_result {
+                    EffectKind::Indeterminate
+                } else {
+                    EffectKind::Allow
+                };
+                eft = if eft == EffectKind::Indeterminate {
+                    EffectKind::Indeterminate
+                } else if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
+                    let p_eft = &pvals[j];
+                    if p_eft == "allow" {
+                        EffectKind::Allow
+                    } else if p_eft == "deny" {
+                        EffectKind::Deny
                     } else {
-                        policy_effects[i] = EffectKind::Indeterminate;
+                        EffectKind::Indeterminate
                     }
                 } else {
-                    policy_effects[i] = EffectKind::Allow;
-                }
-                if e_ast.value == "priority(p_eft) || deny" {
-                    break;
-                } else if e_ast.value == "some(where (p_eft == allow))"
-                    && policy_effects[i] == EffectKind::Allow
-                {
-                    return Ok(true);
-                } else if policy_effects[i] == EffectKind::Deny
-                    && (e_ast.value == "!some(where (p_eft == deny))"
-                        || e_ast.value
-                            == "some(where (p_eft == allow)) && !some(where (p_eft == deny))")
-                {
-                    return Ok(false);
+                    EffectKind::Allow
+                };
+
+                match eft_stream.push_effect(eft) {
+                    (true, res) => {
+                        return Ok(res);
+                    }
+                    (false, _) => continue,
                 }
             }
         } else {
@@ -212,14 +210,21 @@ impl Enforcer {
             let eval_result = self
                 .engine
                 .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
-            if eval_result {
-                policy_effects.push(EffectKind::Allow);
+            let eft = if eval_result {
+                EffectKind::Allow
             } else {
-                policy_effects.push(EffectKind::Indeterminate);
+                EffectKind::Indeterminate
+            };
+
+            match eft_stream.push_effect(eft) {
+                (true, res) => {
+                    return Ok(res);
+                }
+                (false, _) => {}
             }
         }
 
-        Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
+        Ok(eft_stream.merged_effect())
     }
 }
 
