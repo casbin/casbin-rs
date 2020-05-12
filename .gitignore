@@ -13,3 +13,8 @@ Cargo.lock
 
 .idea/
 *.iml
+
+# bench
+output.txt
+before
+after

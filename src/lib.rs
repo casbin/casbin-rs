@@ -1,3 +1,6 @@
+#[cfg(all(not(feature = "logging"), feature = "explain"))]
+compile_error!("'logging' feature must be enabled along with 'explain' feature");
+
 mod adapter;
 #[cfg(feature = "cached")]
 mod cache;
@@ -14,6 +17,7 @@ mod enforcer;
 mod internal_api;
 #[cfg(feature = "logging")]
 mod logger;
+mod macros;
 mod management_api;
 mod model;
 mod rbac;

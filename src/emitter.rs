@@ -95,13 +95,12 @@ pub(crate) fn notify_logger_and_watcher<T: CoreApi>(e: &mut T, d: EventData) {
     }
 }
 
-#[cfg(all(feature = "cached", feature = "logging"))]
+#[cfg(feature = "cached")]
+#[allow(unused_variables)]
 pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, d: EventData) {
-    ce.get_logger().print_mgmt_log(&d);
-    ce.get_mut_cache().clear();
-}
-
-#[cfg(all(feature = "cached", not(feature = "logging")))]
-pub(crate) fn clear_cache<T: CoreApi + CachedApi>(ce: &mut T, _d: EventData) {
+    #[cfg(feature = "logging")]
+    {
+        ce.get_logger().print_mgmt_log(&d);
+    }
     ce.get_mut_cache().clear();
 }

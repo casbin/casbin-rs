@@ -224,7 +224,6 @@ fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> boo
                 }
             }
         }
-
         if &sec == "g" {
             for (i, rule) in f.g.iter().enumerate() {
                 if !rule.is_empty() && rule != &tokens[i + 1] {
@@ -232,7 +231,6 @@ fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> boo
                 }
             }
         }
-
         if !is_filtered {
             if let Some(t1) = m.get_mut_model().get_mut(&sec) {
                 if let Some(t2) = t1.get_mut(&key) {
