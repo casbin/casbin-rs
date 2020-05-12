@@ -213,7 +213,7 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-        Ok((eft_stream.current(), eft_stream.explain_indexes()))
+        Ok((eft_stream.current(), eft_stream.expl()))
     }
 }
 
