@@ -18,7 +18,8 @@ pub struct DefaultEffectStream {
     done: bool,
     res: bool,
     expr: String,
-    effects: Vec<EffectKind>,
+    idx: usize,
+    cap: usize,
 }
 
 #[derive(Default)]
@@ -38,7 +39,8 @@ impl Effector for DefaultEffector {
             done: false,
             res,
             expr: expr.to_owned(),
-            effects: Vec::with_capacity(cap),
+            cap,
+            idx: 0,
         })
     }
 }
@@ -50,8 +52,7 @@ impl EffectorStream for DefaultEffectStream {
     }
 
     fn push_effect(&mut self, eft: EffectKind) -> (bool, bool) {
-        let cap = self.effects.capacity();
-        self.effects.push(eft);
+        self.idx += 1;
 
         if self.expr == "some(where (p_eft == allow))" {
             if eft == EffectKind::Allow {
@@ -79,7 +80,7 @@ impl EffectorStream for DefaultEffectStream {
             self.done = true;
         }
 
-        if cap == self.effects.len() {
+        if self.idx == self.cap {
             self.done = true;
         }
 
