@@ -181,25 +181,19 @@ impl Enforcer {
                 } else {
                     EffectKind::Allow
                 };
-                eft = if eft == EffectKind::Indeterminate {
-                    EffectKind::Indeterminate
-                } else if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    let p_eft = &pvals[j];
-                    if p_eft == "allow" {
-                        EffectKind::Allow
-                    } else if p_eft == "deny" {
-                        EffectKind::Deny
-                    } else {
-                        EffectKind::Indeterminate
+                match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                    Some(j) if eft == EffectKind::Allow => {
+                        let p_eft = &pvals[j];
+                        if p_eft == "deny" {
+                            eft = EffectKind::Deny;
+                        } else if p_eft != "allow" {
+                            eft = EffectKind::Indeterminate;
+                        };
                     }
-                } else {
-                    EffectKind::Allow
-                };
-                match eft_stream.push_effect(eft) {
-                    (true, res) => {
-                        return Ok(res);
-                    }
-                    (false, _) => continue,
+                    _ => {}
+                }
+                if matches!(eft_stream.push_effect(eft), (true, _)) {
+                    break;
                 }
             }
         } else {

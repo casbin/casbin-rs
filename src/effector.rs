@@ -49,6 +49,7 @@ impl Effector for DefaultEffector {
 }
 
 impl EffectorStream for DefaultEffectStream {
+    #[inline]
     fn current(&self) -> bool {
         assert!(self.done);
         self.res
