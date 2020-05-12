@@ -1,0 +1,105 @@
+
+running 72 tests
+test cache::default_cache::tests::test_capacity ... ignored
+test cache::default_cache::tests::test_set_and_get ... ignored
+test cache::default_cache::tests::test_set_capacity ... ignored
+test cache::default_cache::tests::test_set_ttl ... ignored
+test cached_enforcer::tests::test_send_sync ... ignored
+test config::tests::test_from_text ... ignored
+test config::tests::test_get ... ignored
+test enforcer::tests::test_enable_auto_save ... ignored
+test enforcer::tests::test_enforcer_swap_adapter_type ... ignored
+test enforcer::tests::test_filtered_file_adapter ... ignored
+test enforcer::tests::test_get_and_set_adapter_in_mem ... ignored
+test enforcer::tests::test_get_and_set_model ... ignored
+test enforcer::tests::test_ip_match_model ... ignored
+test enforcer::tests::test_key_match_model_in_memory ... ignored
+test enforcer::tests::test_key_match_model_in_memory_deny ... ignored
+test enforcer::tests::test_keymatch_custom_model ... ignored
+test enforcer::tests::test_not_used_rbac_model_in_memory ... ignored
+test enforcer::tests::test_policy_abac ... ignored
+test enforcer::tests::test_rbac_model_in_memory ... ignored
+test enforcer::tests::test_rbac_model_in_memory_indeterminate ... ignored
+test enforcer::tests::test_role_links ... ignored
+test enforcer::tests::test_send_sync ... ignored
+test enforcer::tests::test_set_role_manager ... ignored
+test error::tests::test_send_sync ... ignored
+test management_api::tests::test_get_list ... ignored
+test management_api::tests::test_get_policy_api ... ignored
+test management_api::tests::test_modify_grouping_policies_api ... ignored
+test management_api::tests::test_modify_grouping_policy_api ... ignored
+test management_api::tests::test_modify_policies_api ... ignored
+test management_api::tests::test_modify_policy_api ... ignored
+test model::default_model::tests::test_abac ... ignored
+test model::default_model::tests::test_basic_model ... ignored
+test model::default_model::tests::test_basic_model_no_policy ... ignored
+test model::default_model::tests::test_basic_model_with_root ... ignored
+test model::default_model::tests::test_basic_model_with_root_no_policy ... ignored
+test model::default_model::tests::test_basic_model_without_resources ... ignored
+test model::default_model::tests::test_basic_model_without_users ... ignored
+test model::default_model::tests::test_rbac_model ... ignored
+test model::default_model::tests::test_rbac_model_using_in_op ... ignored
+test model::default_model::tests::test_rbac_model_with_custom_data ... ignored
+test model::default_model::tests::test_rbac_model_with_deny ... ignored
+test model::default_model::tests::test_rbac_model_with_domains ... ignored
+test model::default_model::tests::test_rbac_model_with_domains_at_runtime_mock_adapter ... ignored
+test model::default_model::tests::test_rbac_model_with_domains_runtime ... ignored
+test model::default_model::tests::test_rbac_model_with_not_deny ... ignored
+test model::default_model::tests::test_rbac_model_with_resource_roles ... ignored
+test model::function_map::tests::test_glob_match ... ignored
+test model::function_map::tests::test_ip_match ... ignored
+test model::function_map::tests::test_ip_match_panic_1 ... ignored
+test model::function_map::tests::test_ip_match_panic_2 ... ignored
+test model::function_map::tests::test_key_match ... ignored
+test model::function_map::tests::test_key_match2 ... ignored
+test model::function_map::tests::test_key_match3 ... ignored
+test model::function_map::tests::test_regex_match ... ignored
+test rbac::default_role_manager::tests::test_clear ... ignored
+test rbac::default_role_manager::tests::test_domain_role ... ignored
+test rbac::default_role_manager::tests::test_role ... ignored
+test rbac::default_role_manager::tests::test_users ... ignored
+test rbac_api::tests::test_implicit_permission_api ... ignored
+test rbac_api::tests::test_implicit_permission_api_with_domain ... ignored
+test rbac_api::tests::test_implicit_role_api ... ignored
+test rbac_api::tests::test_implicit_user_api ... ignored
+test rbac_api::tests::test_implicit_users_for_permission ... ignored
+test rbac_api::tests::test_pattern_matching_basic_role ... ignored
+test rbac_api::tests::test_pattern_matching_fn ... ignored
+test rbac_api::tests::test_pattern_matching_fn_with_domain ... ignored
+test rbac_api::tests::test_permission_api ... ignored
+test rbac_api::tests::test_role_api ... ignored
+test rbac_api::tests::test_role_api_threads ... ignored
+test util::tests::test_escape_assertion ... ignored
+test util::tests::test_escape_g_function ... ignored
+test util::tests::test_remove_comments ... ignored
+
+test result: ok. 0 passed; 0 failed; 72 ignored; 0 measured; 0 filtered out
+
+
+running 23 tests
+test b_benchmark_abac_model                      ... bench:       4,428 ns/iter (+/- 72)
+test b_benchmark_basic_model                     ... bench:       4,612 ns/iter (+/- 56)
+test b_benchmark_cached_abac_model               ... bench:         189 ns/iter (+/- 0)
+test b_benchmark_cached_key_match                ... bench:         190 ns/iter (+/- 0)
+test b_benchmark_cached_priority_model           ... bench:         185 ns/iter (+/- 0)
+test b_benchmark_cached_rbac_model               ... bench:         185 ns/iter (+/- 1)
+test b_benchmark_cached_rbac_model_large         ... bench:         186 ns/iter (+/- 1)
+test b_benchmark_cached_rbac_model_medium        ... bench:         182 ns/iter (+/- 1)
+test b_benchmark_cached_rbac_model_small         ... bench:         182 ns/iter (+/- 5)
+test b_benchmark_cached_rbac_model_with_domains  ... bench:         208 ns/iter (+/- 1)
+test b_benchmark_cached_rbac_with_deny           ... bench:         187 ns/iter (+/- 1)
+test b_benchmark_cached_rbac_with_resource_roles ... bench:         186 ns/iter (+/- 1)
+test b_benchmark_key_match                       ... bench:      16,750 ns/iter (+/- 361)
+test b_benchmark_priority_model                  ... bench:       5,371 ns/iter (+/- 29)
+test b_benchmark_raw                             ... bench:           5 ns/iter (+/- 0)
+test b_benchmark_rbac_model                      ... bench:      13,037 ns/iter (+/- 125)
+test b_benchmark_rbac_model_large                ... bench:  37,388,279 ns/iter (+/- 2,512,509)
+test b_benchmark_rbac_model_medium               ... bench:   3,665,570 ns/iter (+/- 218,839)
+test b_benchmark_rbac_model_small                ... bench:     370,577 ns/iter (+/- 1,659)
+test b_benchmark_rbac_model_with_domains         ... bench:       7,799 ns/iter (+/- 833)
+test b_benchmark_rbac_with_deny                  ... bench:      21,970 ns/iter (+/- 264)
+test b_benchmark_rbac_with_resource_roles        ... bench:       6,061 ns/iter (+/- 85)
+test b_benmark_cached_basic_model                ... bench:         185 ns/iter (+/- 1)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 23 measured; 0 filtered out
+

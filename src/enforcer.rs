@@ -433,6 +433,7 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+        #[allow(unused_variables)]
         let (res, idxs) = self.private_enforce(rvals).await?;
 
         #[cfg(feature = "logging")]
