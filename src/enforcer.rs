@@ -21,12 +21,6 @@ use crate::watcher::Watcher;
 #[cfg(feature = "logging")]
 use crate::{DefaultLogger, Logger};
 
-#[cfg(feature = "runtime-async-std")]
-use async_std::sync::channel;
-
-#[cfg(feature = "runtime-tokio")]
-use tokio::sync::mpsc::channel;
-
 use async_trait::async_trait;
 use rhai::{
     def_package,
@@ -150,14 +144,13 @@ impl Enforcer {
             }
         }
 
+        let mut policy_effects: Vec<EffectKind> = vec![];
         let policies = p_ast.get_policy();
-        let policies_len = policies.len();
+        let policy_len = policies.len();
         let scope_size = scope.len();
 
-        #[allow(unused_mut)]
-        let (mut tx, mut rx) = channel(if policies_len > 0 { policies_len } else { 1 });
-
-        if policies_len != 0 {
+        if policy_len != 0 {
+            policy_effects = vec![EffectKind::Deny; policy_len];
             for (i, pvals) in policies.iter().enumerate() {
                 if i != 0 {
                     scope.rewind(scope_size);
@@ -183,35 +176,33 @@ impl Enforcer {
                     .engine
                     .eval_with_scope::<bool>(&mut scope, &expstring)?;
                 if !eval_result {
-                    #[cfg(feature = "runtime-async-std")]
-                    {
-                        tx.send(EffectKind::Indeterminate).await;
-                    }
-                    #[cfg(feature = "runtime-tokio")]
-                    {
-                        tx.send(EffectKind::Indeterminate).await?;
-                    }
+                    policy_effects[i] = EffectKind::Indeterminate;
                     continue;
                 }
-                let eft = if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
+                if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
                     let eft = &pvals[j];
                     if eft == "allow" {
-                        EffectKind::Allow
+                        policy_effects[i] = EffectKind::Allow;
                     } else if eft == "deny" {
-                        EffectKind::Deny
+                        policy_effects[i] = EffectKind::Deny;
                     } else {
-                        EffectKind::Indeterminate
+                        policy_effects[i] = EffectKind::Indeterminate;
                     }
                 } else {
-                    EffectKind::Allow
-                };
-                #[cfg(feature = "runtime-async-std")]
-                {
-                    tx.send(eft).await;
+                    policy_effects[i] = EffectKind::Allow;
                 }
-                #[cfg(feature = "runtime-tokio")]
+                if e_ast.value == "priority(p_eft) || deny" {
+                    break;
+                } else if e_ast.value == "some(where (p_eft == allow))"
+                    && policy_effects[i] == EffectKind::Allow
                 {
-                    tx.send(eft).await?;
+                    return Ok(true);
+                } else if policy_effects[i] == EffectKind::Deny
+                    && (e_ast.value == "!some(where (p_eft == deny))"
+                        || e_ast.value
+                            == "some(where (p_eft == allow)) && !some(where (p_eft == deny))")
+                {
+                    return Ok(false);
                 }
             }
         } else {
@@ -221,25 +212,14 @@ impl Enforcer {
             let eval_result = self
                 .engine
                 .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
-            let eft = if eval_result {
-                EffectKind::Allow
+            if eval_result {
+                policy_effects.push(EffectKind::Allow);
             } else {
-                EffectKind::Deny
-            };
-            #[cfg(feature = "runtime-async-std")]
-            {
-                tx.send(eft).await;
-            }
-            #[cfg(feature = "runtime-tokio")]
-            {
-                tx.send(eft).await?;
+                policy_effects.push(EffectKind::Indeterminate);
             }
         }
 
-        let effector = self.eft.clone_box();
-        std::mem::drop(tx);
-
-        Ok(effector.merge_effects(&e_ast.value, rx).await)
+        Ok(self.eft.merge_effects(&e_ast.value, policy_effects))
     }
 }
 
