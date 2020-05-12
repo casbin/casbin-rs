@@ -10,7 +10,7 @@ pub trait Effector: Send + Sync {
 }
 
 pub trait EffectorStream: Send + Sync {
-    fn merged_effect(&self) -> bool;
+    fn current(&self) -> bool;
     fn push_effect(&mut self, eft: EffectKind) -> (bool, bool);
 }
 
@@ -44,7 +44,7 @@ impl Effector for DefaultEffector {
 }
 
 impl EffectorStream for DefaultEffectStream {
-    fn merged_effect(&self) -> bool {
+    fn current(&self) -> bool {
         self.res
     }
 
@@ -76,8 +76,8 @@ impl EffectorStream for DefaultEffectStream {
                 } else {
                     self.res = false;
                 }
+                self.done = true;
             }
-            self.done = true;
         } else if cap == self.effects.len() {
             self.done = true;
         }

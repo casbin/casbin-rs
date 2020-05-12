@@ -195,7 +195,6 @@ impl Enforcer {
                 } else {
                     EffectKind::Allow
                 };
-
                 match eft_stream.push_effect(eft) {
                     (true, res) => {
                         return Ok(res);
@@ -215,16 +214,10 @@ impl Enforcer {
             } else {
                 EffectKind::Indeterminate
             };
-
-            match eft_stream.push_effect(eft) {
-                (true, res) => {
-                    return Ok(res);
-                }
-                (false, _) => {}
-            }
+            eft_stream.push_effect(eft);
         }
 
-        Ok(eft_stream.merged_effect())
+        Ok(eft_stream.current())
     }
 }
 
