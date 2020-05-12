@@ -69,7 +69,7 @@ impl EffectorStream for DefaultEffectStream {
     }
 
     fn push_effect(&mut self, eft: EffectKind) -> bool {
-        let has_policy = self.cap != 1;
+        let has_policy = self.cap > 1;
 
         if self.expr == "some(where (p_eft == allow))" {
             if eft == EffectKind::Allow {
