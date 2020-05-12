@@ -11,7 +11,8 @@ pub trait Effector: Send + Sync {
 
 pub trait EffectorStream: Send + Sync {
     fn current(&self) -> bool;
-    fn push_effect(&mut self, eft: EffectKind) -> (bool, bool);
+    fn explain_indexes(&self) -> &[usize];
+    fn push_effect(&mut self, eft: EffectKind) -> bool;
 }
 
 #[derive(Clone)]
@@ -21,6 +22,7 @@ pub struct DefaultEffectStream {
     expr: String,
     idx: usize,
     cap: usize,
+    explain: Vec<usize>,
 }
 
 #[derive(Default)]
@@ -44,6 +46,7 @@ impl Effector for DefaultEffector {
             expr: expr.to_owned(),
             cap,
             idx: 0,
+            explain: Vec::with_capacity(10),
         })
     }
 }
@@ -55,23 +58,47 @@ impl EffectorStream for DefaultEffectStream {
         self.res
     }
 
-    fn push_effect(&mut self, eft: EffectKind) -> (bool, bool) {
+    #[inline]
+    fn explain_indexes(&self) -> &[usize] {
+        assert!(self.done);
+        &self.explain
+    }
+
+    fn push_effect(&mut self, eft: EffectKind) -> bool {
+        let has_policy = self.cap != 1;
+
         if self.expr == "some(where (p_eft == allow))" {
             if eft == EffectKind::Allow {
                 self.done = true;
                 self.res = true;
+
+                if has_policy {
+                    self.explain.push(self.idx);
+                }
             }
         } else if self.expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
             if eft == EffectKind::Allow {
                 self.res = true;
+
+                if has_policy {
+                    self.explain.push(self.idx);
+                }
             } else if eft == EffectKind::Deny {
                 self.done = true;
                 self.res = false;
+
+                if has_policy {
+                    self.explain.push(self.idx);
+                }
             }
         } else if self.expr == "!some(where (p_eft == deny))" {
             if eft == EffectKind::Deny {
                 self.done = true;
                 self.res = false;
+
+                if has_policy {
+                    self.explain.push(self.idx);
+                }
             }
         } else if self.expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
             if eft == EffectKind::Allow {
@@ -80,14 +107,19 @@ impl EffectorStream for DefaultEffectStream {
                 self.res = false;
             }
             self.done = true;
+
+            if has_policy {
+                self.explain.push(self.idx);
+            }
         }
 
-        self.idx += 1;
-
-        if self.idx == self.cap {
+        if self.idx + 1 == self.cap {
             self.done = true;
+            self.idx = self.cap;
+        } else {
+            self.idx += 1;
         }
 
-        (self.done, self.res)
+        self.done
     }
 }

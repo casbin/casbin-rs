@@ -192,7 +192,7 @@ impl Enforcer {
                     }
                     _ => {}
                 }
-                if matches!(eft_stream.push_effect(eft), (true, _)) {
+                if eft_stream.push_effect(eft) {
                     break;
                 }
             }
