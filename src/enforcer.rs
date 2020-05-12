@@ -216,7 +216,6 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-
         Ok(eft_stream.current())
     }
 }

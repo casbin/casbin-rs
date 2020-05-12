@@ -14,6 +14,7 @@ pub trait EffectorStream: Send + Sync {
     fn push_effect(&mut self, eft: EffectKind) -> (bool, bool);
 }
 
+#[derive(Clone)]
 pub struct DefaultEffectStream {
     done: bool,
     res: bool,
@@ -27,6 +28,8 @@ pub struct DefaultEffector;
 
 impl Effector for DefaultEffector {
     fn new_stream(&self, expr: &str, cap: usize) -> Box<dyn EffectorStream> {
+        assert!(cap > 0);
+
         let res = match &*expr {
             "some(where (p_eft == allow))"
             | "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
@@ -52,8 +55,6 @@ impl EffectorStream for DefaultEffectStream {
     }
 
     fn push_effect(&mut self, eft: EffectKind) -> (bool, bool) {
-        self.idx += 1;
-
         if self.expr == "some(where (p_eft == allow))" {
             if eft == EffectKind::Allow {
                 self.done = true;
@@ -79,6 +80,8 @@ impl EffectorStream for DefaultEffectStream {
             }
             self.done = true;
         }
+
+        self.idx += 1;
 
         if self.idx == self.cap {
             self.done = true;
