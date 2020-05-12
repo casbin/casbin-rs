@@ -14,8 +14,10 @@ use async_trait::async_trait;
 use std::sync::{Arc, RwLock};
 
 #[async_trait]
-pub trait CoreApi: Sized + Send + Sync {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self>;
+pub trait CoreApi: Send + Sync {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self>
+    where
+        Self: Sized;
     fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool);
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;

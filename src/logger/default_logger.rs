@@ -56,6 +56,7 @@ impl Logger for DefaultLogger {
         if !self.is_enabled() {
             return;
         }
+
         info!("Explain: {:?}", rules);
     }
 }

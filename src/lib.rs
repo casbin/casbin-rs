@@ -17,6 +17,7 @@ mod enforcer;
 mod internal_api;
 #[cfg(feature = "logging")]
 mod logger;
+mod macros;
 mod management_api;
 mod model;
 mod rbac;

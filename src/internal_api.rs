@@ -1,7 +1,6 @@
 use crate::{
     core_api::CoreApi,
     emitter::{Event, EventEmitter},
-    enforcer::Enforcer,
     Result,
 };
 
@@ -12,9 +11,6 @@ use crate::{
     feature = "incremental"
 ))]
 use crate::emitter::EventData;
-
-#[cfg(feature = "cached")]
-use crate::cached_enforcer::CachedEnforcer;
 
 use async_trait::async_trait;
 
@@ -54,7 +50,10 @@ pub trait InternalApi: CoreApi + EventEmitter<Event> {
 }
 
 #[async_trait]
-impl InternalApi for Enforcer {
+impl<T> InternalApi for T
+where
+    T: CoreApi + EventEmitter<Event>,
+{
     async fn add_policy_internal(
         &mut self,
         sec: &str,
@@ -107,6 +106,12 @@ impl InternalApi for Enforcer {
                 if rule_added {
                     self.emit(Event::PolicyChange, event_data);
                 }
+            }
+        }
+        #[cfg(feature = "cached")]
+        {
+            if rule_added {
+                self.emit(Event::ClearCache, EventData::ClearCache);
             }
         }
         if sec != "g" || !self.has_auto_build_role_links_enabled() {
@@ -182,6 +187,12 @@ impl InternalApi for Enforcer {
                 }
             }
         }
+        #[cfg(feature = "cached")]
+        {
+            if rules_added {
+                self.emit(Event::ClearCache, EventData::ClearCache);
+            }
+        }
         if sec != "g" || !self.has_auto_build_role_links_enabled() {
             return Ok(rules_added);
         }
@@ -255,6 +266,12 @@ impl InternalApi for Enforcer {
                 }
             }
         }
+        #[cfg(feature = "cached")]
+        {
+            if rule_removed {
+                self.emit(Event::ClearCache, EventData::ClearCache);
+            }
+        }
         if sec != "g" || !self.has_auto_build_role_links_enabled() {
             return Ok(rule_removed);
         }
@@ -303,7 +320,6 @@ impl InternalApi for Enforcer {
                 rules
             }
         });
-
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
             let event_data = EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), {
@@ -327,6 +343,12 @@ impl InternalApi for Enforcer {
                 if rules_removed {
                     self.emit(Event::PolicyChange, event_data);
                 }
+            }
+        }
+        #[cfg(feature = "cached")]
+        {
+            if rules_removed {
+                self.emit(Event::ClearCache, EventData::ClearCache);
             }
         }
         if sec != "g" || !self.has_auto_build_role_links_enabled() {
@@ -367,7 +389,6 @@ impl InternalApi for Enforcer {
         let (rules_removed, rules) =
             self.get_mut_model()
                 .remove_filtered_policy(sec, ptype, field_index, field_values);
-
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
             let event_data =
@@ -385,6 +406,12 @@ impl InternalApi for Enforcer {
                 }
             }
         }
+        #[cfg(feature = "cached")]
+        {
+            if rules_removed {
+                self.emit(Event::ClearCache, EventData::ClearCache);
+            }
+        }
         if sec != "g" || !self.has_auto_build_role_links_enabled() {
             return Ok((rules_removed, rules));
         }
@@ -400,103 +427,6 @@ impl InternalApi for Enforcer {
                 rules.clone(),
             ))?;
         }
-
-        Ok((rules_removed, rules))
-    }
-}
-
-#[cfg(feature = "cached")]
-#[async_trait]
-impl InternalApi for CachedEnforcer {
-    async fn add_policy_internal(
-        &mut self,
-        sec: &str,
-        ptype: &str,
-        rule: Vec<String>,
-    ) -> Result<bool> {
-        let rule_added = self.enforcer.add_policy_internal(sec, ptype, rule).await?;
-        if !rule_added {
-            return Ok(false);
-        }
-
-        self.emit(Event::ClearCache, EventData::ClearCache);
-
-        Ok(rule_added)
-    }
-
-    async fn add_policies_internal(
-        &mut self,
-        sec: &str,
-        ptype: &str,
-        rules: Vec<Vec<String>>,
-    ) -> Result<bool> {
-        let all_added = self
-            .enforcer
-            .add_policies_internal(sec, ptype, rules)
-            .await?;
-        if !all_added {
-            return Ok(false);
-        }
-
-        self.emit(Event::ClearCache, EventData::ClearCache);
-
-        Ok(all_added)
-    }
-
-    async fn remove_policies_internal(
-        &mut self,
-        sec: &str,
-        ptype: &str,
-        rules: Vec<Vec<String>>,
-    ) -> Result<bool> {
-        let all_removed = self
-            .enforcer
-            .remove_policies_internal(sec, ptype, rules)
-            .await?;
-        if !all_removed {
-            return Ok(false);
-        }
-
-        self.emit(Event::ClearCache, EventData::ClearCache);
-
-        Ok(all_removed)
-    }
-
-    async fn remove_policy_internal(
-        &mut self,
-        sec: &str,
-        ptype: &str,
-        rule: Vec<String>,
-    ) -> Result<bool> {
-        let rule_removed = self
-            .enforcer
-            .remove_policy_internal(sec, ptype, rule)
-            .await?;
-        if !rule_removed {
-            return Ok(false);
-        }
-
-        self.emit(Event::ClearCache, EventData::ClearCache);
-
-        Ok(rule_removed)
-    }
-
-    async fn remove_filtered_policy_internal(
-        &mut self,
-        sec: &str,
-        ptype: &str,
-        field_index: usize,
-        field_values: Vec<String>,
-    ) -> Result<(bool, Vec<Vec<String>>)> {
-        let (rules_removed, rules) = self
-            .enforcer
-            .remove_filtered_policy_internal(sec, ptype, field_index, field_values)
-            .await?;
-        if !rules_removed {
-            return Ok((false, vec![]));
-        }
-
-        self.emit(Event::ClearCache, EventData::ClearCache);
 
         Ok((rules_removed, rules))
     }

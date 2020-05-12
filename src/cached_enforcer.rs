@@ -7,6 +7,8 @@ use crate::{
     effector::Effector,
     emitter::{clear_cache, Event, EventData, EventEmitter},
     enforcer::Enforcer,
+    error::ModelError,
+    get_or_err,
     model::Model,
     rbac::RoleManager,
     Result,
@@ -49,6 +51,22 @@ impl EventEmitter<Event> for CachedEnforcer {
                 cb(self, d.clone())
             }
         }
+    }
+}
+
+impl CachedEnforcer {
+    pub(crate) async fn private_enforce<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+    ) -> Result<(bool, bool, Option<Vec<usize>>)> {
+        let cache_key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        Ok(if let Some(result) = self.cache.get(&cache_key) {
+            (*result, true, None)
+        } else {
+            let (result, idxs) = self.enforcer.private_enforce(rvals).await?;
+            self.cache.set(cache_key.clone(), result);
+            (result, false, idxs)
+        })
     }
 }
 
@@ -154,43 +172,30 @@ impl CoreApi for CachedEnforcer {
     }
 
     async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
-        let key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
         #[allow(unused_variables)]
-        let log_enabled = {
-            #[cfg(feature = "logging")]
-            {
-                if self.enforcer.get_logger().is_enabled() {
-                    self.enforcer.enable_log(false);
-                    true
-                } else {
-                    false
-                }
-            }
-
-            #[cfg(not(feature = "logging"))]
-            {
-                false
-            }
-        };
-
-        #[allow(unused_variables)]
-        let (res, is_cached) = if let Some(result) = self.cache.get(&key) {
-            (*result, true)
-        } else {
-            let result = self.enforcer.enforce(rvals).await?;
-            self.cache.set(key.clone(), result);
-            (result, false)
-        };
-
+        let (authorized, cached, idxs) = self.private_enforce(rvals).await?;
         #[cfg(feature = "logging")]
         {
-            self.enforcer.enable_log(log_enabled);
-            self.enforcer
-                .get_logger()
-                .print_enforce_log(key, res, is_cached);
+            self.enforcer.get_logger().print_enforce_log(
+                rvals.iter().map(|x| String::from(x.as_ref())).collect(),
+                authorized,
+                cached,
+            );
+
+            #[cfg(feature = "explain")]
+            {
+                if let Some(idxs) = idxs {
+                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                    let rules: Vec<&Vec<String>> = idxs
+                        .into_iter()
+                        .filter_map(|y| all_rules.get_index(y))
+                        .collect();
+                    self.enforcer.get_logger().print_explain_log(rules);
+                }
+            }
         }
 
-        Ok(res)
+        Ok(authorized)
     }
 
     /// CachedEnforcer should use `enforce_mut` instead so that

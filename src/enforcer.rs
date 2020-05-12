@@ -4,7 +4,8 @@ use crate::{
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{Event, EventData, EventEmitter},
-    error::{Error, ModelError, PolicyError, RequestError},
+    error::{ModelError, PolicyError, RequestError},
+    generate_g_function, get_or_err,
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
@@ -25,7 +26,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Array, Engine, RegisterFn, Scope,
+    Engine, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -39,40 +40,6 @@ use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-
-macro_rules! get_or_err {
-    ($this:ident, $key:expr, $err:expr, $msg:expr) => {{
-        $this
-            .model
-            .get_model()
-            .get($key)
-            .ok_or_else(|| Error::from($err(format!("Missing {} definition in conf file", $msg))))?
-            .get($key)
-            .ok_or_else(|| Error::from($err(format!("Missing {} section in conf file", $msg))))?
-    }};
-}
-
-macro_rules! generate_g_function {
-    ($rm:ident) => {{
-        let cb = move |args: Array| -> bool {
-            let args = args
-                .into_iter()
-                .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
-                .collect::<Vec<String>>();
-
-            if args.len() == 3 {
-                $rm.write()
-                    .unwrap()
-                    .has_link(&args[0], &args[1], Some(&args[2]))
-            } else if args.len() == 2 {
-                $rm.write().unwrap().has_link(&args[0], &args[1], None)
-            } else {
-                panic!("g function supports at most 3 parameters");
-            }
-        };
-        Box::new(cb)
-    }};
-}
 
 type EventCallback = fn(&mut Enforcer, EventData);
 
@@ -115,7 +82,7 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    async fn private_enforce<S: AsRef<str> + Send + Sync>(
+    pub(crate) async fn private_enforce<S: AsRef<str> + Send + Sync>(
         &self,
         rvals: &[S],
     ) -> Result<(bool, Option<Vec<usize>>)> {
@@ -138,8 +105,6 @@ impl Enforcer {
 
         for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
             if rval.as_ref().starts_with('{') && rval.as_ref().ends_with('}') {
-                // if r_sub, r_obj or r_act is a json string, then we need to parse it into an object
-                // https://casbin.org/docs/en/abac#how-to-use-abac
                 let scope_exp = format!("const {} = #{};", rtoken, rval.as_ref());
                 self.engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
             } else {
