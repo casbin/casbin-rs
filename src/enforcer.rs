@@ -115,9 +115,12 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    async fn private_enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+    async fn private_enforce<S: AsRef<str> + Send + Sync>(
+        &self,
+        rvals: &[S],
+    ) -> Result<(bool, Option<Vec<usize>>)> {
         if !self.enabled {
-            return Ok(true);
+            return Ok((true, None));
         }
 
         let mut scope: Scope = Scope::new();
@@ -181,25 +184,19 @@ impl Enforcer {
                 } else {
                     EffectKind::Allow
                 };
-                eft = if eft == EffectKind::Indeterminate {
-                    EffectKind::Indeterminate
-                } else if let Some(j) = p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    let p_eft = &pvals[j];
-                    if p_eft == "allow" {
-                        EffectKind::Allow
-                    } else if p_eft == "deny" {
-                        EffectKind::Deny
-                    } else {
-                        EffectKind::Indeterminate
+                match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                    Some(j) if eft == EffectKind::Allow => {
+                        let p_eft = &pvals[j];
+                        if p_eft == "deny" {
+                            eft = EffectKind::Deny;
+                        } else if p_eft != "allow" {
+                            eft = EffectKind::Indeterminate;
+                        };
                     }
-                } else {
-                    EffectKind::Allow
-                };
-                match eft_stream.push_effect(eft) {
-                    (true, res) => {
-                        return Ok(res);
-                    }
-                    (false, _) => continue,
+                    _ => {}
+                }
+                if eft_stream.push_effect(eft) {
+                    break;
                 }
             }
         } else {
@@ -216,8 +213,7 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-
-        Ok(eft_stream.current())
+        Ok((eft_stream.current(), eft_stream.explain_indexes()))
     }
 }
 
@@ -437,7 +433,8 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
-        let res = self.private_enforce(rvals).await?;
+        #[allow(unused_variables)]
+        let (res, idxs) = self.private_enforce(rvals).await?;
 
         #[cfg(feature = "logging")]
         {
@@ -446,6 +443,18 @@ impl CoreApi for Enforcer {
                 res,
                 false,
             );
+
+            #[cfg(feature = "explain")]
+            {
+                if let Some(idxs) = idxs {
+                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                    let rules: Vec<&Vec<String>> = idxs
+                        .into_iter()
+                        .filter_map(|y| all_rules.get_index(y))
+                        .collect();
+                    self.logger.print_explain_log(rules);
+                }
+            }
         }
 
         Ok(res)
