@@ -49,4 +49,8 @@ impl Logger for DefaultLogger {
 
         info!("{}", event_data);
     }
+
+    fn print_explain_log(&self, rules: Vec<&Vec<String>>) {
+        info!("Explain: {:?}", rules);
+    }
 }

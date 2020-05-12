@@ -115,9 +115,12 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    async fn private_enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+    async fn private_enforce<S: AsRef<str> + Send + Sync>(
+        &self,
+        rvals: &[S],
+    ) -> Result<(bool, Option<Vec<usize>>)> {
         if !self.enabled {
-            return Ok(true);
+            return Ok((true, None));
         }
 
         let mut scope: Scope = Scope::new();
@@ -210,7 +213,7 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-        Ok(eft_stream.current())
+        Ok((eft_stream.current(), eft_stream.explain_indexes()))
     }
 }
 
@@ -430,7 +433,7 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
-        let res = self.private_enforce(rvals).await?;
+        let (res, idxs) = self.private_enforce(rvals).await?;
 
         #[cfg(feature = "logging")]
         {
@@ -439,6 +442,18 @@ impl CoreApi for Enforcer {
                 res,
                 false,
             );
+
+            #[cfg(feature = "explain")]
+            {
+                if let Some(idxs) = idxs {
+                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                    let rules: Vec<&Vec<String>> = idxs
+                        .into_iter()
+                        .filter_map(|y| all_rules.get_index(y))
+                        .collect();
+                    self.logger.print_explain_log(rules);
+                }
+            }
         }
 
         Ok(res)

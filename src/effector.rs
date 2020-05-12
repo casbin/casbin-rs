@@ -11,7 +11,7 @@ pub trait Effector: Send + Sync {
 
 pub trait EffectorStream: Send + Sync {
     fn current(&self) -> bool;
-    fn explain_indexes(&self) -> &[usize];
+    fn explain_indexes(&self) -> Option<Vec<usize>>;
     fn push_effect(&mut self, eft: EffectKind) -> bool;
 }
 
@@ -59,9 +59,13 @@ impl EffectorStream for DefaultEffectStream {
     }
 
     #[inline]
-    fn explain_indexes(&self) -> &[usize] {
+    fn explain_indexes(&self) -> Option<Vec<usize>> {
         assert!(self.done);
-        &self.explain
+        if self.explain.is_empty() {
+            None
+        } else {
+            Some(self.explain.clone())
+        }
     }
 
     fn push_effect(&mut self, eft: EffectKind) -> bool {
