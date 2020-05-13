@@ -10,7 +10,7 @@ pub trait Effector: Send + Sync {
 }
 
 pub trait EffectorStream: Send + Sync {
-    fn current(&self) -> bool;
+    fn next(&self) -> bool;
     fn expl(&self) -> Option<Vec<usize>>;
     fn push_effect(&mut self, eft: EffectKind) -> bool;
 }
@@ -53,7 +53,7 @@ impl Effector for DefaultEffector {
 
 impl EffectorStream for DefaultEffectStream {
     #[inline]
-    fn current(&self) -> bool {
+    fn next(&self) -> bool {
         assert!(self.done);
         self.res
     }

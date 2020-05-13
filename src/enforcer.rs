@@ -178,7 +178,7 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-        Ok((eft_stream.current(), eft_stream.expl()))
+        Ok((eft_stream.next(), eft_stream.expl()))
     }
 }
 
@@ -417,7 +417,7 @@ impl CoreApi for Enforcer {
                         .into_iter()
                         .filter_map(|y| all_rules.get_index(y))
                         .collect();
-                    self.logger.print_explain_log(rules);
+                    self.logger.print_expl_log(rules);
                 }
             }
         }
@@ -496,6 +496,11 @@ impl CoreApi for Enforcer {
     #[inline]
     fn enable_enforce(&mut self, enabled: bool) {
         self.enabled = enabled;
+
+        #[cfg(feature = "logging")]
+        {
+            self.logger.print_status_log(enabled);
+        }
     }
 
     #[cfg(feature = "logging")]
