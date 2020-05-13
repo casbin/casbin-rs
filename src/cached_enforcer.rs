@@ -7,8 +7,6 @@ use crate::{
     effector::Effector,
     emitter::{clear_cache, Event, EventData, EventEmitter},
     enforcer::Enforcer,
-    error::ModelError,
-    get_or_err,
     model::Model,
     rbac::RoleManager,
     Result,
@@ -22,6 +20,9 @@ use crate::watcher::Watcher;
 
 #[cfg(feature = "logging")]
 use crate::logger::Logger;
+
+#[cfg(feature = "explain")]
+use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
 
@@ -86,7 +87,10 @@ impl CoreApi for CachedEnforcer {
         };
 
         cached_enforcer.on(Event::ClearCache, clear_cache);
-        cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
+        #[cfg(any(feature = "logging", feature = "watcher"))]
+        {
+            cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
+        }
 
         Ok(cached_enforcer)
     }
