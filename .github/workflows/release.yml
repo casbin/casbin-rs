@@ -24,8 +24,27 @@ jobs:
         with:
           node-version: 12
 
-      - name: Release
+      - name: Install Semantic
+        run: npx semantic-release
+
+      - name:
+        uses: actions/checkout@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch origin
+          sed -i -e "s/^version = .*/version = \"$(git describe --abbrev=0 --tags | tr -d v)\"/" Cargo.toml
+          git add Cargo.toml
+          git commit -m "bump version"
+
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cargo Login
+        env:
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: cargo login $CARGO_TOKEN && npx semantic-release && cargo publish
+        run: |
+          cargo login $CARGO_TOKEN
+          cargo publish
