@@ -1,6 +1,6 @@
 use crate::{emitter::EventData, logger::Logger};
 
-use log::{error, info};
+use log::{error, info, warn};
 
 #[derive(Default)]
 pub struct DefaultLogger {
@@ -52,11 +52,23 @@ impl Logger for DefaultLogger {
         info!("{}", d);
     }
 
-    fn print_explain_log(&self, rules: Vec<&Vec<String>>) {
+    fn print_expl_log(&self, rules: Vec<&Vec<String>>) {
         if !self.is_enabled() {
             return;
         }
 
         info!("Explain: {:?}", rules);
+    }
+
+    fn print_status_log(&self, enabled: bool) {
+        if !self.is_enabled() {
+            return;
+        }
+
+        if enabled {
+            info!("Casbin has been enabled!");
+        } else {
+            warn!("Casbin has been disabled!");
+        }
     }
 }
