@@ -1,5 +1,4 @@
-name: Release
-on:
+name: Release on:
   push:
     branches:
       - master
@@ -25,9 +24,11 @@ jobs:
           node-version: 12
 
       - name: Install Semantic
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
-      - name:
+      - name: Update Cargo.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
