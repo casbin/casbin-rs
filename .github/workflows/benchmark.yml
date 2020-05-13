@@ -3,6 +3,9 @@ on:
   push:
     branches:
       - master
+  pull_request:
+    branches: [master]
+    types: [opened, reopened, synchronize]
 
 jobs:
   benchmark:
@@ -28,3 +31,4 @@ jobs:
           comment-always: true
           fail-on-alert: true
           alert-comment-cc-users: '@GopherJ'
+          save-on-pr: false
