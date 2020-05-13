@@ -18,4 +18,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: cargo login $CARGO_TOKEN && npx semantic-release
+        run: npm install -g @semantic-release/exec && cargo login $CARGO_TOKEN && npx semantic-release
