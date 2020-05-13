@@ -30,13 +30,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
-      - name: Fetch Upstream Tags
-        uses: actions/checkout@v1
-
       - name: Update Cargo.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          git config --global user.name "GopherJ"
+          git config --global user.email "cocathecafe@gmail.com"
+          git fetch origin
           sed -i -e "s/^version = .*/version = \"$(git describe --abbrev=0 --tags | tr -d v)\"/" Cargo.toml
           git add Cargo.toml
           git commit -m "bump version"
