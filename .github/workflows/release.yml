@@ -1,45 +1,23 @@
-name: Auto Release
-
+name: Release
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
-
+    branches:
+      - master
 jobs:
   release:
-    name: Auto Release by Tags
+    name: Release
     runs-on: ubuntu-18.04
-
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@master
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Checkout
+        uses: actions/checkout@v1
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
         with:
-          profile: minimal
-          toolchain: stable
-          default: true
-
-      - name: Cargo Login
-        uses: actions-rs/cargo@v1
-        with:
-          command: login
-          args: -- ${{ secrets.CARGO_TOKEN }}
-
-      - name: Cargo Publish
-        uses: actions-rs/cargo@v1
-        with:
-          command: publish
-
-      - name: GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+          node-version: 12
+      - name: Install dependencies
+        run: npm ci
+      - name: Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
+        run: cargo login $CARGO_TOKEN && npx semantic-release
