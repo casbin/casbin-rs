@@ -28,7 +28,6 @@ jobs:
         run: npx semantic-release
 
       - name:
-        uses: actions/checkout@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
