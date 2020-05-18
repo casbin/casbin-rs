@@ -14,7 +14,7 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 
 [dependencies]
 regex = "1.3.1"
-rhai = { version = "0.13.0", default-features = false, features = ["sync", "only_i32", "no_function", "no_float"] }
+rhai = { version = "0.14.1", default-features = false, features = ["sync", "only_i32", "no_function", "no_float"] }
 ip_network = { version = "0.3.4", optional = true }
 ttl_cache = { version = "0.5.1", optional = true }
 lazy_static = "1.4.0"
