@@ -105,8 +105,8 @@ impl Enforcer {
 
         for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
             if rval.as_ref().starts_with('{') && rval.as_ref().ends_with('}') {
-                let scope_exp = format!("const {} = #{};", rtoken, rval.as_ref());
-                self.engine.eval_with_scope::<()>(&mut scope, &scope_exp)?;
+                let map = self.engine.parse_json(rval.as_ref(), false)?;
+                scope.push_constant(rtoken, map);
             } else {
                 scope.push_constant(rtoken, rval.as_ref().to_owned());
             }
@@ -143,7 +143,7 @@ impl Enforcer {
 
                 let eval_result = self
                     .engine
-                    .eval_with_scope::<bool>(&mut scope, &expstring)?;
+                    .eval_expression_with_scope::<bool>(&mut scope, &expstring)?;
                 let mut eft = if !eval_result {
                     EffectKind::Indeterminate
                 } else {
@@ -170,7 +170,7 @@ impl Enforcer {
             }
             let eval_result = self
                 .engine
-                .eval_with_scope::<bool>(&mut scope, &m_ast.value)?;
+                .eval_expression_with_scope::<bool>(&mut scope, &m_ast.value)?;
             let eft = if eval_result {
                 EffectKind::Allow
             } else {
