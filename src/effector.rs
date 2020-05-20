@@ -61,6 +61,10 @@ impl EffectorStream for DefaultEffectStream {
     #[inline]
     fn expl(&self) -> Option<Vec<usize>> {
         assert!(self.done);
+        #[cfg(feature = "logging")]
+        #[cfg(feature = "explain")]
+        return None;
+
         if self.expl.is_empty() {
             None
         } else {
