@@ -131,10 +131,8 @@ impl Enforcer {
             .map_err(|err| Box::<EvalAltResult>::from(*err))?;
 
         if policy_len != 0 {
-            for (i, pvals) in policies.iter().enumerate() {
-                if i != 0 {
-                    scope.rewind(scope_size);
-                }
+            for pvals in policies.iter() {
+                scope.rewind(scope_size);
 
                 if p_ast.tokens.len() != pvals.len() {
                     return Err(PolicyError::UnmatchPolicyDefinition(
@@ -150,22 +148,23 @@ impl Enforcer {
                 let eval_result = self
                     .engine
                     .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
-                let mut eft = if !eval_result {
+                let eft = if !eval_result {
                     EffectKind::Indeterminate
                 } else {
-                    EffectKind::Allow
-                };
-                match p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    Some(j) if eft == EffectKind::Allow => {
-                        let p_eft = &pvals[j];
-                        if p_eft == "deny" {
-                            eft = EffectKind::Deny;
-                        } else if p_eft != "allow" {
-                            eft = EffectKind::Indeterminate;
-                        };
+                    match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                        Some(j) => {
+                            let p_eft = &pvals[j];
+                            if p_eft == "deny" {
+                                EffectKind::Deny
+                            } else if p_eft != "allow" {
+                                EffectKind::Indeterminate
+                            } else {
+                                EffectKind::Allow
+                            }
+                        }
+                        _ => EffectKind::Allow,
                     }
-                    _ => {}
-                }
+                };
                 if eft_stream.push_effect(eft) {
                     break;
                 }
