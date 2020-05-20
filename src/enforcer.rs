@@ -1,3 +1,5 @@
+use lazy_static::*;
+
 use crate::{
     adapter::{Adapter, Filter},
     convert::{TryIntoAdapter, TryIntoModel},
@@ -9,7 +11,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::{escape_eval, ESC_E},
+    util::{escape_assertion, escape_eval, ESC_E},
     Result,
 };
 
@@ -26,7 +28,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, RegisterFn, Scope,
+    Engine, EvalAltResult, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -34,9 +36,14 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     LogicPackage::init(lib);
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
+
+    lib.set_fn_1("escape_assertion", |s: String| {
+        Ok(escape_assertion(s))
+    });
 });
 
 use std::{
+    borrow::Cow,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -119,6 +126,17 @@ impl Enforcer {
             .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
         let scope_size = scope.len();
 
+        let expstring: Cow<str> = if ESC_E.is_match(&m_ast.value) {
+            escape_eval(m_ast.value.to_owned()).into()
+        } else {
+            m_ast.value.as_str().into()
+        };
+
+        let m_ast_compiled = self
+            .engine
+            .compile_expression(&expstring)
+            .map_err(|err| Box::<EvalAltResult>::from(*err))?;
+
         if policy_len != 0 {
             for (i, pvals) in policies.iter().enumerate() {
                 if i != 0 {
@@ -136,14 +154,9 @@ impl Enforcer {
                     scope.push_constant(ptoken, pval.to_owned());
                 }
 
-                let mut expstring = m_ast.value.to_owned();
-                if ESC_E.is_match(&expstring) {
-                    expstring = escape_eval(expstring, &scope);
-                }
-
                 let eval_result = self
                     .engine
-                    .eval_expression_with_scope::<bool>(&mut scope, &expstring)?;
+                    .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
                 let mut eft = if !eval_result {
                     EffectKind::Indeterminate
                 } else {
@@ -170,7 +183,7 @@ impl Enforcer {
             }
             let eval_result = self
                 .engine
-                .eval_expression_with_scope::<bool>(&mut scope, &m_ast.value)?;
+                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
             let eft = if eval_result {
                 EffectKind::Allow
             } else {
@@ -180,6 +193,10 @@ impl Enforcer {
         }
         Ok((eft_stream.next(), eft_stream.expl()))
     }
+}
+
+lazy_static! {
+    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
 }
 
 #[async_trait]
@@ -193,7 +210,7 @@ impl CoreApi for Enforcer {
 
         let mut engine = Engine::new_raw();
 
-        engine.load_package(CasbinPackage::new().get());
+        engine.load_package(CASBIN_PACKAGE.get());
 
         for (key, func) in fm.get_functions() {
             engine.register_fn(key, *func);

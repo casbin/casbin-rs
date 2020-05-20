@@ -1,6 +1,5 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use rhai::Scope;
 
 lazy_static! {
     static ref ESC_A: Regex = Regex::new(r"\b(r\d*|p\d*)\.").unwrap();
@@ -25,16 +24,15 @@ pub fn remove_comments(mut s: String) -> String {
     s.trim_end().to_owned()
 }
 
-pub fn escape_eval(mut m: String, scope: &Scope) -> String {
+pub fn escape_eval(mut m: String) -> String {
     let cm = m.to_owned();
     for caps in ESC_E.captures_iter(&cm) {
-        if let Some(val) = scope.get_value::<String>(&caps["rule"]) {
-            m = ESC_E
-                .replace(m.as_str(), escape_assertion(format!("({})", &val)).as_str())
-                .to_string();
-        } else {
-            panic!("{} not found in scope", &caps["rule"]);
-        }
+        m = ESC_E
+            .replace(
+                m.as_str(),
+                format!("eval(escape_assertion({}))", &caps["rule"]).as_str(),
+            )
+            .to_string();
     }
     m
 }
