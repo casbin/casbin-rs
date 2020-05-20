@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::borrow::Cow;
 
 lazy_static! {
     static ref ESC_A: Regex = Regex::new(r"\b(r\d*|p\d*)\.").unwrap();
@@ -24,17 +25,18 @@ pub fn remove_comments(mut s: String) -> String {
     s.trim_end().to_owned()
 }
 
-pub fn escape_eval(mut m: String) -> String {
-    let cm = m.to_owned();
-    for caps in ESC_E.captures_iter(&cm) {
-        m = ESC_E
+pub fn escape_eval<'a>(m: &'a str) -> Cow<'a, str> {
+    let mut cm: Cow<str> = m.into();
+    for caps in ESC_E.captures_iter(&m) {
+        cm = ESC_E
             .replace(
-                m.as_str(),
+                &cm,
                 format!("eval(escape_assertion({}))", &caps["rule"]).as_str(),
             )
-            .to_string();
+            .to_string()
+            .into();
     }
-    m
+    cm
 }
 
 #[cfg(test)]

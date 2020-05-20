@@ -1,4 +1,4 @@
-use lazy_static::*;
+use lazy_static::lazy_static;
 
 use crate::{
     adapter::{Adapter, Filter},
@@ -11,7 +11,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::{escape_assertion, escape_eval, ESC_E},
+    util::{escape_assertion, escape_eval},
     Result,
 };
 
@@ -43,7 +43,6 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
 });
 
 use std::{
-    borrow::Cow,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -126,15 +125,9 @@ impl Enforcer {
             .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
         let scope_size = scope.len();
 
-        let expstring: Cow<str> = if ESC_E.is_match(&m_ast.value) {
-            escape_eval(m_ast.value.to_owned()).into()
-        } else {
-            m_ast.value.as_str().into()
-        };
-
         let m_ast_compiled = self
             .engine
-            .compile_expression(&expstring)
+            .compile_expression(&escape_eval(m_ast.value.as_str()))
             .map_err(|err| Box::<EvalAltResult>::from(*err))?;
 
         if policy_len != 0 {
