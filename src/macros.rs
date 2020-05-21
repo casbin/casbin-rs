@@ -18,24 +18,31 @@ macro_rules! get_or_err {
     }};
 }
 
+pub fn get_link_args(args: &rhai::Array) -> [Option<&str>; 3] {
+    const G_FUNC_ERROR_MSG: &str = "g function only supports 2 or 3 parameters";
+
+    let mut drain = args
+        .iter()
+        .filter_map(|x| x.downcast_ref::<String>().map(String::as_str));
+
+    [
+        Some(drain.next().expect(G_FUNC_ERROR_MSG)),
+        Some(drain.next().expect(G_FUNC_ERROR_MSG)),
+        drain.next(),
+    ]
+}
+
 #[macro_export]
 macro_rules! generate_g_function {
     ($rm:ident) => {{
-        let cb = move |args: rhai::Array| -> bool {
-            let args = args
-                .into_iter()
-                .filter_map(|x| x.downcast_ref::<String>().map(|y| y.to_owned()))
-                .collect::<Vec<String>>();
+        let cb = move |args: &mut rhai::Array| -> bool {
+            let link_args = crate::macros::get_link_args(args);
 
-            if args.len() == 3 {
-                $rm.write()
-                    .unwrap()
-                    .has_link(&args[0], &args[1], Some(&args[2]))
-            } else if args.len() == 2 {
-                $rm.write().unwrap().has_link(&args[0], &args[1], None)
-            } else {
-                panic!("g function supports at most 3 parameters");
-            }
+            $rm.write().unwrap().has_link(
+                link_args[0].unwrap(),
+                link_args[1].unwrap(),
+                link_args[2],
+            )
         };
         Box::new(cb)
     }};
