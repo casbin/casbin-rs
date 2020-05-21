@@ -7,7 +7,7 @@ use crate::{
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{Event, EventData, EventEmitter},
     error::{ModelError, PolicyError, RequestError},
-    generate_g_function, get_or_err,
+    get_or_err,
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
@@ -262,7 +262,16 @@ impl CoreApi for Enforcer {
         if let Some(ast_map) = e.model.get_model().get("g") {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&e.rm);
-                e.engine.register_fn(key, generate_g_function!(rm));
+                e.engine
+                    .register_fn(key, move |arg1: String, arg2: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, None)
+                    });
+
+                let rm = Arc::clone(&e.rm);
+                e.engine
+                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                    });
             }
         }
 
@@ -348,7 +357,16 @@ impl CoreApi for Enforcer {
         if let Some(ast_map) = self.model.get_model().get("g") {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&self.rm);
-                self.engine.register_fn(key, generate_g_function!(rm));
+                self.engine
+                    .register_fn(key, move |arg1: String, arg2: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, None)
+                    });
+
+                let rm = Arc::clone(&self.rm);
+                self.engine
+                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                    });
             }
         }
 

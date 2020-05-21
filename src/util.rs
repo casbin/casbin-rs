@@ -13,10 +13,6 @@ pub fn escape_assertion(s: String) -> String {
     ESC_A.replace_all(&s, "${1}_").to_string()
 }
 
-pub fn escape_g_function(s: String) -> String {
-    ESC_G.replace_all(&s, "${1}([${2}])").to_string()
-}
-
 pub fn remove_comments(mut s: String) -> String {
     if let Some(idx) = s.find('#') {
         s.truncate(idx);
@@ -32,29 +28,6 @@ pub fn escape_eval<'a>(m: &'a str) -> Cow<'a, str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_escape_g_function() {
-        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp = "g([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp, escape_g_function(s.to_owned()));
-
-        let s1 = "g2(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp1 = "g2([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp1, escape_g_function(s1.to_owned()));
-
-        let s2 = "g3(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp2 = "g3([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp2, escape_g_function(s2.to_owned()));
-
-        let s3 = "g3(r2.sub, p2.sub) && r2.obj == p2.obj && r2.act == p2.act";
-        let exp3 = "g3([r2.sub, p2.sub]) && r2.obj == p2.obj && r2.act == p2.act";
-
-        assert_eq!(exp3, escape_g_function(s3.to_owned()));
-    }
 
     #[test]
     fn test_remove_comments() {

@@ -265,12 +265,12 @@ where
 
     fn get_all_policy(&self) -> Vec<Vec<String>> {
         let mut res: Vec<Vec<String>> = vec![];
-        let sec = "p".to_owned();
-        if let Some(ast_map) = self.get_model().get_model().get(&sec) {
+        let sec = "p";
+        if let Some(ast_map) = self.get_model().get_model().get(sec) {
             for (ptype, ast) in ast_map {
                 res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
                     x.insert(0, ptype.clone());
-                    x.insert(0, sec.clone());
+                    x.insert(0, sec.to_owned());
                     x
                 }))
             }
@@ -299,12 +299,12 @@ where
 
     fn get_all_grouping_policy(&self) -> Vec<Vec<String>> {
         let mut res: Vec<Vec<String>> = vec![];
-        let sec = "g".to_owned();
-        if let Some(ast_map) = self.get_model().get_model().get(&sec) {
+        let sec = "g";
+        if let Some(ast_map) = self.get_model().get_model().get(sec) {
             for (ptype, ast) in ast_map {
                 res.extend(ast.get_policy().clone().into_iter().map(|mut x| {
                     x.insert(0, ptype.clone());
-                    x.insert(0, sec.clone());
+                    x.insert(0, sec.to_owned());
                     x
                 }))
             }
