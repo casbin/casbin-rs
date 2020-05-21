@@ -52,6 +52,7 @@ impl Logger for DefaultLogger {
         info!("{}", d);
     }
 
+    #[cfg(feature = "explain")]
     fn print_expl_log(&self, rules: Vec<&Vec<String>>) {
         if !self.is_enabled() {
             return;

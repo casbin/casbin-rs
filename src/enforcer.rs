@@ -183,7 +183,16 @@ impl Enforcer {
             };
             eft_stream.push_effect(eft);
         }
-        Ok((eft_stream.next(), eft_stream.expl()))
+        Ok((eft_stream.next(), {
+            #[cfg(feature = "explain")]
+            {
+                eft_stream.expl()
+            }
+            #[cfg(not(feature = "explain"))]
+            {
+                None
+            }
+        }))
     }
 }
 
