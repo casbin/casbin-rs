@@ -118,7 +118,6 @@ impl Model for DefaultModel {
                 .map(|x| format!("{}_{}", key, x.trim()))
                 .collect();
         } else {
-            ast.value = escape_g_function(ast.value);
             ast.value = escape_assertion(ast.value);
         }
 

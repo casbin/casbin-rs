@@ -1,20 +1,16 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use rhai::Scope;
+use std::borrow::Cow;
 
 lazy_static! {
     static ref ESC_A: Regex = Regex::new(r"\b(r\d*|p\d*)\.").unwrap();
     static ref ESC_G: Regex =
         Regex::new(r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)").unwrap();
-    pub(crate) static ref ESC_E: Regex = Regex::new(r"\beval\((?P<rule>[^)]*)\)").unwrap();
+    pub(crate) static ref ESC_E: Regex = Regex::new(r"\beval\(([^)]*)\)").unwrap();
 }
 
 pub fn escape_assertion(s: String) -> String {
     ESC_A.replace_all(&s, "${1}_").to_string()
-}
-
-pub fn escape_g_function(s: String) -> String {
-    ESC_G.replace_all(&s, "${1}([${2}])").to_string()
 }
 
 pub fn remove_comments(mut s: String) -> String {
@@ -25,46 +21,13 @@ pub fn remove_comments(mut s: String) -> String {
     s.trim_end().to_owned()
 }
 
-pub fn escape_eval(mut m: String, scope: &Scope) -> String {
-    let cm = m.to_owned();
-    for caps in ESC_E.captures_iter(&cm) {
-        if let Some(val) = scope.get_value::<String>(&caps["rule"]) {
-            m = ESC_E
-                .replace(m.as_str(), escape_assertion(format!("({})", &val)).as_str())
-                .to_string();
-        } else {
-            panic!("{} not found in scope", &caps["rule"]);
-        }
-    }
-    m
+pub fn escape_eval(m: &str) -> Cow<str> {
+    ESC_E.replace_all(m, "eval(escape_assertion(${1}))")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_escape_g_function() {
-        let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp = "g([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp, escape_g_function(s.to_owned()));
-
-        let s1 = "g2(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp1 = "g2([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp1, escape_g_function(s1.to_owned()));
-
-        let s2 = "g3(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
-        let exp2 = "g3([r.sub, p.sub]) && r.obj == p.obj && r.act == p.act";
-
-        assert_eq!(exp2, escape_g_function(s2.to_owned()));
-
-        let s3 = "g3(r2.sub, p2.sub) && r2.obj == p2.obj && r2.act == p2.act";
-        let exp3 = "g3([r2.sub, p2.sub]) && r2.obj == p2.obj && r2.act == p2.act";
-
-        assert_eq!(exp3, escape_g_function(s3.to_owned()));
-    }
 
     #[test]
     fn test_remove_comments() {

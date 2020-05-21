@@ -1,3 +1,5 @@
+use lazy_static::lazy_static;
+
 use crate::{
     adapter::{Adapter, Filter},
     convert::{TryIntoAdapter, TryIntoModel},
@@ -5,11 +7,11 @@ use crate::{
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{Event, EventData, EventEmitter},
     error::{ModelError, PolicyError, RequestError},
-    generate_g_function, get_or_err,
+    get_or_err,
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
-    util::{escape_eval, ESC_E},
+    util::{escape_assertion, escape_eval},
     Result,
 };
 
@@ -26,7 +28,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, RegisterFn, Scope,
+    Engine, EvalAltResult, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -34,6 +36,10 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     LogicPackage::init(lib);
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
+
+    lib.set_fn_1("escape_assertion", |s: String| {
+        Ok(escape_assertion(s))
+    });
 });
 
 use std::{
@@ -119,11 +125,14 @@ impl Enforcer {
             .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
         let scope_size = scope.len();
 
+        let m_ast_compiled = self
+            .engine
+            .compile_expression(&escape_eval(m_ast.value.as_str()))
+            .map_err(|err| Box::<EvalAltResult>::from(*err))?;
+
         if policy_len != 0 {
-            for (i, pvals) in policies.iter().enumerate() {
-                if i != 0 {
-                    scope.rewind(scope_size);
-                }
+            for pvals in policies.iter() {
+                scope.rewind(scope_size);
 
                 if p_ast.tokens.len() != pvals.len() {
                     return Err(PolicyError::UnmatchPolicyDefinition(
@@ -136,30 +145,26 @@ impl Enforcer {
                     scope.push_constant(ptoken, pval.to_owned());
                 }
 
-                let mut expstring = m_ast.value.to_owned();
-                if ESC_E.is_match(&expstring) {
-                    expstring = escape_eval(expstring, &scope);
-                }
-
                 let eval_result = self
                     .engine
-                    .eval_expression_with_scope::<bool>(&mut scope, &expstring)?;
-                let mut eft = if !eval_result {
+                    .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+                let eft = if !eval_result {
                     EffectKind::Indeterminate
                 } else {
-                    EffectKind::Allow
-                };
-                match p_ast.tokens.iter().position(|x| x == "p_eft") {
-                    Some(j) if eft == EffectKind::Allow => {
-                        let p_eft = &pvals[j];
-                        if p_eft == "deny" {
-                            eft = EffectKind::Deny;
-                        } else if p_eft != "allow" {
-                            eft = EffectKind::Indeterminate;
-                        };
+                    match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                        Some(j) => {
+                            let p_eft = &pvals[j];
+                            if p_eft == "deny" {
+                                EffectKind::Deny
+                            } else if p_eft != "allow" {
+                                EffectKind::Indeterminate
+                            } else {
+                                EffectKind::Allow
+                            }
+                        }
+                        _ => EffectKind::Allow,
                     }
-                    _ => {}
-                }
+                };
                 if eft_stream.push_effect(eft) {
                     break;
                 }
@@ -170,7 +175,7 @@ impl Enforcer {
             }
             let eval_result = self
                 .engine
-                .eval_expression_with_scope::<bool>(&mut scope, &m_ast.value)?;
+                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
             let eft = if eval_result {
                 EffectKind::Allow
             } else {
@@ -180,6 +185,10 @@ impl Enforcer {
         }
         Ok((eft_stream.next(), eft_stream.expl()))
     }
+}
+
+lazy_static! {
+    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
 }
 
 #[async_trait]
@@ -193,7 +202,7 @@ impl CoreApi for Enforcer {
 
         let mut engine = Engine::new_raw();
 
-        engine.load_package(CasbinPackage::new().get());
+        engine.load_package(CASBIN_PACKAGE.get());
 
         for (key, func) in fm.get_functions() {
             engine.register_fn(key, *func);
@@ -253,7 +262,16 @@ impl CoreApi for Enforcer {
         if let Some(ast_map) = e.model.get_model().get("g") {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&e.rm);
-                e.engine.register_fn(key, generate_g_function!(rm));
+                e.engine
+                    .register_fn(key, move |arg1: String, arg2: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, None)
+                    });
+
+                let rm = Arc::clone(&e.rm);
+                e.engine
+                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                    });
             }
         }
 
@@ -339,14 +357,23 @@ impl CoreApi for Enforcer {
         if let Some(ast_map) = self.model.get_model().get("g") {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&self.rm);
-                self.engine.register_fn(key, generate_g_function!(rm));
+                self.engine
+                    .register_fn(key, move |arg1: String, arg2: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, None)
+                    });
+
+                let rm = Arc::clone(&self.rm);
+                self.engine
+                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                    });
             }
         }
 
         Ok(())
     }
 
-    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
         self.rm.write().unwrap().add_matching_fn(f);
         if self.auto_build_role_links {
             self.build_role_links()?;
@@ -1292,7 +1319,9 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        e.add_function("keyMatchCustom", key_match);
+        e.add_function("keyMatchCustom", |s1: String, s2: String| {
+            key_match(&s1, &s2)
+        });
 
         assert_eq!(
             true,

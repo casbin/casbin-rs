@@ -1,6 +1,7 @@
 use crate::{error::RbacError, rbac::RoleManager, Result};
 
 use std::{
+    borrow::Cow,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -9,7 +10,7 @@ use std::{
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, Arc<RwLock<Role>>>,
     max_hierarchy_level: usize,
-    matching_fn: Option<fn(String, String) -> bool>,
+    matching_fn: Option<fn(&str, &str) -> bool>,
 }
 
 impl Default for DefaultRoleManager {
@@ -39,9 +40,9 @@ impl DefaultRoleManager {
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (_, r) in &mut self.all_roles.iter().filter(|(k, r)| {
+            for (_, r) in self.all_roles.iter().filter(|(k, r)| {
                 k.as_str() != name
-                    && matching_fn(name.to_owned(), (*k).to_owned())
+                    && matching_fn(name, k)
                     && !r.read().unwrap().has_direct_role(name)
             }) {
                 role.write().unwrap().add_role(Arc::clone(r));
@@ -53,9 +54,7 @@ impl DefaultRoleManager {
 
     fn has_role(&self, name: &str) -> bool {
         if let Some(matching_fn) = self.matching_fn {
-            self.all_roles
-                .iter()
-                .any(|(r, _)| matching_fn(name.to_owned(), r.to_owned()))
+            self.all_roles.iter().any(|(r, _)| matching_fn(name, r))
         } else {
             self.all_roles.contains_key(name)
         }
@@ -63,17 +62,20 @@ impl DefaultRoleManager {
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn add_matching_fn(&mut self, matching_fn: fn(String, String) -> bool) {
+    fn add_matching_fn(&mut self, matching_fn: fn(&str, &str) -> bool) {
         self.matching_fn = Some(matching_fn);
     }
 
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
 
@@ -84,12 +86,15 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
         }
@@ -100,15 +105,19 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
         if name1 == name2 {
             return true;
         }
+
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return false;
         }
@@ -119,10 +128,12 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let mut name = name.to_owned();
-        if let Some(domain) = domain {
-            name = format!("{}::{}", domain, name);
-        }
+        let name: Cow<str> = if let Some(domain) = domain {
+            format!("{}::{}", domain, name).into()
+        } else {
+            name.into()
+        };
+
         if !self.has_role(&name) {
             return vec![];
         }
@@ -132,8 +143,11 @@ impl RoleManager for DefaultRoleManager {
             role.read()
                 .unwrap()
                 .get_roles()
-                .iter()
-                .map(|x| x[domain.len() + 2..].to_string())
+                .into_iter()
+                .map(|mut x| {
+                    x.replace_range(0..domain.len() + 2, "");
+                    x
+                })
                 .collect()
         } else {
             role.read().unwrap().get_roles()
@@ -141,10 +155,12 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let mut name = name.to_owned();
-        if let Some(domain) = domain {
-            name = format!("{}::{}", domain, name);
-        }
+        let name: Cow<str> = if let Some(domain) = domain {
+            format!("{}::{}", domain, name).into()
+        } else {
+            name.into()
+        };
+
         if !self.has_role(&name) {
             return vec![];
         }
@@ -158,8 +174,11 @@ impl RoleManager for DefaultRoleManager {
 
         if let Some(domain) = domain {
             return names
-                .iter()
-                .map(|x| x[domain.len() + 2..].to_string())
+                .into_iter()
+                .map(|mut x| {
+                    x.replace_range(0..domain.len() + 2, "");
+                    x
+                })
                 .collect();
         }
         names
