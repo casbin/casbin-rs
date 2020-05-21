@@ -25,11 +25,17 @@ pub fn get_link_args(args: &rhai::Array) -> [Option<&str>; 3] {
         .iter()
         .filter_map(|x| x.downcast_ref::<String>().map(String::as_str));
 
-    [
+    let result = [
         Some(drain.next().expect(G_FUNC_ERROR_MSG)),
         Some(drain.next().expect(G_FUNC_ERROR_MSG)),
         drain.next(),
-    ]
+    ];
+
+    if drain.next().is_some() {
+        panic!(G_FUNC_ERROR_MSG);
+    }
+
+    result
 }
 
 #[macro_export]
