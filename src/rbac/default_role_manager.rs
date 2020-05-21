@@ -1,6 +1,7 @@
 use crate::{error::RbacError, rbac::RoleManager, Result};
 
 use std::{
+    borrow::Cow,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -39,7 +40,7 @@ impl DefaultRoleManager {
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (_, r) in &mut self.all_roles.iter().filter(|(k, r)| {
+            for (_, r) in self.all_roles.iter().filter(|(k, r)| {
                 k.as_str() != name
                     && matching_fn(name.to_owned(), (*k).to_owned())
                     && !r.read().unwrap().has_direct_role(name)
@@ -68,12 +69,15 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
 
@@ -84,12 +88,15 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
         }
@@ -100,15 +107,19 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
-        let mut name1 = name1.to_owned();
-        let mut name2 = name2.to_owned();
-        if let Some(domain) = domain {
-            name1 = format!("{}::{}", domain, name1);
-            name2 = format!("{}::{}", domain, name2);
-        }
         if name1 == name2 {
             return true;
         }
+
+        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
+            (
+                format!("{}::{}", domain, name1).into(),
+                format!("{}::{}", domain, name2).into(),
+            )
+        } else {
+            (name1.into(), name2.into())
+        };
+
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return false;
         }
@@ -119,10 +130,12 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let mut name = name.to_owned();
-        if let Some(domain) = domain {
-            name = format!("{}::{}", domain, name);
-        }
+        let name: Cow<str> = if let Some(domain) = domain {
+            format!("{}::{}", domain, name).into()
+        } else {
+            name.into()
+        };
+
         if !self.has_role(&name) {
             return vec![];
         }
@@ -141,10 +154,12 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let mut name = name.to_owned();
-        if let Some(domain) = domain {
-            name = format!("{}::{}", domain, name);
-        }
+        let name: Cow<str> = if let Some(domain) = domain {
+            format!("{}::{}", domain, name).into()
+        } else {
+            name.into()
+        };
+
         if !self.has_role(&name) {
             return vec![];
         }
