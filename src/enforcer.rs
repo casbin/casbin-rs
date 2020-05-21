@@ -373,7 +373,7 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
-    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
         self.rm.write().unwrap().add_matching_fn(f);
         if self.auto_build_role_links {
             self.build_role_links()?;
@@ -1319,7 +1319,9 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        e.add_function("keyMatchCustom", key_match);
+        e.add_function("keyMatchCustom", |s1: String, s2: String| {
+            key_match(&s1, &s2)
+        });
 
         assert_eq!(
             true,

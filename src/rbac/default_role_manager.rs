@@ -10,7 +10,7 @@ use std::{
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, Arc<RwLock<Role>>>,
     max_hierarchy_level: usize,
-    matching_fn: Option<fn(String, String) -> bool>,
+    matching_fn: Option<fn(&str, &str) -> bool>,
 }
 
 impl Default for DefaultRoleManager {
@@ -42,7 +42,7 @@ impl DefaultRoleManager {
         if let Some(matching_fn) = self.matching_fn {
             for (_, r) in self.all_roles.iter().filter(|(k, r)| {
                 k.as_str() != name
-                    && matching_fn(name.to_owned(), (*k).to_owned())
+                    && matching_fn(name, k)
                     && !r.read().unwrap().has_direct_role(name)
             }) {
                 role.write().unwrap().add_role(Arc::clone(r));
@@ -54,9 +54,7 @@ impl DefaultRoleManager {
 
     fn has_role(&self, name: &str) -> bool {
         if let Some(matching_fn) = self.matching_fn {
-            self.all_roles
-                .iter()
-                .any(|(r, _)| matching_fn(name.to_owned(), r.to_owned()))
+            self.all_roles.iter().any(|(r, _)| matching_fn(name, r))
         } else {
             self.all_roles.contains_key(name)
         }
@@ -64,7 +62,7 @@ impl DefaultRoleManager {
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn add_matching_fn(&mut self, matching_fn: fn(String, String) -> bool) {
+    fn add_matching_fn(&mut self, matching_fn: fn(&str, &str) -> bool) {
         self.matching_fn = Some(matching_fn);
     }
 
@@ -145,8 +143,11 @@ impl RoleManager for DefaultRoleManager {
             role.read()
                 .unwrap()
                 .get_roles()
-                .iter()
-                .map(|x| x[domain.len() + 2..].to_string())
+                .into_iter()
+                .map(|mut x| {
+                    x.replace_range(0..domain.len() + 2, "");
+                    x
+                })
                 .collect()
         } else {
             role.read().unwrap().get_roles()
@@ -173,8 +174,11 @@ impl RoleManager for DefaultRoleManager {
 
         if let Some(domain) = domain {
             return names
-                .iter()
-                .map(|x| x[domain.len() + 2..].to_string())
+                .into_iter()
+                .map(|mut x| {
+                    x.replace_range(0..domain.len() + 2, "");
+                    x
+                })
                 .collect();
         }
         names
