@@ -148,7 +148,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_matching_fn(&mut self, f: fn(String, String) -> bool) -> Result<()> {
+    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
         self.enforcer.add_matching_fn(f)
     }
 
