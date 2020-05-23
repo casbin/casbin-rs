@@ -13,18 +13,18 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex = "1.3.1"
+regex = "1.3.7"
 rhai = { version = "0.14.1", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize"] }
 ip_network = { version = "0.3.4", optional = true }
 ttl_cache = { version = "0.5.1", optional = true }
 lazy_static = "1.4.0"
-indexmap = "1.3.1"
-async-std = { version = "1.5.0", optional = true }
-async-trait = "0.1.24"
+indexmap = "1.3.2"
+async-std = { version = "1.6.0", optional = true }
+async-trait = "0.1.31"
 log = { version = "0.4.8", optional = true }
-tokio = { version = "0.2.11", optional = true, default-features = false }
+tokio = { version = "0.2.21", optional = true, default-features = false }
 globset = { version = "0.4.5", optional = true }
-thiserror = "1.0.14"
+thiserror = "1.0.19"
 
 [features]
 default = ["runtime-async-std", "incremental"]
@@ -43,8 +43,8 @@ explain = []
 opt-level = 0
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-async-std = { version = "1.5.0", features = [ "attributes" ] }
+async-std = { version = "1.6.0", features = [ "attributes" ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "0.2.11", features = [ "full" ] }
-async-std = { version = "1.5.0", features = [ "attributes" ] }
+tokio = { version = "0.2.21", features = [ "full" ] }
+async-std = { version = "1.6.0", features = [ "attributes" ] }
