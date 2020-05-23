@@ -39,8 +39,8 @@ pub trait CoreApi: Send + Sync {
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
     fn set_effector(&mut self, e: Box<dyn Effector>);
-    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool>;
-    async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
+    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool>;
+    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
     fn build_role_links(&mut self) -> Result<()>;
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
