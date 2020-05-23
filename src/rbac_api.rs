@@ -303,7 +303,7 @@ where
         for user in users.iter() {
             let mut req = permission.clone();
             req.insert(0, user.to_string());
-            if let Ok(r) = self.enforce(&req).await {
+            if let Ok(r) = self.enforce(&req) {
                 if r && !res.contains(user) {
                     res.push(user.to_owned());
                 }
@@ -418,72 +418,24 @@ mod tests {
         e.add_role_for_user("alice", "data2_admin", None)
             .await
             .unwrap();
-        assert_eq!(
-            true,
-            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
-        );
+        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
 
         e.delete_role("data2_admin").await.unwrap();
-        assert_eq!(
-            true,
-            e.enforce(&vec!["alice", "data1", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["alice", "data1", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["alice", "data2", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["alice", "data2", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data1", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data1", "write"]).await.unwrap()
-        );
-        assert_eq!(
-            false,
-            e.enforce(&vec!["bob", "data2", "read"]).await.unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["bob", "data2", "write"]).await.unwrap()
-        );
+        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -710,7 +662,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data1", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -718,7 +669,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data1", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -726,7 +676,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data2", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -734,7 +683,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data2", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -742,7 +690,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data1", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -750,7 +697,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data1", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -758,7 +704,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data2", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -766,7 +711,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data2", "write"])
-                .await
                 .unwrap()
         );
 
@@ -776,7 +720,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data1", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -784,7 +727,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data1", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -792,7 +734,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data2", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -800,7 +741,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["alice", "data2", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -808,7 +748,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data1", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -816,7 +755,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data1", "write"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -824,7 +762,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data2", "read"])
-                .await
                 .unwrap()
         );
         assert_eq!(
@@ -832,7 +769,6 @@ mod tests {
             e.write()
                 .unwrap()
                 .enforce(&vec!["bob", "data2", "write"])
-                .await
                 .unwrap()
         );
     }
@@ -854,10 +790,10 @@ mod tests {
         let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "write"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "write"]).await.unwrap());
+        assert_eq!(true, e.enforce(&vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "write"]).unwrap());
 
         assert_eq!(
             vec![vec!["alice", "read"]],
@@ -895,10 +831,10 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["alice", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "write"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "write"]).await.unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "write"]).unwrap());
 
         e.add_permission_for_user("bob", vec!["read"].iter().map(|s| s.to_string()).collect())
             .await
@@ -913,33 +849,33 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["alice", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "write"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "write"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["eve", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["eve", "write"]).await.unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "write"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["eve", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["eve", "write"]).unwrap());
 
         e.delete_permission_for_user("bob", vec!["read"].iter().map(|s| s.to_string()).collect())
             .await
             .unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["alice", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "write"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "write"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["eve", "read"]).await.unwrap());
-        assert_eq!(true, e.enforce(&vec!["eve", "write"]).await.unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["bob", "write"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["eve", "read"]).unwrap());
+        assert_eq!(true, e.enforce(&vec!["eve", "write"]).unwrap());
 
         e.delete_permissions_for_user("bob").await.unwrap();
         e.delete_permissions_for_user("eve").await.unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["alice", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "write"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "write"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["eve", "read"]).await.unwrap());
-        assert_eq!(false, e.enforce(&vec!["eve", "write"]).await.unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["bob", "write"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["eve", "read"]).unwrap());
+        assert_eq!(false, e.enforce(&vec!["eve", "write"]).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1129,16 +1065,16 @@ mod tests {
 
         e.add_matching_fn(key_match2).unwrap();
 
-        assert!(e.enforce(&["alice", "/pen/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["alice", "/pen2/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["alice", "/book/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["alice", "/book/2", "GET"]).await.unwrap());
-        assert!(e.enforce(&["alice", "/pen/1", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["bob", "/book/1", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["bob", "/book/2", "GET"]).await.unwrap());
-        assert!(e.enforce(&["bob", "/pen/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["bob", "/pen/2", "GET"]).await.unwrap());
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/pen2/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/book/2", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/book/1", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
 
         assert_eq!(
             vec!["/book/:id", "book_group"],
@@ -1172,40 +1108,20 @@ mod tests {
 
         e.add_matching_fn(key_match2).unwrap();
 
-        assert!(e
-            .enforce(&["alice", "domain2", "/pen/1", "GET"])
-            .await
-            .unwrap());
-        assert!(e
-            .enforce(&["alice", "domain1", "/book/1", "GET"])
-            .await
-            .unwrap());
+        assert!(e.enforce(&["alice", "domain2", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "domain1", "/book/1", "GET"]).unwrap());
 
-        assert!(e
-            .enforce(&["alice", "domain1", "/book/2", "GET"])
-            .await
-            .unwrap());
+        assert!(e.enforce(&["alice", "domain1", "/book/2", "GET"]).unwrap());
         assert!(!e
             .enforce(&["alice", "domain_unknown", "/book/2", "GET"])
-            .await
             .unwrap());
-        assert!(!e
-            .enforce(&["alice", "domain2", "/pen/2", "GET"])
-            .await
-            .unwrap());
+        assert!(!e.enforce(&["alice", "domain2", "/pen/2", "GET"]).unwrap());
 
-        assert!(e
-            .enforce(&["bob", "domain2", "/pen/2", "GET"])
-            .await
-            .unwrap());
+        assert!(e.enforce(&["bob", "domain2", "/pen/2", "GET"]).unwrap());
         assert!(!e
             .enforce(&["bob", "domain_unknown", "/pen/2", "GET"])
-            .await
             .unwrap());
-        assert!(!e
-            .enforce(&["bob", "domain1", "/book/2", "GET"])
-            .await
-            .unwrap());
+        assert!(!e.enforce(&["bob", "domain1", "/book/2", "GET"]).unwrap());
 
         assert_eq!(
             vec!["/book/:id", "book_group"],
@@ -1239,15 +1155,15 @@ mod tests {
 
         e.add_matching_fn(key_match).unwrap();
 
-        assert!(e.enforce(&["alice", "/pen/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["alice", "/book/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["bob", "/pen/1", "GET"]).await.unwrap());
-        assert!(e.enforce(&["bob", "/book/1", "GET"]).await.unwrap());
+        assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
+        assert!(e.enforce(&["bob", "/book/1", "GET"]).unwrap());
 
-        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["alice", "/book/2", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["bob", "/pen/2", "GET"]).await.unwrap());
-        assert!(!e.enforce(&["bob", "/book/2", "GET"]).await.unwrap());
+        assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
+        assert!(!e.enforce(&["alice", "/book/2", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
+        assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
 
         assert_eq!(
             vec!["*", "book_admin", "pen_admin"],
