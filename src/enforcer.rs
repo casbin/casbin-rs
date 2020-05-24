@@ -88,7 +88,7 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    fn private_enforce<S: AsRef<str> + Send + Sync>(
+    pub(crate) fn private_enforce<S: AsRef<str> + Send + Sync>(
         &self,
         rvals: &[S],
     ) -> Result<(bool, Option<Vec<usize>>)> {
