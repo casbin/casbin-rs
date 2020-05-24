@@ -980,10 +980,7 @@ mod tests {
         assert!(!e.enforce(&vec!["192.168.0.123", "data2", "write"]).unwrap());
 
         assert!(!e.enforce(&vec!["10.0.0.5", "data1", "read"]).unwrap());
-        assert!(!e
-            .enforce(&vec!["10.0.0.5", "data1", "write"])
-            .await
-            .unwrap());
+        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "write"]).unwrap());
         assert!(!e.enforce(&vec!["10.0.0.5", "data2", "read"]).unwrap());
 
         assert!(!e.enforce(&vec!["192.168.0.1", "data1", "read"]).unwrap());
