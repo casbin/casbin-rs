@@ -1,4 +1,4 @@
-use rhai::EvalAltResult;
+use rhai::{EvalAltResult, ParseError};
 use thiserror::Error;
 
 use std::{error::Error as StdError, io::Error as IoError};
@@ -60,6 +60,8 @@ pub enum Error {
 
     #[error("Casbin Evaluation Error: `{0:?}`")]
     RhaiError(#[from] Box<EvalAltResult>),
+    #[error("Casbin Parse Error: `{0:?}`")]
+    RhaiParseError(#[from] Box<ParseError>),
 
     #[error("Casbin Request Error: `{0:?}`")]
     RequestError(#[from] RequestError),

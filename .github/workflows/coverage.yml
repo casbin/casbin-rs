@@ -25,7 +25,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: --out Xml
+          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
