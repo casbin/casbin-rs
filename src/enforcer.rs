@@ -217,48 +217,23 @@ impl CoreApi for Enforcer {
             engine.register_fn(key, *func);
         }
 
-        let mut e = {
+        let mut e = Self {
+            model,
+            adapter,
+            fm,
+            eft,
+            rm,
+            enabled: true,
+            auto_save: true,
+            auto_build_role_links: true,
+            #[cfg(feature = "watcher")]
+            auto_notify_watcher: true,
+            #[cfg(feature = "watcher")]
+            watcher: None,
+            events: HashMap::new(),
+            engine,
             #[cfg(feature = "logging")]
-            {
-                let logger = Box::new(DefaultLogger::default());
-                Self {
-                    model,
-                    adapter,
-                    fm,
-                    eft,
-                    rm,
-                    enabled: true,
-                    auto_save: true,
-                    auto_build_role_links: true,
-                    #[cfg(feature = "watcher")]
-                    auto_notify_watcher: true,
-                    #[cfg(feature = "watcher")]
-                    watcher: None,
-                    events: HashMap::new(),
-                    engine,
-                    logger,
-                }
-            }
-
-            #[cfg(not(feature = "logging"))]
-            {
-                Self {
-                    model,
-                    adapter,
-                    fm,
-                    eft,
-                    rm,
-                    enabled: true,
-                    auto_save: true,
-                    auto_build_role_links: true,
-                    #[cfg(feature = "watcher")]
-                    auto_notify_watcher: true,
-                    #[cfg(feature = "watcher")]
-                    watcher: None,
-                    events: HashMap::new(),
-                    engine,
-                }
-            }
+            logger: Box::new(DefaultLogger::default()),
         };
 
         #[cfg(any(feature = "logging", feature = "watcher"))]
