@@ -28,7 +28,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, EvalAltResult, RegisterFn, Scope,
+    Engine, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -127,8 +127,7 @@ impl Enforcer {
 
         let m_ast_compiled = self
             .engine
-            .compile_expression(&escape_eval(m_ast.value.as_str()))
-            .map_err(|err| Box::<EvalAltResult>::from(err))?;
+            .compile_expression(&escape_eval(m_ast.value.as_str()))?;
 
         if policy_len != 0 {
             for pvals in policies.iter() {
