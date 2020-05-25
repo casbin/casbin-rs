@@ -78,7 +78,7 @@ jobs:
           args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
 
       - name: Clippy warnings
-        uses: actions-rs/clippy@v1
+        uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: -- -D warnings
