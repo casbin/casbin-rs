@@ -77,11 +77,11 @@ jobs:
           override: true
           args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
 
-      - name: Annotate commit with clippy warnings
-        uses: actions-rs/clippy-check@v1
+      - name: Clippy warnings
+        uses: actions-rs/clippy@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental -D warnings
+          command: clippy
+          args: -- -D warnings
 
       - name: Cargo Fmt Check
         uses: actions-rs/cargo@v1
