@@ -9,34 +9,54 @@ on:
 jobs:
   build:
     name: Auto Build CI
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        rust: [nightly, beta, stable]
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@master
 
-      - name: Install Rust toolchain
+      - name: Install Rust toolchain ${{ matrix.rust }}
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain:  ${{ matrix.rust }}
           components: rustfmt, clippy
           override: true
 
-      - name: Install Dependencies
-        run: sudo apt-get install libssl-dev
-
-      - name: Cargo Clean
-        uses: actions-rs/cargo@v1
+      - name: Cache cargo registry
+        uses: actions/cache@v1
         with:
-          command: clean
+          path: ~/.cargo/registry
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}
 
-      - name: Cargo Build
-        uses: actions-rs/cargo@v1
+      - name: Cache cargo index
+        uses: actions/cache@v1
         with:
+          path: ~/.cargo/git
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}
+
+      - name: Release build async-std
+        uses: actions-rs/cargo@v1
+          with:
           command: build
+          args: --release --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
-      # Todo: https://github.com/rust-lang/cargo/issues/2980
+      - name: Release build tokio
+        uses: actions-rs/cargo@v1
+          with:
+          command: build
+          args: --release --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
+
       - name: Cargo Test For All Features Using async-std
         uses: actions-rs/cargo@v1
         with:
@@ -53,13 +73,15 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command:  check
-          args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
+          target: wasm32-unknown-unknown
+          override: true
+          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
 
-      - name: Cargo Clippy
-        uses: actions-rs/cargo@v1
+      - name: Annotate commit with clippy warnings
+        uses: actions-rs/clippy-check@v1
         with:
-          command: clippy
-          args: -- -D warnings
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental -D warnings
 
       - name: Cargo Fmt Check
         uses: actions-rs/cargo@v1
