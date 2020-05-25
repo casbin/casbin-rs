@@ -59,7 +59,7 @@ impl EventEmitter<Event> for CachedEnforcer {
 }
 
 impl CachedEnforcer {
-    pub(crate) async fn private_enforce<S: AsRef<str> + Send + Sync>(
+    pub(crate) fn private_enforce<S: AsRef<str> + Send + Sync>(
         &mut self,
         rvals: &[S],
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
@@ -67,7 +67,7 @@ impl CachedEnforcer {
         Ok(if let Some(result) = self.cache.get(&cache_key) {
             (*result, true, None)
         } else {
-            let (result, idxs) = self.enforcer.private_enforce(rvals).await?;
+            let (result, idxs) = self.enforcer.private_enforce(rvals)?;
             self.cache.set(cache_key.clone(), result);
             (result, false, idxs)
         })
@@ -179,9 +179,9 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_effector(e);
     }
 
-    async fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
-        let (authorized, cached, idxs) = self.private_enforce(rvals).await?;
+        let (authorized, cached, idxs) = self.private_enforce(rvals)?;
         #[cfg(feature = "logging")]
         {
             self.enforcer.get_logger().print_enforce_log(
@@ -208,8 +208,8 @@ impl CoreApi for CachedEnforcer {
 
     /// CachedEnforcer should use `enforce_mut` instead so that
     /// enforce result can be saved to cache
-    async fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
-        self.enforcer.enforce(rvals).await
+    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+        self.enforcer.enforce(rvals)
     }
 
     #[inline]
