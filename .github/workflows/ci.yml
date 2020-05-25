@@ -47,13 +47,13 @@ jobs:
 
       - name: Release build async-std
         uses: actions-rs/cargo@v1
-          with:
+        with:
           command: build
           args: --release --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
       - name: Release build tokio
         uses: actions-rs/cargo@v1
-          with:
+        with:
           command: build
           args: --release --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
 
