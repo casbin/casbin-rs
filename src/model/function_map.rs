@@ -19,6 +19,7 @@ lazy_static! {
 use std::{borrow::Cow, collections::HashMap};
 
 use rhai::ImmutableString;
+
 pub struct FunctionMap {
     pub(crate) fm: HashMap<String, fn(ImmutableString, ImmutableString) -> bool>,
 }

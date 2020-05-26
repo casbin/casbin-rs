@@ -127,7 +127,8 @@ impl Enforcer {
 
         let m_ast_compiled = self
             .engine
-            .compile_expression(&escape_eval(m_ast.value.as_str()))?;
+            .compile_expression(&escape_eval(m_ast.value.as_str()))
+            .map_err(Into::<Box<EvalAltResult>>::into)?;
 
         if policy_len != 0 {
             for pvals in policies.iter() {
