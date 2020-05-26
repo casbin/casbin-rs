@@ -28,7 +28,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, EvalAltResult, RegisterFn, Scope,
+    Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -37,8 +37,8 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
 
-    lib.set_fn_1("escape_assertion", |s: String| {
-        Ok(escape_assertion(s))
+    lib.set_fn_1("escape_assertion", |s: ImmutableString| {
+        Ok(escape_assertion(s.into_owned()))
     });
 });
 
@@ -272,15 +272,17 @@ impl CoreApi for Enforcer {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&e.rm);
                 e.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
+                    .register_fn(key, move |arg1: ImmutableString, arg2: ImmutableString| {
                         rm.write().unwrap().has_link(&arg1, &arg2, None)
                     });
 
                 let rm = Arc::clone(&e.rm);
-                e.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                e.engine.register_fn(
+                    key,
+                    move |arg1: ImmutableString, arg2: ImmutableString, arg3: ImmutableString| {
                         rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
+                    },
+                );
             }
         }
 
@@ -288,7 +290,7 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.fm.add_function(fname, f);
         self.engine.register_fn(fname, f);
     }
@@ -366,16 +368,20 @@ impl CoreApi for Enforcer {
         if let Some(ast_map) = self.model.get_model().get("g") {
             for (key, _) in ast_map.iter() {
                 let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
+                self.engine.register_fn(
+                    key,
+                    move |arg1: ImmutableString, arg2: ImmutableString| {
                         rm.write().unwrap().has_link(&arg1, &arg2, None)
-                    });
+                    },
+                );
 
                 let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
+                self.engine.register_fn(
+                    key,
+                    move |arg1: ImmutableString, arg2: ImmutableString, arg3: ImmutableString| {
                         rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
+                    },
+                );
             }
         }
 
@@ -1143,9 +1149,10 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        e.add_function("keyMatchCustom", |s1: String, s2: String| {
-            key_match(&s1, &s2)
-        });
+        e.add_function(
+            "keyMatchCustom",
+            |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
+        );
 
         assert_eq!(
             true,

@@ -96,7 +96,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.enforcer.fm.add_function(fname, f);
     }
 
