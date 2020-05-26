@@ -14,7 +14,7 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 
 [dependencies]
 regex = "1.3.7"
-rhai = { version = "0.14.1", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize"] }
+rhai = { git = "https://github.com/schungx/rhai", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize"] }
 ip_network = { version = "0.3.4", optional = true }
 ttl_cache = { version = "0.5.1", optional = true }
 lazy_static = "1.4.0"
