@@ -32,6 +32,8 @@ use std::{
     time::Duration,
 };
 
+use rhai::ImmutableString;
+
 type EventCallback = fn(&mut CachedEnforcer, EventData);
 
 pub struct CachedEnforcer {
