@@ -87,10 +87,9 @@ impl CoreApi for CachedEnforcer {
         };
 
         cached_enforcer.on(Event::ClearCache, clear_cache);
+
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
-        }
+        cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
 
         Ok(cached_enforcer)
     }
@@ -182,6 +181,7 @@ impl CoreApi for CachedEnforcer {
     fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
         let (authorized, cached, indexs) = self.private_enforce(rvals)?;
+
         #[cfg(feature = "logging")]
         {
             self.enforcer.get_logger().print_enforce_log(
@@ -191,15 +191,13 @@ impl CoreApi for CachedEnforcer {
             );
 
             #[cfg(feature = "explain")]
-            {
-                if let Some(indexs) = indexs {
-                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                    let rules: Vec<String> = indexs
-                        .into_iter()
-                        .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
-                        .collect();
-                    self.enforcer.get_logger().print_expl_log(rules);
-                }
+            if let Some(indexs) = indexs {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                let rules: Vec<String> = indexs
+                    .into_iter()
+                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .collect();
+                self.enforcer.get_logger().print_expl_log(rules);
             }
         }
 

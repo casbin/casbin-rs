@@ -117,8 +117,7 @@ impl Enforcer {
 
         for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref())) {
             if rval.starts_with('{') && rval.ends_with('}') {
-                let map = self.engine.parse_json(rval, false)?;
-                scope.push_constant(rtoken, map);
+                scope.push_constant(rtoken, self.engine.parse_json(rval, false)?);
             } else {
                 scope.push_constant(rtoken, rval.to_owned());
             }
@@ -126,14 +125,15 @@ impl Enforcer {
 
         let policies = p_ast.get_policy();
         let (policy_len, scope_len) = (policies.len(), scope.len());
-        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
 
+        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self.engine.compile_expression(&escape_eval(&m_ast.value))?;
 
         if policy_len == 0 {
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
+
             let eval_result = self
                 .engine
                 .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
@@ -142,12 +142,13 @@ impl Enforcer {
             } else {
                 EffectKind::Indeterminate
             };
+
             eft_stream.push_effect(eft);
 
             return Ok((eft_stream.next(), None));
         }
 
-        for pvals in policies.iter() {
+        for pvals in policies {
             scope.rewind(scope_len);
 
             if p_ast.tokens.len() != pvals.len() {
@@ -394,15 +395,13 @@ impl CoreApi for Enforcer {
             );
 
             #[cfg(feature = "explain")]
-            {
-                if let Some(indexes) = indexes {
-                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                    let rules: Vec<String> = indexes
-                        .into_iter()
-                        .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
-                        .collect();
-                    self.logger.print_expl_log(rules);
-                }
+            if let Some(indexes) = indexes {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                let rules: Vec<String> = indexes
+                    .into_iter()
+                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .collect();
+                self.logger.print_expl_log(rules);
             }
         }
 
@@ -466,9 +465,8 @@ impl CoreApi for Enforcer {
         policies.extend(gpolicies);
 
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
-        }
+        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+
         Ok(())
     }
 
@@ -482,9 +480,7 @@ impl CoreApi for Enforcer {
         self.enabled = enabled;
 
         #[cfg(feature = "logging")]
-        {
-            self.logger.print_status_log(enabled);
-        }
+        self.logger.print_status_log(enabled);
     }
 
     #[cfg(feature = "logging")]
