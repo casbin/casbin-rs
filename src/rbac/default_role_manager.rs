@@ -207,11 +207,11 @@ impl Role {
     fn add_role(&mut self, other_role: Arc<RwLock<Role>>) {
         // drop lock while going out of the scope
         {
-            let other_role_unlocked = other_role.read().unwrap();
+            let other_role_locked = other_role.read().unwrap();
             if self
                 .roles
                 .iter()
-                .any(|role| role.read().unwrap().name == other_role_unlocked.name)
+                .any(|role| role.read().unwrap().name == other_role_locked.name)
             {
                 return;
             }
@@ -220,9 +220,9 @@ impl Role {
     }
 
     fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
-        let other_role_unlocked = other_role.read().unwrap();
+        let other_role_locked = other_role.read().unwrap();
         self.roles
-            .retain(|x| x.read().unwrap().name != other_role_unlocked.name)
+            .retain(|x| x.read().unwrap().name != other_role_locked.name)
     }
 
     fn has_role(&self, name: &str, hierarchy_level: usize) -> bool {
