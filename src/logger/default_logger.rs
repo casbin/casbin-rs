@@ -23,24 +23,17 @@ impl Logger for DefaultLogger {
             return;
         }
 
-        let mut text: String = String::from(if cached { "[CACHE]" } else { "" });
+        let text = format!(
+            "{} Request: {}, Response: {}",
+            if cached { "[CACHE]" } else { "[FRESH]" },
+            rvals.join(", "),
+            authorized
+        );
 
         if authorized {
-            text = format!(
-                "{} Request: {:?}, Response: {}",
-                text,
-                rvals.join(", "),
-                true
-            );
-            info!("{}", text);
+            info!("[Enforce]{}", text);
         } else {
-            text = format!(
-                "{} Request: {:?}, Response: {}",
-                text,
-                rvals.join(", "),
-                false
-            );
-            error!("{}", text);
+            error!("[Enforce]{}", text);
         }
     }
 
@@ -49,16 +42,16 @@ impl Logger for DefaultLogger {
             return;
         }
 
-        info!("{}", d);
+        info!("[Mgmt] {}", d);
     }
 
     #[cfg(feature = "explain")]
-    fn print_expl_log(&self, rules: Vec<&Vec<String>>) {
+    fn print_expl_log(&self, rules: Vec<String>) {
         if !self.is_enabled() {
             return;
         }
 
-        info!("Explain: {:?}", rules);
+        info!("[Explain] {}", rules.join(", "));
     }
 
     fn print_status_log(&self, enabled: bool) {
@@ -67,9 +60,9 @@ impl Logger for DefaultLogger {
         }
 
         if enabled {
-            info!("Casbin has been enabled!");
+            info!("[Status] casbin has been enabled!");
         } else {
-            warn!("Casbin has been disabled!");
+            warn!("[Status] casbin has been disabled!");
         }
     }
 }

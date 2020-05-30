@@ -234,13 +234,13 @@ impl CoreApi for Enforcer {
         #[cfg(any(feature = "logging", feature = "watcher"))]
         e.on(Event::PolicyChange, notify_logger_and_watcher);
 
-        e.load_policy().await?;
-
         if let Some(ast_map) = e.model.get_model().get("g") {
             for fname in ast_map.keys() {
                 register_g_function!(e, fname);
             }
         }
+
+        e.load_policy().await?;
 
         Ok(e)
     }
@@ -383,30 +383,30 @@ impl CoreApi for Enforcer {
     /// ```
     fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
-        let (res, idxs) = self.private_enforce(rvals)?;
+        let (authorized, indexes) = self.private_enforce(rvals)?;
 
         #[cfg(feature = "logging")]
         {
             self.logger.print_enforce_log(
                 rvals.iter().map(|x| String::from(x.as_ref())).collect(),
-                res,
+                authorized,
                 false,
             );
 
             #[cfg(feature = "explain")]
             {
-                if let Some(idxs) = idxs {
+                if let Some(indexes) = indexes {
                     let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                    let rules: Vec<&Vec<String>> = idxs
+                    let rules: Vec<String> = indexes
                         .into_iter()
-                        .filter_map(|y| all_rules.get_index(y))
+                        .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
                         .collect();
                     self.logger.print_expl_log(rules);
                 }
             }
         }
 
-        Ok(res)
+        Ok(authorized)
     }
 
     fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
