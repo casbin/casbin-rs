@@ -41,6 +41,7 @@ impl DefaultRoleManager {
 
         if let Some(matching_fn) = self.matching_fn {
             for (_, r) in self.all_roles.iter().filter(|(k, v)| {
+                // Todo: this cannot avoid indirect circular link
                 *k != name && matching_fn(name, k) && !v.read().unwrap().has_direct_role(name)
             }) {
                 role.write().unwrap().add_role(Arc::clone(r));
@@ -78,6 +79,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(&name2);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
+        // Todo: this cannot remove indirect circular link
         if role2.read().unwrap().has_direct_role(&name1) {
             role2.write().unwrap().delete_role(role1);
         }
@@ -163,25 +165,24 @@ impl RoleManager for DefaultRoleManager {
             return vec![];
         }
 
-        let mut names: Vec<String> = vec![];
-        for role in self
-            .all_roles
+        self.all_roles
             .values()
-            .filter(|role| role.read().unwrap().has_direct_role(&name))
-        {
-            names.push(role.read().unwrap().name.clone());
-        }
-
-        if let Some(domain) = domain {
-            return names
-                .into_iter()
-                .map(|mut x| {
+            .filter_map(|role| {
+                let role = role.read().unwrap();
+                if role.has_direct_role(&name) {
+                    Some(role.name.to_owned())
+                } else {
+                    None
+                }
+            })
+            .map(|mut x| {
+                if let Some(domain) = domain {
                     x.replace_range(0..domain.len() + 2, "");
-                    x
-                })
-                .collect();
-        }
-        names
+                }
+
+                x
+            })
+            .collect()
     }
 
     fn clear(&mut self) {
