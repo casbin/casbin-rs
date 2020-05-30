@@ -36,14 +36,12 @@ impl DefaultRoleManager {
         let role = Arc::clone(
             self.all_roles
                 .entry(name.to_owned())
-                .or_insert_with(|| Arc::new(RwLock::new(Role::new(name.to_owned())))),
+                .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (_, r) in self.all_roles.iter().filter(|(k, r)| {
-                k.as_str() != name
-                    && matching_fn(name, k)
-                    && !r.read().unwrap().has_direct_role(name)
+            for (_, r) in self.all_roles.iter().filter(|(k, v)| {
+                *k != name && matching_fn(name, k) && !v.read().unwrap().has_direct_role(name)
             }) {
                 role.write().unwrap().add_role(Arc::clone(r));
             }
@@ -54,7 +52,7 @@ impl DefaultRoleManager {
 
     fn has_role(&self, name: &str) -> bool {
         if let Some(matching_fn) = self.matching_fn {
-            self.all_roles.iter().any(|(r, _)| matching_fn(name, r))
+            self.all_roles.keys().any(|role| matching_fn(name, role))
         } else {
             self.all_roles.contains_key(name)
         }
@@ -166,10 +164,12 @@ impl RoleManager for DefaultRoleManager {
         }
 
         let mut names: Vec<String> = vec![];
-        for role in self.all_roles.values() {
-            if role.read().unwrap().has_direct_role(&name) {
-                names.push(role.read().unwrap().name.clone());
-            }
+        for role in self
+            .all_roles
+            .values()
+            .filter(|role| role.read().unwrap().has_direct_role(&name))
+        {
+            names.push(role.read().unwrap().name.clone());
         }
 
         if let Some(domain) = domain {
@@ -189,16 +189,16 @@ impl RoleManager for DefaultRoleManager {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Role {
     name: String,
     roles: Vec<Arc<RwLock<Role>>>,
 }
 
 impl Role {
-    fn new(name: String) -> Self {
+    fn new<N: Into<String>>(name: N) -> Self {
         Role {
-            name,
+            name: name.into(),
             roles: vec![],
         }
     }
@@ -247,12 +247,9 @@ impl Role {
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
-        for role in self.roles.iter() {
-            if role.read().unwrap().name == name {
-                return true;
-            }
-        }
-        false
+        self.roles
+            .iter()
+            .any(|role| role.read().unwrap().name == name)
     }
 }
 

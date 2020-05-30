@@ -1,6 +1,6 @@
 [package]
 name = "casbin"
-version = "0.9.2"
+version = "0.9.3"
 authors = ["Joey <joey.xf@gmail.com>", "Cheng JIANG <jiang.cheng@vip.163.com>"]
 edition = "2018"
 license = "Apache-2.0"

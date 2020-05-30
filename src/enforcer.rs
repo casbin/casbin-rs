@@ -11,6 +11,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
+    register_g_function,
     util::{escape_assertion, escape_eval},
     Result,
 };
@@ -42,7 +43,12 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     });
 });
 
+lazy_static! {
+    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
+}
+
 use std::{
+    cmp::max,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -109,66 +115,22 @@ impl Enforcer {
             );
         }
 
-        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
-            if rval.as_ref().starts_with('{') && rval.as_ref().ends_with('}') {
-                let map = self.engine.parse_json(rval.as_ref(), false)?;
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref())) {
+            if rval.starts_with('{') && rval.ends_with('}') {
+                let map = self.engine.parse_json(rval, false)?;
                 scope.push_constant(rtoken, map);
             } else {
-                scope.push_constant(rtoken, rval.as_ref().to_owned());
+                scope.push_constant(rtoken, rval.to_owned());
             }
         }
 
         let policies = p_ast.get_policy();
-        let policy_len = policies.len();
-        let mut eft_stream = self
-            .eft
-            .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
-        let scope_size = scope.len();
+        let (policy_len, scope_len) = (policies.len(), scope.len());
+        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
 
-        let m_ast_compiled = self
-            .engine
-            .compile_expression(&escape_eval(m_ast.value.as_str()))?;
+        let m_ast_compiled = self.engine.compile_expression(&escape_eval(&m_ast.value))?;
 
-        if policy_len != 0 {
-            for pvals in policies.iter() {
-                scope.rewind(scope_size);
-
-                if p_ast.tokens.len() != pvals.len() {
-                    return Err(PolicyError::UnmatchPolicyDefinition(
-                        p_ast.tokens.len(),
-                        pvals.len(),
-                    )
-                    .into());
-                }
-                for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
-                    scope.push_constant(ptoken, pval.to_owned());
-                }
-
-                let eval_result = self
-                    .engine
-                    .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
-                let eft = if !eval_result {
-                    EffectKind::Indeterminate
-                } else {
-                    match p_ast.tokens.iter().position(|x| x == "p_eft") {
-                        Some(j) => {
-                            let p_eft = &pvals[j];
-                            if p_eft == "deny" {
-                                EffectKind::Deny
-                            } else if p_eft != "allow" {
-                                EffectKind::Indeterminate
-                            } else {
-                                EffectKind::Allow
-                            }
-                        }
-                        _ => EffectKind::Allow,
-                    }
-                };
-                if eft_stream.push_effect(eft) {
-                    break;
-                }
-            }
-        } else {
+        if policy_len == 0 {
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
@@ -181,7 +143,45 @@ impl Enforcer {
                 EffectKind::Indeterminate
             };
             eft_stream.push_effect(eft);
+
+            return Ok((eft_stream.next(), None));
         }
+
+        for pvals in policies.iter() {
+            scope.rewind(scope_len);
+
+            if p_ast.tokens.len() != pvals.len() {
+                return Err(
+                    PolicyError::UnmatchPolicyDefinition(p_ast.tokens.len(), pvals.len()).into(),
+                );
+            }
+            for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
+                scope.push_constant(ptoken, pval.to_owned());
+            }
+
+            let eval_result = self
+                .engine
+                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+            let eft = match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                Some(j) if eval_result => {
+                    let p_eft = &pvals[j];
+                    if p_eft == "deny" {
+                        EffectKind::Deny
+                    } else if p_eft == "allow" {
+                        EffectKind::Allow
+                    } else {
+                        EffectKind::Indeterminate
+                    }
+                }
+                None if eval_result => EffectKind::Allow,
+                _ => EffectKind::Indeterminate,
+            };
+
+            if eft_stream.push_effect(eft) {
+                break;
+            }
+        }
+
         Ok((eft_stream.next(), {
             #[cfg(feature = "explain")]
             {
@@ -193,10 +193,6 @@ impl Enforcer {
             }
         }))
     }
-}
-
-lazy_static! {
-    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
 }
 
 #[async_trait]
@@ -236,25 +232,13 @@ impl CoreApi for Enforcer {
         };
 
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            e.on(Event::PolicyChange, notify_logger_and_watcher);
-        }
+        e.on(Event::PolicyChange, notify_logger_and_watcher);
 
         e.load_policy().await?;
 
         if let Some(ast_map) = e.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&e.rm);
-                e.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, None)
-                    });
-
-                let rm = Arc::clone(&e.rm);
-                e.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
+            for fname in ast_map.keys() {
+                register_g_function!(e, fname);
             }
         }
 
@@ -338,18 +322,8 @@ impl CoreApi for Enforcer {
         }
 
         if let Some(ast_map) = self.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, None)
-                    });
-
-                let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
+            for fname in ast_map.keys() {
+                register_g_function!(self, fname);
             }
         }
 
