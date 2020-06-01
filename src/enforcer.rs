@@ -1090,9 +1090,10 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        e.add_function("keyMatchCustom", |s1: String, s2: String| {
-            key_match(&s1, &s2)
-        });
+        e.add_function(
+            "keyMatchCustom",
+            |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
+        );
 
         assert_eq!(
             true,
