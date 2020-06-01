@@ -29,7 +29,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, RegisterFn, Scope,
+    Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -38,8 +38,8 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
 
-    lib.set_fn_1("escape_assertion", |s: String| {
-        Ok(escape_assertion(s))
+    lib.set_fn_1("escape_assertion", |s: ImmutableString| {
+        Ok(escape_assertion(s.into_owned()))
     });
 });
 
@@ -127,7 +127,10 @@ impl Enforcer {
         let (policy_len, scope_len) = (policies.len(), scope.len());
 
         let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
-        let m_ast_compiled = self.engine.compile_expression(&escape_eval(&m_ast.value))?;
+        let m_ast_compiled = self
+            .engine
+            .compile_expression(&escape_eval(&m_ast.value))
+            .map_err(Into::<Box<EvalAltResult>>::into)?;
 
         if policy_len == 0 {
             for token in p_ast.tokens.iter() {
@@ -247,7 +250,7 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.fm.add_function(fname, f);
         self.engine.register_fn(fname, f);
     }

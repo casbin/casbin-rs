@@ -13,16 +13,6 @@ pub struct DefaultRoleManager {
     matching_fn: Option<fn(&str, &str) -> bool>,
 }
 
-impl Default for DefaultRoleManager {
-    fn default() -> Self {
-        DefaultRoleManager {
-            all_roles: HashMap::new(),
-            max_hierarchy_level: 0,
-            matching_fn: None,
-        }
-    }
-}
-
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
@@ -40,11 +30,11 @@ impl DefaultRoleManager {
         );
 
         if let Some(matching_fn) = self.matching_fn {
-            for (_, r) in self.all_roles.iter().filter(|(k, v)| {
-                // Todo: this cannot avoid indirect circular link
-                *k != name && matching_fn(name, k) && !v.read().unwrap().has_direct_role(name)
-            }) {
-                role.write().unwrap().add_role(Arc::clone(r));
+            let mut role_locked = role.write().unwrap();
+            for (n, r) in self.all_roles.iter().filter(|(n, _)| *n != name) {
+                if matching_fn(name, n) {
+                    role_locked.add_role(Arc::clone(r));
+                }
             }
         }
 
@@ -79,10 +69,6 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(&name2);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
-        // Todo: this cannot remove indirect circular link
-        if role2.read().unwrap().has_direct_role(&name1) {
-            role2.write().unwrap().delete_role(role1);
-        }
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
@@ -98,8 +84,10 @@ impl RoleManager for DefaultRoleManager {
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
         }
+
         let role1 = self.create_role(&name1);
         let role2 = self.create_role(&name2);
+
         role1.write().unwrap().delete_role(role2);
         Ok(())
     }
@@ -121,6 +109,7 @@ impl RoleManager for DefaultRoleManager {
         if !self.has_role(&name1) || !self.has_role(&name2) {
             return false;
         }
+
         self.create_role(&name1)
             .write()
             .unwrap()
@@ -137,6 +126,7 @@ impl RoleManager for DefaultRoleManager {
         if !self.has_role(&name) {
             return vec![];
         }
+
         let role = self.create_role(&name);
 
         if let Some(domain) = domain {
@@ -205,7 +195,7 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Arc<RwLock<Role>>) {
-        // drop lock while going out of the scope
+        // drop lock after going out of the scope
         {
             let other_role_locked = other_role.read().unwrap();
             if self
@@ -251,6 +241,10 @@ impl Role {
         self.roles
             .iter()
             .any(|role| role.read().unwrap().name == name)
+    }
+
+    fn domain(&self) -> Option<&str> {
+        self.name.splitn(2, "::").next()
     }
 }
 

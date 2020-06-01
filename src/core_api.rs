@@ -10,6 +10,7 @@ use crate::Logger;
 use crate::emitter::EventData;
 
 use async_trait::async_trait;
+use rhai::ImmutableString;
 
 use std::sync::{Arc, RwLock};
 
@@ -18,7 +19,7 @@ pub trait CoreApi: Send + Sync {
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self>
     where
         Self: Sized;
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool);
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool);
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;
     fn get_adapter(&self) -> &dyn Adapter;

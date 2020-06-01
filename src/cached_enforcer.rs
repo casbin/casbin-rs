@@ -25,6 +25,7 @@ use crate::logger::Logger;
 use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
+use rhai::ImmutableString;
 
 use std::{
     collections::HashMap,
@@ -95,7 +96,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.enforcer.fm.add_function(fname, f);
     }
 

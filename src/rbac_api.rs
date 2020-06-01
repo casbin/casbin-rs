@@ -1123,6 +1123,9 @@ mod tests {
             .unwrap());
         assert!(!e.enforce(&["bob", "domain1", "/book/2", "GET"]).unwrap());
 
+        assert!(e.enforce(&["eve", "domain1", "/book/2", "GET"]).unwrap());
+        assert!(e.enforce(&["eve", "domain2", "/pen/2", "GET"]).unwrap());
+
         assert_eq!(
             vec!["/book/:id", "book_group"],
             sort_unstable(e.get_implicit_roles_for_user("/book/1", Some("domain1")))
@@ -1172,14 +1175,6 @@ mod tests {
         assert_eq!(
             vec!["*", "book_admin", "pen_admin"],
             sort_unstable(e.get_implicit_roles_for_user("bob", None))
-        );
-        assert_eq!(
-            vec![""; 0],
-            sort_unstable(e.get_implicit_roles_for_user("book_admin", None))
-        );
-        assert_eq!(
-            vec![""; 0],
-            sort_unstable(e.get_implicit_roles_for_user("pen_admin", None))
         );
     }
 

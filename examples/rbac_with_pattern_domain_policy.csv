@@ -4,6 +4,8 @@ p, alice, domain1, /book/1, GET
 p, book_admin, domain1, book_group, GET
 p, pen_admin, domain2, pen_group, GET
 
+g, eve, book_admin, *
+g, eve, pen_admin, *
 g, alice, book_admin, domain1
 g, bob, pen_admin, domain2
 g2, /book/:id, book_group, domain1
