@@ -10,7 +10,7 @@ use std::{
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, Arc<RwLock<Role>>>,
     max_hierarchy_level: usize,
-    matching_fn: Option<fn(&str, &str) -> bool>,
+    matching_fn: Option<(fn(&str, &str) -> bool, fn(&str, &str) -> bool)>,
 }
 
 impl DefaultRoleManager {
@@ -29,10 +29,10 @@ impl DefaultRoleManager {
                 .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
         );
 
-        if let Some(matching_fn) = self.matching_fn {
+        if let Some((maching_fn, _)) = self.matching_fn {
             let mut role_locked = role.write().unwrap();
             for (n, r) in self.all_roles.iter().filter(|(n, _)| *n != name) {
-                if matching_fn(name, n) {
+                if maching_fn(name, n) {
                     role_locked.add_role(Arc::clone(r));
                 }
             }
@@ -42,7 +42,7 @@ impl DefaultRoleManager {
     }
 
     fn has_role(&self, name: &str) -> bool {
-        if let Some(matching_fn) = self.matching_fn {
+        if let Some((matching_fn, _)) = self.matching_fn {
             self.all_roles.keys().any(|role| matching_fn(name, role))
         } else {
             self.all_roles.contains_key(name)
@@ -51,7 +51,7 @@ impl DefaultRoleManager {
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn add_matching_fn(&mut self, matching_fn: fn(&str, &str) -> bool) {
+    fn add_matching_fn(&mut self, matching_fn: (fn(&str, &str) -> bool, fn(&str, &str) -> bool)) {
         self.matching_fn = Some(matching_fn);
     }
 
