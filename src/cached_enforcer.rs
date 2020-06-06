@@ -147,10 +147,10 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_role_manager(rm)
     }
 
-    #[inline]
-    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
-        self.enforcer.add_matching_fn(f)
-    }
+    // #[inline]
+    // fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
+    //     self.enforcer.add_matching_fn(f)
+    // }
 
     #[inline]
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {

@@ -84,23 +84,21 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        if !self.has_role(name, domain) {
-            return vec![];
-        }
-
         self.all_roles
             .get(domain.unwrap_or(DEFAULT_DOMAIN))
-            .unwrap()
-            .values()
-            .filter_map(|role| {
-                let role = role.read().unwrap();
-                if role.has_direct_role(name) {
-                    Some(role.name.to_owned())
-                } else {
-                    None
-                }
+            .map_or(vec![], |roles| {
+                roles
+                    .values()
+                    .filter_map(|role| {
+                        let role = role.read().unwrap();
+                        if role.has_direct_role(name) {
+                            Some(role.name.to_owned())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
             })
-            .collect()
     }
 
     fn clear(&mut self) {
