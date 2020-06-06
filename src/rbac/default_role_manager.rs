@@ -22,27 +22,20 @@ impl DefaultRoleManager {
     }
 
     fn create_role(&mut self, name: &str, domain: Option<&str>) -> Arc<RwLock<Role>> {
-        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+        let role = self
+            .all_roles
+            .entry(domain.unwrap_or(DEFAULT_DOMAIN).into())
+            .or_insert_with(|| HashMap::new())
+            .entry(name.into())
+            .or_insert_with(|| Arc::new(RwLock::new(Role::new(name))));
 
-        let role = Arc::clone(
-            self.all_roles
-                .entry(domain.into())
-                .or_insert_with(|| HashMap::new())
-                .entry(name.into())
-                .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
-        );
-
-        role
+        Arc::clone(role)
     }
 
     fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
-        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
-
-        if let Some(domain_roles) = self.all_roles.get(domain) {
-            return domain_roles.contains_key(name);
-        }
-
-        false
+        self.all_roles
+            .get(domain.unwrap_or(DEFAULT_DOMAIN))
+            .map_or(false, |roles| roles.contains_key(name))
     }
 }
 
