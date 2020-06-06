@@ -334,17 +334,17 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
-    fn add_matching_fn(
-        &mut self,
-        f: (fn(&str, &str) -> bool, fn(&str, &str) -> bool),
-    ) -> Result<()> {
-        self.rm.write().unwrap().add_matching_fn(f);
-        if self.auto_build_role_links {
-            self.build_role_links()?;
-        }
-
-        Ok(())
-    }
+    // fn add_matching_fn(
+    //     &mut self,
+    //     f: (fn(&str, &str) -> bool, fn(&str, &str) -> bool),
+    // ) -> Result<()> {
+    //     self.rm.write().unwrap().add_matching_fn(f);
+    //     if self.auto_build_role_links {
+    //         self.build_role_links()?;
+    //     }
+    //
+    //     Ok(())
+    // }
 
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;

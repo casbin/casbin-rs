@@ -1,16 +1,16 @@
 use crate::{error::RbacError, rbac::RoleManager, Result};
 
 use std::{
-    borrow::Cow,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 
+const DEFAULT_DOMAIN: &'static str = "DEFAULT";
+
 #[derive(Clone)]
 pub struct DefaultRoleManager {
-    all_roles: HashMap<String, Arc<RwLock<Role>>>,
+    all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
     max_hierarchy_level: usize,
-    matching_fn: Option<(fn(&str, &str) -> bool, fn(&str, &str) -> bool)>,
 }
 
 impl DefaultRoleManager {
@@ -18,77 +18,52 @@ impl DefaultRoleManager {
         DefaultRoleManager {
             all_roles: HashMap::new(),
             max_hierarchy_level,
-            matching_fn: None,
         }
     }
 
-    fn create_role(&mut self, name: &str) -> Arc<RwLock<Role>> {
+    fn create_role(&mut self, name: &str, domain: Option<&str>) -> Arc<RwLock<Role>> {
+        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+
         let role = Arc::clone(
             self.all_roles
-                .entry(name.to_owned())
+                .entry(domain.into())
+                .or_insert_with(|| HashMap::new())
+                .entry(name.into())
                 .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
         );
-
-        if let Some((maching_fn, _)) = self.matching_fn {
-            let mut role_locked = role.write().unwrap();
-            for (n, r) in self.all_roles.iter().filter(|(n, _)| *n != name) {
-                if maching_fn(name, n) {
-                    role_locked.add_role(Arc::clone(r));
-                }
-            }
-        }
 
         role
     }
 
-    fn has_role(&self, name: &str) -> bool {
-        if let Some((matching_fn, _)) = self.matching_fn {
-            self.all_roles.keys().any(|role| matching_fn(name, role))
-        } else {
-            self.all_roles.contains_key(name)
+    fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
+        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+
+        if let Some(domain_roles) = self.all_roles.get(domain) {
+            return domain_roles.contains_key(name);
         }
+
+        false
     }
 }
 
 impl RoleManager for DefaultRoleManager {
-    fn add_matching_fn(&mut self, matching_fn: (fn(&str, &str) -> bool, fn(&str, &str) -> bool)) {
-        self.matching_fn = Some(matching_fn);
-    }
-
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
-        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
-            (
-                format!("{}::{}", domain, name1).into(),
-                format!("{}::{}", domain, name2).into(),
-            )
-        } else {
-            (name1.into(), name2.into())
-        };
-
-        let role1 = self.create_role(&name1);
-        let role2 = self.create_role(&name2);
+        let role1 = self.create_role(name1, domain);
+        let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
-        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
-            (
-                format!("{}::{}", domain, name1).into(),
-                format!("{}::{}", domain, name2).into(),
-            )
-        } else {
-            (name1.into(), name2.into())
-        };
-
-        if !self.has_role(&name1) || !self.has_role(&name2) {
+        if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
             return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
         }
 
-        let role1 = self.create_role(&name1);
-        let role2 = self.create_role(&name2);
+        let role1 = self.create_role(name1, domain);
+        let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().delete_role(role2);
+
         Ok(())
     }
 
@@ -97,80 +72,40 @@ impl RoleManager for DefaultRoleManager {
             return true;
         }
 
-        let (name1, name2): (Cow<str>, Cow<str>) = if let Some(domain) = domain {
-            (
-                format!("{}::{}", domain, name1).into(),
-                format!("{}::{}", domain, name2).into(),
-            )
-        } else {
-            (name1.into(), name2.into())
-        };
-
-        if !self.has_role(&name1) || !self.has_role(&name2) {
+        if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
             return false;
         }
 
-        self.create_role(&name1)
+        self.create_role(name1, domain)
             .write()
             .unwrap()
-            .has_role(&name2, self.max_hierarchy_level)
+            .has_role(name2, self.max_hierarchy_level)
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let name: Cow<str> = if let Some(domain) = domain {
-            format!("{}::{}", domain, name).into()
-        } else {
-            name.into()
-        };
-
-        if !self.has_role(&name) {
+        if !self.has_role(name, domain) {
             return vec![];
         }
 
-        let role = self.create_role(&name);
-
-        if let Some(domain) = domain {
-            role.read()
-                .unwrap()
-                .get_roles()
-                .into_iter()
-                .map(|mut x| {
-                    x.replace_range(0..domain.len() + 2, "");
-                    x
-                })
-                .collect()
-        } else {
-            role.read().unwrap().get_roles()
-        }
+        self.create_role(name, domain).read().unwrap().get_roles()
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let name: Cow<str> = if let Some(domain) = domain {
-            format!("{}::{}", domain, name).into()
-        } else {
-            name.into()
-        };
-
-        if !self.has_role(&name) {
+        if !self.has_role(name, domain) {
             return vec![];
         }
 
         self.all_roles
+            .get(domain.unwrap_or(DEFAULT_DOMAIN))
+            .unwrap()
             .values()
             .filter_map(|role| {
                 let role = role.read().unwrap();
-                if role.has_direct_role(&name) {
+                if role.has_direct_role(name) {
                     Some(role.name.to_owned())
                 } else {
                     None
                 }
-            })
-            .map(|mut x| {
-                if let Some(domain) = domain {
-                    x.replace_range(0..domain.len() + 2, "");
-                }
-
-                x
             })
             .collect()
     }
@@ -206,6 +141,7 @@ impl Role {
                 return;
             }
         }
+
         self.roles.push(other_role);
     }
 
@@ -219,14 +155,17 @@ impl Role {
         if self.name == name {
             return true;
         }
+
         if hierarchy_level == 0 {
             return false;
         }
+
         for role in self.roles.iter() {
             if role.read().unwrap().has_role(name, hierarchy_level - 1) {
                 return true;
             }
         }
+
         false
     }
 
@@ -241,10 +180,6 @@ impl Role {
         self.roles
             .iter()
             .any(|role| role.read().unwrap().name == name)
-    }
-
-    fn domain(&self) -> Option<&str> {
-        self.name.splitn(2, "::").next()
     }
 }
 

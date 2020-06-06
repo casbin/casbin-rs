@@ -36,10 +36,10 @@ pub trait CoreApi: Send + Sync {
     fn get_logger(&self) -> &dyn Logger;
     #[cfg(feature = "logging")]
     fn set_logger(&mut self, logger: Box<dyn Logger>);
-    fn add_matching_fn(
-        &mut self,
-        f: (fn(&str, &str) -> bool, fn(&str, &str) -> bool),
-    ) -> Result<()>;
+    // fn add_matching_fn(
+    //     &mut self,
+    //     f: (fn(&str, &str) -> bool, fn(&str, &str) -> bool),
+    // ) -> Result<()>;
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
     fn set_effector(&mut self, e: Box<dyn Effector>);
