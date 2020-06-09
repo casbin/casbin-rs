@@ -198,7 +198,7 @@ impl CoreApi for CachedEnforcer {
                     .into_iter()
                     .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
                     .collect();
-                self.enforcer.get_logger().print_expl_log(rules);
+                self.enforcer.get_logger().print_explain_log(rules);
             }
         }
 

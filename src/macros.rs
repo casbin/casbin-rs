@@ -38,3 +38,13 @@ macro_rules! register_g_function {
         );
     }};
 }
+
+#[macro_export]
+macro_rules! push_index_if_explain {
+    ($this:ident) => {{
+        #[cfg(feature = "explain")]
+        if $this.cap > 1 {
+            $this.explain.push($this.idx);
+        }
+    }};
+}

@@ -46,7 +46,7 @@ impl Logger for DefaultLogger {
     }
 
     #[cfg(feature = "explain")]
-    fn print_expl_log(&self, rules: Vec<String>) {
+    fn print_explain_log(&self, rules: Vec<String>) {
         if !self.is_enabled() {
             return;
         }

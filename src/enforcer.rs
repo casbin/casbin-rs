@@ -189,7 +189,7 @@ impl Enforcer {
         Ok((eft_stream.next(), {
             #[cfg(feature = "explain")]
             {
-                eft_stream.expl()
+                eft_stream.explain()
             }
             #[cfg(not(feature = "explain"))]
             {
@@ -407,7 +407,7 @@ impl CoreApi for Enforcer {
                     .into_iter()
                     .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
                     .collect();
-                self.logger.print_expl_log(rules);
+                self.logger.print_explain_log(rules);
             }
         }
 
