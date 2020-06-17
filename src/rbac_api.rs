@@ -1044,139 +1044,139 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
-        async_std::test
-    )]
-    #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
-        tokio::test
-    )]
-    async fn test_pattern_matching_fn() {
-        // let mut e = Enforcer::new(
-        //     "examples/rbac_with_pattern_model.conf",
-        //     "examples/rbac_with_pattern_policy.csv",
-        // )
-        // .await
-        // .unwrap();
-        //
-        // use crate::model::key_match2;
-        //
-        // e.add_matching_fn(key_match2).unwrap();
-        //
-        // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "/pen2/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "/book/2", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
-        // assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
-        // assert!(!e.enforce(&["bob", "/book/1", "GET"]).unwrap());
-        // assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
-        // assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
-        //
-        // assert_eq!(
-        //     vec!["/book/:id", "book_group"],
-        //     sort_unstable(e.get_implicit_roles_for_user("/book/1", None))
-        // );
-        //
-        // assert_eq!(
-        //     vec!["/pen/:id", "pen_group"],
-        //     sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
-        // );
-    }
+    // #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg_attr(
+    //     all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+    //     async_std::test
+    // )]
+    // #[cfg_attr(
+    //     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    //     tokio::test
+    // )]
+    // async fn test_pattern_matching_fn() {
+    // let mut e = Enforcer::new(
+    //     "examples/rbac_with_pattern_model.conf",
+    //     "examples/rbac_with_pattern_policy.csv",
+    // )
+    // .await
+    // .unwrap();
+    //
+    // use crate::model::key_match2;
+    //
+    // e.add_matching_fn(key_match2).unwrap();
+    //
+    // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "/pen2/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "/book/2", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+    // assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
+    // assert!(!e.enforce(&["bob", "/book/1", "GET"]).unwrap());
+    // assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
+    // assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
+    //
+    // assert_eq!(
+    //     vec!["/book/:id", "book_group"],
+    //     sort_unstable(e.get_implicit_roles_for_user("/book/1", None))
+    // );
+    //
+    // assert_eq!(
+    //     vec!["/pen/:id", "pen_group"],
+    //     sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
+    // );
+    // }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
-        async_std::test
-    )]
-    #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
-        tokio::test
-    )]
-    async fn test_pattern_matching_fn_with_domain() {
-        // let mut e = Enforcer::new(
-        //     "examples/rbac_with_pattern_domain_model.conf",
-        //     "examples/rbac_with_pattern_domain_policy.csv",
-        // )
-        // .await
-        // .unwrap();
-        //
-        // use crate::model::key_match2;
-        //
-        // e.add_matching_fn(key_match2).unwrap();
-        //
-        // assert!(e.enforce(&["alice", "domain2", "/pen/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "domain1", "/book/1", "GET"]).unwrap());
-        //
-        // assert!(e.enforce(&["alice", "domain1", "/book/2", "GET"]).unwrap());
-        // assert!(!e
-        //     .enforce(&["alice", "domain_unknown", "/book/2", "GET"])
-        //     .unwrap());
-        // assert!(!e.enforce(&["alice", "domain2", "/pen/2", "GET"]).unwrap());
-        //
-        // assert!(e.enforce(&["bob", "domain2", "/pen/2", "GET"]).unwrap());
-        // assert!(!e
-        //     .enforce(&["bob", "domain_unknown", "/pen/2", "GET"])
-        //     .unwrap());
-        // assert!(!e.enforce(&["bob", "domain1", "/book/2", "GET"]).unwrap());
-        //
-        // // assert!(e.enforce(&["eve", "domain1", "/book/2", "GET"]).unwrap());
-        // // assert!(e.enforce(&["eve", "domain2", "/pen/2", "GET"]).unwrap());
-        //
-        // assert_eq!(
-        //     vec!["/book/:id", "book_group"],
-        //     sort_unstable(e.get_implicit_roles_for_user("/book/1", Some("domain1")))
-        // );
-        //
-        // assert_eq!(
-        //     vec!["/pen/:id", "pen_group"],
-        //     sort_unstable(e.get_implicit_roles_for_user("/pen/1", Some("domain2")))
-        // );
-    }
+    // #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg_attr(
+    //     all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+    //     async_std::test
+    // )]
+    // #[cfg_attr(
+    //     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    //     tokio::test
+    // )]
+    // async fn test_pattern_matching_fn_with_domain() {
+    // let mut e = Enforcer::new(
+    //     "examples/rbac_with_pattern_domain_model.conf",
+    //     "examples/rbac_with_pattern_domain_policy.csv",
+    // )
+    // .await
+    // .unwrap();
+    //
+    // use crate::model::key_match2;
+    //
+    // e.add_matching_fn(key_match2).unwrap();
+    //
+    // assert!(e.enforce(&["alice", "domain2", "/pen/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "domain1", "/book/1", "GET"]).unwrap());
+    //
+    // assert!(e.enforce(&["alice", "domain1", "/book/2", "GET"]).unwrap());
+    // assert!(!e
+    //     .enforce(&["alice", "domain_unknown", "/book/2", "GET"])
+    //     .unwrap());
+    // assert!(!e.enforce(&["alice", "domain2", "/pen/2", "GET"]).unwrap());
+    //
+    // assert!(e.enforce(&["bob", "domain2", "/pen/2", "GET"]).unwrap());
+    // assert!(!e
+    //     .enforce(&["bob", "domain_unknown", "/pen/2", "GET"])
+    //     .unwrap());
+    // assert!(!e.enforce(&["bob", "domain1", "/book/2", "GET"]).unwrap());
+    //
+    // // assert!(e.enforce(&["eve", "domain1", "/book/2", "GET"]).unwrap());
+    // // assert!(e.enforce(&["eve", "domain2", "/pen/2", "GET"]).unwrap());
+    //
+    // assert_eq!(
+    //     vec!["/book/:id", "book_group"],
+    //     sort_unstable(e.get_implicit_roles_for_user("/book/1", Some("domain1")))
+    // );
+    //
+    // assert_eq!(
+    //     vec!["/pen/:id", "pen_group"],
+    //     sort_unstable(e.get_implicit_roles_for_user("/pen/1", Some("domain2")))
+    // );
+    // }
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
-        async_std::test
-    )]
-    #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
-        tokio::test
-    )]
-    async fn test_pattern_matching_basic_role() {
-        // let mut e = Enforcer::new(
-        //     "examples/rbac_basic_role_model.conf",
-        //     "examples/rbac_basic_role_policy.csv",
-        // )
-        // .await
-        // .unwrap();
-        //
-        // use crate::model::key_match;
-        //
-        // e.add_matching_fn(key_match).unwrap();
-        //
-        // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
-        // assert!(e.enforce(&["bob", "/book/1", "GET"]).unwrap());
-        //
-        // assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
-        // assert!(!e.enforce(&["alice", "/book/2", "GET"]).unwrap());
-        // assert!(!e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
-        // assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
-        //
-        // assert_eq!(
-        //     vec!["*", "book_admin", "pen_admin"],
-        //     sort_unstable(e.get_implicit_roles_for_user("alice", None))
-        // );
-        // assert_eq!(
-        //     vec!["*", "book_admin", "pen_admin"],
-        //     sort_unstable(e.get_implicit_roles_for_user("bob", None))
-        // );
-    }
+    // #[cfg(not(target_arch = "wasm32"))]
+    // #[cfg_attr(
+    //     all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+    //     async_std::test
+    // )]
+    // #[cfg_attr(
+    //     all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+    //     tokio::test
+    // )]
+    // async fn test_pattern_matching_basic_role() {
+    // let mut e = Enforcer::new(
+    //     "examples/rbac_basic_role_model.conf",
+    //     "examples/rbac_basic_role_policy.csv",
+    // )
+    // .await
+    // .unwrap();
+    //
+    // use crate::model::key_match;
+    //
+    // e.add_matching_fn(key_match).unwrap();
+    //
+    // assert!(e.enforce(&["alice", "/pen/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["alice", "/book/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["bob", "/pen/1", "GET"]).unwrap());
+    // assert!(e.enforce(&["bob", "/book/1", "GET"]).unwrap());
+    //
+    // assert!(!e.enforce(&["alice", "/pen/2", "GET"]).unwrap());
+    // assert!(!e.enforce(&["alice", "/book/2", "GET"]).unwrap());
+    // assert!(!e.enforce(&["bob", "/pen/2", "GET"]).unwrap());
+    // assert!(!e.enforce(&["bob", "/book/2", "GET"]).unwrap());
+    //
+    // assert_eq!(
+    //     vec!["*", "book_admin", "pen_admin"],
+    //     sort_unstable(e.get_implicit_roles_for_user("alice", None))
+    // );
+    // assert_eq!(
+    //     vec!["*", "book_admin", "pen_admin"],
+    //     sort_unstable(e.get_implicit_roles_for_user("bob", None))
+    // );
+    // }
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(

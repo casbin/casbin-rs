@@ -7,8 +7,6 @@ use std::{
 
 const DEFAULT_DOMAIN: &'static str = "DEFAULT";
 
-type MatchingFn = fn(&str, &str) -> bool;
-
 #[derive(Clone)]
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
