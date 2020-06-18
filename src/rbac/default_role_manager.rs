@@ -27,7 +27,7 @@ impl DefaultRoleManager {
         Arc::clone(
             self.all_roles
                 .entry(domain.into())
-                .or_insert_with(|| HashMap::new())
+                .or_insert_with(HashMap::new)
                 .entry(name.into())
                 .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
         )
