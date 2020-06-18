@@ -25,6 +25,7 @@ use crate::logger::Logger;
 use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
+use rhai::ImmutableString;
 
 use std::{
     collections::HashMap,
@@ -64,12 +65,12 @@ impl CachedEnforcer {
         rvals: &[S],
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
         let cache_key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
-        Ok(if let Some(result) = self.cache.get(&cache_key) {
-            (*result, true, None)
+        Ok(if let Some(authorized) = self.cache.get(&cache_key) {
+            (*authorized, true, None)
         } else {
-            let (result, idxs) = self.enforcer.private_enforce(rvals)?;
-            self.cache.set(cache_key.clone(), result);
-            (result, false, idxs)
+            let (authorized, indexes) = self.enforcer.private_enforce(rvals)?;
+            self.cache.set(cache_key.clone(), authorized);
+            (authorized, false, indexes)
         })
     }
 }
@@ -87,16 +88,15 @@ impl CoreApi for CachedEnforcer {
         };
 
         cached_enforcer.on(Event::ClearCache, clear_cache);
+
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
-        }
+        cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
 
         Ok(cached_enforcer)
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.enforcer.fm.add_function(fname, f);
     }
 
@@ -148,11 +148,6 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
-        self.enforcer.add_matching_fn(f)
-    }
-
-    #[inline]
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.enforcer.set_model(m).await
     }
@@ -181,7 +176,8 @@ impl CoreApi for CachedEnforcer {
 
     fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
-        let (authorized, cached, idxs) = self.private_enforce(rvals)?;
+        let (authorized, cached, indexs) = self.private_enforce(rvals)?;
+
         #[cfg(feature = "logging")]
         {
             self.enforcer.get_logger().print_enforce_log(
@@ -191,15 +187,13 @@ impl CoreApi for CachedEnforcer {
             );
 
             #[cfg(feature = "explain")]
-            {
-                if let Some(idxs) = idxs {
-                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                    let rules: Vec<&Vec<String>> = idxs
-                        .into_iter()
-                        .filter_map(|y| all_rules.get_index(y))
-                        .collect();
-                    self.enforcer.get_logger().print_expl_log(rules);
-                }
+            if let Some(indexs) = indexs {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                let rules: Vec<String> = indexs
+                    .into_iter()
+                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .collect();
+                self.enforcer.get_logger().print_explain_log(rules);
             }
         }
 

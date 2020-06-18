@@ -1,3 +1,5 @@
+use crate::push_index_if_explain;
+
 #[derive(PartialEq, Clone, Copy)]
 pub enum EffectKind {
     Allow = 0,
@@ -12,7 +14,7 @@ pub trait Effector: Send + Sync {
 pub trait EffectorStream: Send + Sync {
     fn next(&self) -> bool;
     #[cfg(feature = "explain")]
-    fn expl(&self) -> Option<Vec<usize>>;
+    fn explain(&self) -> Option<Vec<usize>>;
     fn push_effect(&mut self, eft: EffectKind) -> bool;
 }
 
@@ -24,7 +26,7 @@ pub struct DefaultEffectStream {
     idx: usize,
     cap: usize,
     #[cfg(feature = "explain")]
-    expl: Vec<usize>,
+    explain: Vec<usize>,
 }
 
 #[derive(Default)]
@@ -49,7 +51,7 @@ impl Effector for DefaultEffector {
             cap,
             idx: 0,
             #[cfg(feature = "explain")]
-            expl: Vec::with_capacity(10),
+            explain: Vec::with_capacity(10),
         })
     }
 }
@@ -63,12 +65,12 @@ impl EffectorStream for DefaultEffectStream {
 
     #[cfg(feature = "explain")]
     #[inline]
-    fn expl(&self) -> Option<Vec<usize>> {
+    fn explain(&self) -> Option<Vec<usize>> {
         assert!(self.done);
-        if self.expl.is_empty() {
+        if self.explain.is_empty() {
             None
         } else {
-            Some(self.expl.clone())
+            Some(self.explain.clone())
         }
     }
 
@@ -78,45 +80,25 @@ impl EffectorStream for DefaultEffectStream {
                 self.done = true;
                 self.res = true;
 
-                #[cfg(feature = "explain")]
-                {
-                    if self.cap > 1 {
-                        self.expl.push(self.idx);
-                    }
-                }
+                push_index_if_explain!(self);
             }
         } else if self.expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
             if eft == EffectKind::Allow {
                 self.res = true;
 
-                #[cfg(feature = "explain")]
-                {
-                    if self.cap > 1 {
-                        self.expl.push(self.idx);
-                    }
-                }
+                push_index_if_explain!(self)
             } else if eft == EffectKind::Deny {
                 self.done = true;
                 self.res = false;
 
-                #[cfg(feature = "explain")]
-                {
-                    if self.cap > 1 {
-                        self.expl.push(self.idx);
-                    }
-                }
+                push_index_if_explain!(self)
             }
         } else if self.expr == "!some(where (p_eft == deny))" {
             if eft == EffectKind::Deny {
                 self.done = true;
                 self.res = false;
 
-                #[cfg(feature = "explain")]
-                {
-                    if self.cap > 1 {
-                        self.expl.push(self.idx);
-                    }
-                }
+                push_index_if_explain!(self)
             }
         } else if self.expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
             if eft == EffectKind::Allow {
@@ -124,14 +106,8 @@ impl EffectorStream for DefaultEffectStream {
             } else {
                 self.res = false;
             }
-            self.done = true;
 
-            #[cfg(feature = "explain")]
-            {
-                if self.cap > 1 {
-                    self.expl.push(self.idx);
-                }
-            }
+            self.done = true;
         }
 
         if self.idx + 1 == self.cap {

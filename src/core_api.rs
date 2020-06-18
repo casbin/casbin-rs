@@ -10,6 +10,7 @@ use crate::Logger;
 use crate::emitter::EventData;
 
 use async_trait::async_trait;
+use rhai::ImmutableString;
 
 use std::sync::{Arc, RwLock};
 
@@ -18,7 +19,7 @@ pub trait CoreApi: Send + Sync {
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self>
     where
         Self: Sized;
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool);
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool);
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;
     fn get_adapter(&self) -> &dyn Adapter;
@@ -35,7 +36,6 @@ pub trait CoreApi: Send + Sync {
     fn get_logger(&self) -> &dyn Logger;
     #[cfg(feature = "logging")]
     fn set_logger(&mut self, logger: Box<dyn Logger>);
-    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()>;
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
     fn set_effector(&mut self, e: Box<dyn Effector>);

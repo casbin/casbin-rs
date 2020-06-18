@@ -10,6 +10,7 @@ use globset::GlobBuilder;
 use ip_network::IpNetwork;
 use lazy_static::lazy_static;
 use regex::Regex;
+use rhai::ImmutableString;
 
 lazy_static! {
     static ref MAT_B: Regex = Regex::new(r":[^/]+").unwrap();
@@ -19,34 +20,40 @@ lazy_static! {
 use std::{borrow::Cow, collections::HashMap};
 
 pub struct FunctionMap {
-    pub(crate) fm: HashMap<String, fn(String, String) -> bool>,
+    pub(crate) fm: HashMap<String, fn(ImmutableString, ImmutableString) -> bool>,
 }
 
 impl Default for FunctionMap {
     fn default() -> FunctionMap {
-        let mut fm: HashMap<String, fn(String, String) -> bool> = HashMap::new();
-        fm.insert("keyMatch".to_owned(), |s1: String, s2: String| {
-            key_match(&s1, &s2)
-        });
-        fm.insert("keyMatch2".to_owned(), |s1: String, s2: String| {
-            key_match2(&s1, &s2)
-        });
-        fm.insert("keyMatch3".to_owned(), |s1: String, s2: String| {
-            key_match3(&s1, &s2)
-        });
-        fm.insert("regexMatch".to_owned(), |s1: String, s2: String| {
-            regex_match(&s1, &s2)
-        });
+        let mut fm: HashMap<String, fn(ImmutableString, ImmutableString) -> bool> = HashMap::new();
+        fm.insert(
+            "keyMatch".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
+        );
+        fm.insert(
+            "keyMatch2".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| key_match2(&s1, &s2),
+        );
+        fm.insert(
+            "keyMatch3".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| key_match3(&s1, &s2),
+        );
+        fm.insert(
+            "regexMatch".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| regex_match(&s1, &s2),
+        );
 
         #[cfg(feature = "glob")]
-        fm.insert("globMatch".to_owned(), |s1: String, s2: String| {
-            glob_match(&s1, &s2)
-        });
+        fm.insert(
+            "globMatch".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| glob_match(&s1, &s2),
+        );
 
         #[cfg(feature = "ip")]
-        fm.insert("ipMatch".to_owned(), |s1: String, s2: String| {
-            ip_match(&s1, &s2)
-        });
+        fm.insert(
+            "ipMatch".to_owned(),
+            |s1: ImmutableString, s2: ImmutableString| ip_match(&s1, &s2),
+        );
 
         FunctionMap { fm }
     }
@@ -54,12 +61,14 @@ impl Default for FunctionMap {
 
 impl FunctionMap {
     #[inline]
-    pub fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    pub fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.fm.insert(fname.to_owned(), f);
     }
 
     #[inline]
-    pub fn get_functions(&self) -> impl Iterator<Item = (&String, &fn(String, String) -> bool)> {
+    pub fn get_functions(
+        &self,
+    ) -> impl Iterator<Item = (&String, &fn(ImmutableString, ImmutableString) -> bool)> {
         self.fm.iter()
     }
 }

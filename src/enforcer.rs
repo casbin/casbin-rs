@@ -11,6 +11,7 @@ use crate::{
     management_api::MgmtApi,
     model::{FunctionMap, Model},
     rbac::{DefaultRoleManager, RoleManager},
+    register_g_function,
     util::{escape_assertion, escape_eval},
     Result,
 };
@@ -28,7 +29,7 @@ use async_trait::async_trait;
 use rhai::{
     def_package,
     packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, RegisterFn, Scope,
+    Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -37,12 +38,17 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
 
-    lib.set_fn_1("escape_assertion", |s: String| {
-        Ok(escape_assertion(s))
+    lib.set_fn_1("escape_assertion", |s: ImmutableString| {
+        Ok(escape_assertion(s.into_owned()))
     });
 });
 
+lazy_static! {
+    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
+}
+
 use std::{
+    cmp::max,
     collections::HashMap,
     sync::{Arc, RwLock},
 };
@@ -109,69 +115,28 @@ impl Enforcer {
             );
         }
 
-        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
-            if rval.as_ref().starts_with('{') && rval.as_ref().ends_with('}') {
-                let map = self.engine.parse_json(rval.as_ref(), false)?;
-                scope.push_constant(rtoken, map);
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref())) {
+            if rval.starts_with('{') && rval.ends_with('}') {
+                scope.push_constant(rtoken, self.engine.parse_json(rval, false)?);
             } else {
-                scope.push_constant(rtoken, rval.as_ref().to_owned());
+                scope.push_constant(rtoken, rval.to_owned());
             }
         }
 
         let policies = p_ast.get_policy();
-        let policy_len = policies.len();
-        let mut eft_stream = self
-            .eft
-            .new_stream(&e_ast.value, if policy_len > 0 { policy_len } else { 1 });
-        let scope_size = scope.len();
+        let (policy_len, scope_len) = (policies.len(), scope.len());
 
+        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self
             .engine
-            .compile_expression(&escape_eval(m_ast.value.as_str()))?;
+            .compile_expression(&escape_eval(&m_ast.value))
+            .map_err(Into::<Box<EvalAltResult>>::into)?;
 
-        if policy_len != 0 {
-            for pvals in policies.iter() {
-                scope.rewind(scope_size);
-
-                if p_ast.tokens.len() != pvals.len() {
-                    return Err(PolicyError::UnmatchPolicyDefinition(
-                        p_ast.tokens.len(),
-                        pvals.len(),
-                    )
-                    .into());
-                }
-                for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
-                    scope.push_constant(ptoken, pval.to_owned());
-                }
-
-                let eval_result = self
-                    .engine
-                    .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
-                let eft = if !eval_result {
-                    EffectKind::Indeterminate
-                } else {
-                    match p_ast.tokens.iter().position(|x| x == "p_eft") {
-                        Some(j) => {
-                            let p_eft = &pvals[j];
-                            if p_eft == "deny" {
-                                EffectKind::Deny
-                            } else if p_eft != "allow" {
-                                EffectKind::Indeterminate
-                            } else {
-                                EffectKind::Allow
-                            }
-                        }
-                        _ => EffectKind::Allow,
-                    }
-                };
-                if eft_stream.push_effect(eft) {
-                    break;
-                }
-            }
-        } else {
+        if policy_len == 0 {
             for token in p_ast.tokens.iter() {
                 scope.push_constant(token, String::new());
             }
+
             let eval_result = self
                 .engine
                 .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
@@ -180,12 +145,51 @@ impl Enforcer {
             } else {
                 EffectKind::Indeterminate
             };
+
             eft_stream.push_effect(eft);
+
+            return Ok((eft_stream.next(), None));
         }
+
+        for pvals in policies {
+            scope.rewind(scope_len);
+
+            if p_ast.tokens.len() != pvals.len() {
+                return Err(
+                    PolicyError::UnmatchPolicyDefinition(p_ast.tokens.len(), pvals.len()).into(),
+                );
+            }
+            for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
+                scope.push_constant(ptoken, pval.to_owned());
+            }
+
+            let eval_result = self
+                .engine
+                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+            let eft = match p_ast.tokens.iter().position(|x| x == "p_eft") {
+                Some(j) if eval_result => {
+                    let p_eft = &pvals[j];
+                    if p_eft == "deny" {
+                        EffectKind::Deny
+                    } else if p_eft == "allow" {
+                        EffectKind::Allow
+                    } else {
+                        EffectKind::Indeterminate
+                    }
+                }
+                None if eval_result => EffectKind::Allow,
+                _ => EffectKind::Indeterminate,
+            };
+
+            if eft_stream.push_effect(eft) {
+                break;
+            }
+        }
+
         Ok((eft_stream.next(), {
             #[cfg(feature = "explain")]
             {
-                eft_stream.expl()
+                eft_stream.explain()
             }
             #[cfg(not(feature = "explain"))]
             {
@@ -193,10 +197,6 @@ impl Enforcer {
             }
         }))
     }
-}
-
-lazy_static! {
-    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
 }
 
 #[async_trait]
@@ -236,33 +236,21 @@ impl CoreApi for Enforcer {
         };
 
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            e.on(Event::PolicyChange, notify_logger_and_watcher);
+        e.on(Event::PolicyChange, notify_logger_and_watcher);
+
+        if let Some(ast_map) = e.model.get_model().get("g") {
+            for fname in ast_map.keys() {
+                register_g_function!(e, fname);
+            }
         }
 
         e.load_policy().await?;
-
-        if let Some(ast_map) = e.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&e.rm);
-                e.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, None)
-                    });
-
-                let rm = Arc::clone(&e.rm);
-                e.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
-            }
-        }
 
         Ok(e)
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(String, String) -> bool) {
+    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
         self.fm.add_function(fname, f);
         self.engine.register_fn(fname, f);
     }
@@ -338,28 +326,9 @@ impl CoreApi for Enforcer {
         }
 
         if let Some(ast_map) = self.model.get_model().get("g") {
-            for (key, _) in ast_map.iter() {
-                let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, None)
-                    });
-
-                let rm = Arc::clone(&self.rm);
-                self.engine
-                    .register_fn(key, move |arg1: String, arg2: String, arg3: String| {
-                        rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-                    });
+            for fname in ast_map.keys() {
+                register_g_function!(self, fname);
             }
-        }
-
-        Ok(())
-    }
-
-    fn add_matching_fn(&mut self, f: fn(&str, &str) -> bool) -> Result<()> {
-        self.rm.write().unwrap().add_matching_fn(f);
-        if self.auto_build_role_links {
-            self.build_role_links()?;
         }
 
         Ok(())
@@ -409,30 +378,28 @@ impl CoreApi for Enforcer {
     /// ```
     fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
-        let (res, idxs) = self.private_enforce(rvals)?;
+        let (authorized, indexes) = self.private_enforce(rvals)?;
 
         #[cfg(feature = "logging")]
         {
             self.logger.print_enforce_log(
                 rvals.iter().map(|x| String::from(x.as_ref())).collect(),
-                res,
+                authorized,
                 false,
             );
 
             #[cfg(feature = "explain")]
-            {
-                if let Some(idxs) = idxs {
-                    let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                    let rules: Vec<&Vec<String>> = idxs
-                        .into_iter()
-                        .filter_map(|y| all_rules.get_index(y))
-                        .collect();
-                    self.logger.print_expl_log(rules);
-                }
+            if let Some(indexes) = indexes {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                let rules: Vec<String> = indexes
+                    .into_iter()
+                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .collect();
+                self.logger.print_explain_log(rules);
             }
         }
 
-        Ok(res)
+        Ok(authorized)
     }
 
     fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
@@ -492,9 +459,8 @@ impl CoreApi for Enforcer {
         policies.extend(gpolicies);
 
         #[cfg(any(feature = "logging", feature = "watcher"))]
-        {
-            self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
-        }
+        self.emit(Event::PolicyChange, EventData::SavePolicy(policies));
+
         Ok(())
     }
 
@@ -508,9 +474,7 @@ impl CoreApi for Enforcer {
         self.enabled = enabled;
 
         #[cfg(feature = "logging")]
-        {
-            self.logger.print_status_log(enabled);
-        }
+        self.logger.print_status_log(enabled);
     }
 
     #[cfg(feature = "logging")]
@@ -1117,9 +1081,10 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/keymatch_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        e.add_function("keyMatchCustom", |s1: String, s2: String| {
-            key_match(&s1, &s2)
-        });
+        e.add_function(
+            "keyMatchCustom",
+            |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
+        );
 
         assert_eq!(
             true,
