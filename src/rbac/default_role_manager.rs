@@ -5,7 +5,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-const DEFAULT_DOMAIN: &'static str = "DEFAULT";
+const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 #[derive(Clone)]
 pub struct DefaultRoleManager {
@@ -24,15 +24,13 @@ impl DefaultRoleManager {
     fn create_role(&mut self, name: &str, domain: Option<&str>) -> Arc<RwLock<Role>> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
-        let role = Arc::clone(
+        Arc::clone(
             self.all_roles
                 .entry(domain.into())
                 .or_insert_with(|| HashMap::new())
                 .entry(name.into())
                 .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
-        );
-
-        role
+        )
     }
 
     fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
