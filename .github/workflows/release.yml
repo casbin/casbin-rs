@@ -1,54 +1,45 @@
-name: Release
+name: Auto Release
 
 on:
   push:
-    branches:
-      - master
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+
 jobs:
   release:
-    name: Release
+    name: Auto Release by Tags
     runs-on: ubuntu-18.04
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v1
+      - name: Checkout Repository
+        uses: actions/checkout@master
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          components: rustfmt, clippy
-          override: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: 12
-
-      - name: Install And Run Semantic
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-
-      - name: Update Cargo.toml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config --global user.name "GopherJ"
-          git config --global user.email "cocathecafe@gmail.com"
-          git fetch origin
-          sed -i -e "s/^version = .*/version = \"$(git describe --abbrev=0 --tags | tr -d v)\"/" Cargo.toml
-          git add Cargo.toml
-          git commit -m "bump version"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default: true
 
       - name: Cargo Login
+        uses: actions-rs/cargo@v1
+        with:
+          command: login
+          args: -- ${{ secrets.CARGO_TOKEN }}
+
+      - name: Cargo Publish
+        uses: actions-rs/cargo@v1
+        with:
+          command: publish
+
+      - name: GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
-          CARGO_TOKEN: ${{ secrets.CARGO_TOKEN }}
-        run: |
-          cargo login $CARGO_TOKEN
-          cargo publish
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
