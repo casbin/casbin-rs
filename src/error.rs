@@ -61,7 +61,7 @@ pub enum Error {
     #[error("Casbin Evaluation Error: `{0:?}`")]
     RhaiError(#[from] Box<EvalAltResult>),
     #[error("Casbin Parse Error: `{0:?}`")]
-    RhaiParseError(#[from] Box<ParseError>),
+    RhaiParseError(#[from] ParseError),
 
     #[error("Casbin Request Error: `{0:?}`")]
     RequestError(#[from] RequestError),
