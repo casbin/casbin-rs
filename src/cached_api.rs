@@ -1,5 +1,4 @@
-use crate::cache::Cache;
-use crate::core_api::CoreApi;
+use crate::{cache::Cache, core_api::CoreApi};
 
 use std::time::Duration;
 
