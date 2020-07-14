@@ -88,6 +88,7 @@ impl RoleManager for DefaultRoleManager {
             return *res;
         }
 
+        #[allow(clippy::let_and_return)]
         let res = self.has_role(name1, domain)
             && self.has_role(name2, domain)
             && self
