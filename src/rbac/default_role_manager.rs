@@ -1,9 +1,7 @@
-use crate::{
-    cache::{Cache, DefaultCache},
-    error::RbacError,
-    rbac::RoleManager,
-    Result,
-};
+use crate::{error::RbacError, rbac::RoleManager, Result};
+
+#[cfg(feature = "cached")]
+use crate::cache::{Cache, DefaultCache};
 
 use std::{
     collections::HashMap,
@@ -14,6 +12,7 @@ const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
+    #[cfg(feature = "cached")]
     cache: Box<dyn Cache<(String, String, Option<String>), bool>>,
     max_hierarchy_level: usize,
 }
@@ -23,6 +22,7 @@ impl DefaultRoleManager {
         DefaultRoleManager {
             all_roles: HashMap::new(),
             max_hierarchy_level,
+            #[cfg(feature = "cached")]
             cache: Box::new(DefaultCache::new(50)),
         }
     }
@@ -52,6 +52,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
+        #[cfg(feature = "cached")]
         self.cache.clear();
     }
 
@@ -64,6 +65,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().delete_role(role2);
+        #[cfg(feature = "cached")]
         self.cache.clear();
 
         Ok(())
@@ -74,14 +76,17 @@ impl RoleManager for DefaultRoleManager {
             return true;
         }
 
-        let cache_key = (
-            name1.to_owned(),
-            name2.to_owned(),
-            domain.map(|x| x.to_owned()),
-        );
+        #[cfg(feature = "cached")]
+        {
+            let cache_key = (
+                name1.to_owned(),
+                name2.to_owned(),
+                domain.map(|x| x.to_owned()),
+            );
 
-        if let Some(res) = self.cache.get(&cache_key) {
-            return *res;
+            if let Some(res) = self.cache.get(&cache_key) {
+                return *res;
+            }
         }
 
         let res = self.has_role(name1, domain)
@@ -92,6 +97,7 @@ impl RoleManager for DefaultRoleManager {
                 .unwrap()
                 .has_role(name2, self.max_hierarchy_level);
 
+        #[cfg(feature = "cached")]
         self.cache.set(cache_key, res);
 
         res
@@ -125,6 +131,7 @@ impl RoleManager for DefaultRoleManager {
 
     fn clear(&mut self) {
         self.all_roles.clear();
+        #[cfg(feature = "cached")]
         self.cache.clear();
     }
 }
