@@ -20,22 +20,30 @@ macro_rules! get_or_err {
 
 #[macro_export]
 macro_rules! register_g_function {
-    ($enforcer:ident, $fname:expr) => {{
+    ($enforcer:ident, $fname:ident, $ast:ident) => {{
         let rm = Arc::clone(&$enforcer.rm);
-        $enforcer.engine.register_fn(
-            $fname,
-            move |arg1: ImmutableString, arg2: ImmutableString| {
-                rm.write().unwrap().has_link(&arg1, &arg2, None)
-            },
-        );
+        let count = $ast.value.chars().filter(|&x| x == '_').count();
 
-        let rm = Arc::clone(&$enforcer.rm);
-        $enforcer.engine.register_fn(
-            $fname,
-            move |arg1: ImmutableString, arg2: ImmutableString, arg3: ImmutableString| {
-                rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
-            },
-        );
+        if count == 2 {
+            $enforcer.engine.register_fn(
+                $fname,
+                move |arg1: ImmutableString, arg2: ImmutableString| {
+                    rm.write().unwrap().has_link(&arg1, &arg2, None)
+                },
+            );
+        } else if count == 3 {
+            $enforcer.engine.register_fn(
+                $fname,
+                move |arg1: ImmutableString, arg2: ImmutableString, arg3: ImmutableString| {
+                    rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                },
+            );
+        } else {
+            return Err(ModelError::P(
+                r#"the number of "_" in role definition should be at least 2"#.to_owned(),
+            )
+            .into());
+        }
     }};
 }
 
