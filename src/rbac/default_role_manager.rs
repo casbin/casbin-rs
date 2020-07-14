@@ -77,16 +77,15 @@ impl RoleManager for DefaultRoleManager {
         }
 
         #[cfg(feature = "cached")]
-        {
-            let cache_key = (
-                name1.to_owned(),
-                name2.to_owned(),
-                domain.map(|x| x.to_owned()),
-            );
+        let cache_key = (
+            name1.to_owned(),
+            name2.to_owned(),
+            domain.map(|x| x.to_owned()),
+        );
 
-            if let Some(res) = self.cache.get(&cache_key) {
-                return *res;
-            }
+        #[cfg(feature = "cached")]
+        if let Some(res) = self.cache.get(&cache_key) {
+            return *res;
         }
 
         let res = self.has_role(name1, domain)
