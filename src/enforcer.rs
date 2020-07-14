@@ -197,6 +197,16 @@ impl Enforcer {
             }
         }))
     }
+
+    pub(crate) fn register_g_functions(&mut self) -> Result<()> {
+        if let Some(ast_map) = self.model.get_model().get("g") {
+            for (fname, ast) in ast_map {
+                register_g_function!(self, fname, ast);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -238,11 +248,7 @@ impl CoreApi for Enforcer {
         #[cfg(any(feature = "logging", feature = "watcher"))]
         e.on(Event::PolicyChange, notify_logger_and_watcher);
 
-        if let Some(ast_map) = e.model.get_model().get("g") {
-            for fname in ast_map.keys() {
-                register_g_function!(e, fname);
-            }
-        }
+        e.register_g_functions()?;
 
         e.load_policy().await?;
 
@@ -325,13 +331,7 @@ impl CoreApi for Enforcer {
             self.build_role_links()?;
         }
 
-        if let Some(ast_map) = self.model.get_model().get("g") {
-            for fname in ast_map.keys() {
-                register_g_function!(self, fname);
-            }
-        }
-
-        Ok(())
+        self.register_g_functions()
     }
 
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {

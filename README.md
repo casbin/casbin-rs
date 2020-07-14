@@ -6,6 +6,8 @@
 [![Docs](https://docs.rs/casbin/badge.svg)](https://docs.rs/casbin)
 [![CI](https://github.com/casbin/casbin-rs/workflows/CI/badge.svg)](https://github.com/casbin/casbin-rs/actions)
 [![Codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
+[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/casbin/lobby)
+[![forum](https://img.shields.io/badge/forum-join-%23cde201)](https://forum.casbin.org/)
 
 **Casbin-RS** is a powerful and efficient open-source access control library for Rust projects. It provides support for enforcing authorization based on various [access control models](https://en.wikipedia.org/wiki/Computer_security_model).
 
@@ -27,7 +29,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = { version = "1.0.0", default-features = false, features = ["runtime-async-std", "logging"] }
+casbin = { version = "1.1.0", default-features = false, features = ["runtime-async-std", "logging"] }
 async-std = { version = "1.5.0", features = ["attributes"] }
 env_logger = "0.7.1"
 ```
