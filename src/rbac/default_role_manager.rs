@@ -1,4 +1,9 @@
-use crate::{error::RbacError, rbac::RoleManager, Result};
+use crate::{
+    cache::{Cache, DefaultCache},
+    error::RbacError,
+    rbac::RoleManager,
+    Result,
+};
 
 use std::{
     collections::HashMap,
@@ -7,9 +12,9 @@ use std::{
 
 const DEFAULT_DOMAIN: &str = "DEFAULT";
 
-#[derive(Clone)]
 pub struct DefaultRoleManager {
     all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
+    cache: Box<dyn Cache<(String, String, Option<String>), bool>>,
     max_hierarchy_level: usize,
 }
 
@@ -18,6 +23,7 @@ impl DefaultRoleManager {
         DefaultRoleManager {
             all_roles: HashMap::new(),
             max_hierarchy_level,
+            cache: Box::new(DefaultCache::new(50)),
         }
     }
 
@@ -46,6 +52,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
+        self.cache.clear();
     }
 
     fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
@@ -57,6 +64,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().delete_role(role2);
+        self.cache.clear();
 
         Ok(())
     }
@@ -66,14 +74,27 @@ impl RoleManager for DefaultRoleManager {
             return true;
         }
 
-        if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
-            return false;
+        let cache_key = (
+            name1.to_owned(),
+            name2.to_owned(),
+            domain.map(|x| x.to_owned()),
+        );
+
+        if let Some(res) = self.cache.get(&cache_key) {
+            return *res;
         }
 
-        self.create_role(name1, domain)
-            .write()
-            .unwrap()
-            .has_role(name2, self.max_hierarchy_level)
+        let res = self.has_role(name1, domain)
+            && self.has_role(name2, domain)
+            && self
+                .create_role(name1, domain)
+                .write()
+                .unwrap()
+                .has_role(name2, self.max_hierarchy_level);
+
+        self.cache.set(cache_key, res);
+
+        res
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
@@ -104,6 +125,7 @@ impl RoleManager for DefaultRoleManager {
 
     fn clear(&mut self) {
         self.all_roles.clear();
+        self.cache.clear();
     }
 }
 
