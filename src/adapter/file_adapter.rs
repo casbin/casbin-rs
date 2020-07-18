@@ -303,7 +303,7 @@ mod csv {
     }
 
     fn join_chars(chars: &[char]) -> String {
-        chars.into_iter().collect::<String>().trim().to_string()
+        chars.iter().collect::<String>().trim().to_string()
     }
 }
 
