@@ -46,7 +46,7 @@ impl Assertion {
     }
 
     pub fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
-        let count = self.value.chars().filter(|&c| c == '_').count();
+        let count = self.value.matches('_').count();
         if count < 2 {
             return Err(ModelError::P(
                 r#"the number of "_" in role definition should be at least 2"#.to_owned(),
@@ -77,7 +77,7 @@ impl Assertion {
         rm: Arc<RwLock<dyn RoleManager>>,
         d: EventData,
     ) -> Result<()> {
-        let count = self.value.chars().filter(|&c| c == '_').count();
+        let count = self.value.matches('_').count();
         if count < 2 {
             return Err(ModelError::P(
                 r#"the number of "_" in role definition should be at least 2"#.to_owned(),

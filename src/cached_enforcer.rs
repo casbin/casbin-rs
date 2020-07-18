@@ -65,12 +65,12 @@ impl CachedEnforcer {
         rvals: &[S],
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
         let cache_key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
-        Ok(if let Some(authorized) = self.cache.get(&cache_key) {
-            (*authorized, true, None)
+        Ok(if let Some(&authorized) = self.cache.get(&cache_key) {
+            (authorized, true, None)
         } else {
-            let (authorized, indexes) = self.enforcer.private_enforce(rvals)?;
-            self.cache.set(cache_key.clone(), authorized);
-            (authorized, false, indexes)
+            let (authorized, indices) = self.enforcer.private_enforce(rvals)?;
+            self.cache.set(cache_key, authorized);
+            (authorized, false, indices)
         })
     }
 }
@@ -176,7 +176,7 @@ impl CoreApi for CachedEnforcer {
 
     fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
         #[allow(unused_variables)]
-        let (authorized, cached, indexs) = self.private_enforce(rvals)?;
+        let (authorized, cached, indices) = self.private_enforce(rvals)?;
 
         #[cfg(feature = "logging")]
         {
@@ -187,9 +187,9 @@ impl CoreApi for CachedEnforcer {
             );
 
             #[cfg(feature = "explain")]
-            if let Some(indexs) = indexs {
+            if let Some(indices) = indices {
                 let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                let rules: Vec<String> = indexs
+                let rules: Vec<String> = indices
                     .into_iter()
                     .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
                     .collect();
