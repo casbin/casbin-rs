@@ -39,7 +39,7 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     BasicMapPackage::init(lib);
 
     lib.set_fn_1("escape_assertion", |s: ImmutableString| {
-        Ok(escape_assertion(s.into_owned()))
+        Ok(escape_assertion(&s))
     });
 });
 
@@ -389,9 +389,9 @@ impl CoreApi for Enforcer {
             );
 
             #[cfg(feature = "explain")]
-            if let Some(indexes) = indexes {
+            if let Some(indices) = indexes {
                 let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
-                let rules: Vec<String> = indexes
+                let rules: Vec<String> = indices
                     .into_iter()
                     .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
                     .collect();

@@ -9,14 +9,16 @@ lazy_static! {
     pub(crate) static ref ESC_E: Regex = Regex::new(r"\beval\(([^)]*)\)").unwrap();
 }
 
-pub fn escape_assertion(s: String) -> String {
+pub fn escape_assertion(s: &str) -> String {
     ESC_A.replace_all(&s, "${1}_").to_string()
 }
 
-pub fn remove_comments(mut s: String) -> String {
-    if let Some(idx) = s.find('#') {
-        s.truncate(idx);
-    }
+pub fn remove_comment(s: &str) -> String {
+    let s = if let Some(idx) = s.find('#') {
+        &s[..idx]
+    } else {
+        s
+    };
 
     s.trim_end().to_owned()
 }
@@ -30,12 +32,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_remove_comments() {
-        assert!(remove_comments("#".to_owned()).is_empty());
+    fn test_remove_comment() {
+        assert!(remove_comment("#").is_empty());
         assert_eq!(
             r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.sub == "root""#,
-            remove_comments(
-                r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.sub == "root" # root is the super user"#.to_owned()
+            remove_comment(
+                r#"g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act || r.sub == "root" # root is the super user"#
             )
         );
     }
@@ -45,11 +47,11 @@ mod tests {
         let s = "g(r.sub, p.sub) && r.obj == p.obj && r.act == p.act";
         let exp = "g(r_sub, p_sub) && r_obj == p_obj && r_act == p_act";
 
-        assert_eq!(exp, escape_assertion(s.to_owned()));
+        assert_eq!(exp, escape_assertion(s));
 
         let s1 = "g(r2.sub, p2.sub) && r2.obj == p2.obj && r2.act == p2.act";
         let exp1 = "g(r2_sub, p2_sub) && r2_obj == p2_obj && r2_act == p2_act";
 
-        assert_eq!(exp1, escape_assertion(s1.to_owned()));
+        assert_eq!(exp1, escape_assertion(s1));
     }
 }

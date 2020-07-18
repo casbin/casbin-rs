@@ -17,42 +17,45 @@ pub struct MemoryAdapter {
 impl Adapter for MemoryAdapter {
     async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
         for line in self.policy.iter() {
-            let sec = line[0].clone();
-            let ptype = line[1].clone();
+            let sec = &line[0];
+            let ptype = &line[1];
             let rule = line[1..].to_vec().clone();
-            if let Some(t1) = m.get_mut_model().get_mut(&sec) {
-                if let Some(t2) = t1.get_mut(&ptype) {
+
+            if let Some(t1) = m.get_mut_model().get_mut(sec) {
+                if let Some(t2) = t1.get_mut(ptype) {
                     t2.get_mut_policy().insert(rule);
                 }
             }
         }
+
         Ok(())
     }
 
     async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Filter) -> Result<()> {
         for line in self.policy.iter() {
-            let sec = line[0].clone();
-            let ptype = line[1].clone();
+            let sec = &line[0];
+            let ptype = &line[1];
             let rule = line[1..].to_vec().clone();
             let mut is_filtered = false;
 
-            if &sec == "p" {
+            if sec == "p" {
                 for (i, r) in f.p.iter().enumerate() {
                     if !r.is_empty() && r != &rule[i + 1] {
                         is_filtered = true;
                     }
                 }
             }
-            if &sec == "g" {
+            if sec == "g" {
                 for (i, r) in f.g.iter().enumerate() {
                     if !r.is_empty() && r != &rule[i + 1] {
                         is_filtered = true;
                     }
                 }
             }
+
             if !is_filtered {
-                if let Some(t1) = m.get_mut_model().get_mut(&sec) {
-                    if let Some(t2) = t1.get_mut(&ptype) {
+                if let Some(t1) = m.get_mut_model().get_mut(sec) {
+                    if let Some(t2) = t1.get_mut(ptype) {
                         t2.get_mut_policy().insert(rule);
                     }
                 }
@@ -95,12 +98,11 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
-        let mut line: Vec<String> = rule.into_iter().map(String::from).collect();
-        line.insert(0, ptype.to_owned());
-        line.insert(0, sec.to_owned());
+    async fn add_policy(&mut self, sec: &str, ptype: &str, mut rule: Vec<String>) -> Result<bool> {
+        rule.insert(0, ptype.to_owned());
+        rule.insert(0, sec.to_owned());
 
-        Ok(self.policy.insert(line))
+        Ok(self.policy.insert(rule))
     }
 
     async fn add_policies(
@@ -151,8 +153,12 @@ impl Adapter for MemoryAdapter {
         Ok(all_removed)
     }
 
-    async fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> Result<bool> {
-        let mut rule: Vec<String> = rule.into_iter().map(String::from).collect();
+    async fn remove_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        mut rule: Vec<String>,
+    ) -> Result<bool> {
         rule.insert(0, ptype.to_owned());
         rule.insert(0, sec.to_owned());
 

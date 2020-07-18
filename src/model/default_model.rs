@@ -105,7 +105,7 @@ impl Model for DefaultModel {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
         let mut ast = Assertion::default();
         ast.key = key.to_owned();
-        ast.value = remove_comments(value.to_owned());
+        ast.value = remove_comment(value);
 
         if ast.value.is_empty() {
             return false;
@@ -118,7 +118,7 @@ impl Model for DefaultModel {
                 .map(|x| format!("{}_{}", key, x.trim()))
                 .collect();
         } else {
-            ast.value = escape_assertion(ast.value);
+            ast.value = escape_assertion(&ast.value);
         }
 
         if let Some(new_model) = self.model.get_mut(sec) {
@@ -180,30 +180,25 @@ impl Model for DefaultModel {
     }
 
     fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
-        if let Some(t1) = self.model.get_mut(sec) {
-            if let Some(t2) = t1.get_mut(ptype) {
-                return t2
-                    .policy
-                    .insert(rule.into_iter().map(String::from).collect());
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                return ast.policy.insert(rule);
             }
         }
         false
     }
 
     fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
-        let mut all_added = true;
-        let mut rules_added = vec![];
-        for rule in rules {
-            if !self.add_policy(sec, ptype, rule.clone()) {
-                all_added = false;
-                break;
-            } else {
-                rules_added.push(rule);
-            }
-        }
-        if !all_added && !rules_added.is_empty() {
-            for rule in rules_added {
-                self.remove_policy(sec, ptype, rule);
+        let mut all_added = false;
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                for rule in &rules {
+                    if ast.policy.contains(rule) {
+                        return false;
+                    }
+                }
+                ast.policy.extend(rules);
+                all_added = true;
             }
         }
         all_added
@@ -272,28 +267,27 @@ impl Model for DefaultModel {
     }
 
     fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
-        if let Some(t1) = self.model.get_mut(sec) {
-            if let Some(t2) = t1.get_mut(ptype) {
-                return t2.policy.remove(&rule);
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                return ast.policy.remove(&rule);
             }
         }
         false
     }
 
     fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
-        let mut all_removed = true;
-        let mut rules_removed = vec![];
-        for rule in rules {
-            if !self.remove_policy(sec, ptype, rule.clone()) {
-                all_removed = false;
-                break;
-            } else {
-                rules_removed.push(rule);
-            }
-        }
-        if !all_removed && !rules_removed.is_empty() {
-            for rule in rules_removed {
-                self.add_policy(sec, ptype, rule);
+        let mut all_removed = false;
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                for rule in &rules {
+                    if !ast.policy.contains(rule) {
+                        return false;
+                    }
+                }
+                for rule in &rules {
+                    ast.policy.remove(rule);
+                }
+                all_removed = true
             }
         }
         all_removed

@@ -60,6 +60,7 @@ where
         while let Some(line) = lines.next().await {
             handler(line?, m);
         }
+
         Ok(())
     }
 
@@ -78,6 +79,7 @@ where
                 is_filtered = true;
             }
         }
+
         Ok(is_filtered)
     }
 
@@ -99,12 +101,10 @@ where
     }
 
     async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Filter) -> Result<()> {
-        if self
+        self.is_filtered = self
             .load_filtered_policy_file(m, f, load_filtered_policy_line)
-            .await?
-        {
-            self.is_filtered = true;
-        }
+            .await?;
+
         Ok(())
     }
 
@@ -115,29 +115,27 @@ where
             );
         }
 
-        let mut tmp = String::new();
-        let ast_map1 = m
+        let mut policies = String::new();
+        let ast_map = m
             .get_model()
             .get("p")
             .ok_or_else(|| ModelError::P("Missing policy definition in conf file".to_owned()))?;
 
-        for (ptype, ast) in ast_map1 {
+        for (ptype, ast) in ast_map {
             for rule in ast.get_policy() {
-                let s1 = format!("{}, {}\n", ptype, rule.join(","));
-                tmp += s1.as_str();
+                policies.push_str(&format!("{}, {}\n", ptype, rule.join(",")));
             }
         }
 
-        if let Some(ast_map2) = m.get_model().get("g") {
-            for (ptype, ast) in ast_map2 {
+        if let Some(ast_map) = m.get_model().get("g") {
+            for (ptype, ast) in ast_map {
                 for rule in ast.get_policy() {
-                    let s1 = format!("{}, {}\n", ptype, rule.join(","));
-                    tmp += s1.as_str();
+                    policies.push_str(&format!("{}, {}\n", ptype, rule.join(",")));
                 }
             }
         }
 
-        self.save_policy_file(tmp).await?;
+        self.save_policy_file(policies).await?;
         Ok(())
     }
 
@@ -196,13 +194,14 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
     if line.is_empty() || line.starts_with('#') {
         return;
     }
-    let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
-    let key = tokens[0].clone();
 
-    if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
-        if let Some(t1) = m.get_mut_model().get_mut(&sec) {
-            if let Some(t2) = t1.get_mut(&key) {
-                t2.policy.insert(tokens[1..].to_vec());
+    let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
+    let key = &tokens[0];
+
+    if let Some(ref sec) = key.chars().next().map(|x| x.to_string()) {
+        if let Some(ast_map) = m.get_mut_model().get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(key) {
+                ast.policy.insert(tokens[1..].to_vec());
             }
         }
     }
@@ -212,19 +211,20 @@ fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> boo
     if line.is_empty() || line.starts_with('#') {
         return false;
     }
+
     let tokens: Vec<String> = line.split(',').map(|x| x.trim().to_string()).collect();
-    let key = tokens[0].clone();
+    let key = &tokens[0];
 
     let mut is_filtered = false;
-    if let Some(sec) = key.chars().next().map(|x| x.to_string()) {
-        if &sec == "p" {
+    if let Some(ref sec) = key.chars().next().map(|x| x.to_string()) {
+        if sec == "p" {
             for (i, rule) in f.p.iter().enumerate() {
                 if !rule.is_empty() && rule != &tokens[i + 1] {
                     is_filtered = true;
                 }
             }
         }
-        if &sec == "g" {
+        if sec == "g" {
             for (i, rule) in f.g.iter().enumerate() {
                 if !rule.is_empty() && rule != &tokens[i + 1] {
                     is_filtered = true;
@@ -232,9 +232,9 @@ fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> boo
             }
         }
         if !is_filtered {
-            if let Some(t1) = m.get_mut_model().get_mut(&sec) {
-                if let Some(t2) = t1.get_mut(&key) {
-                    t2.policy.insert(tokens[1..].to_vec());
+            if let Some(ast_map) = m.get_mut_model().get_mut(sec) {
+                if let Some(ast) = ast_map.get_mut(key) {
+                    ast.policy.insert(tokens[1..].to_vec());
                 }
             }
         }
