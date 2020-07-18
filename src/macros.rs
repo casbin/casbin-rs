@@ -22,7 +22,7 @@ macro_rules! get_or_err {
 macro_rules! register_g_function {
     ($enforcer:ident, $fname:ident, $ast:ident) => {{
         let rm = Arc::clone(&$enforcer.rm);
-        let count = $ast.value.chars().filter(|&x| x == '_').count();
+        let count = $ast.value.matches('_').count();
 
         if count == 2 {
             $enforcer.engine.register_fn(

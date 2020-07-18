@@ -246,7 +246,7 @@ where
         let mut res: HashSet<String> = HashSet::new();
         let mut q: Vec<String> = vec![name.to_owned()];
         while !q.is_empty() {
-            let name = q.swap_remove(0);
+            let name = q.remove(0);
             let roles = self
                 .get_role_manager()
                 .write()
