@@ -189,16 +189,16 @@ impl Model for DefaultModel {
     }
 
     fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
-        let mut all_added = false;
+        let mut all_added = true;
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
                 for rule in &rules {
                     if ast.policy.contains(rule) {
-                        return false;
+                        all_added = false;
+                        return all_added;
                     }
                 }
                 ast.policy.extend(rules);
-                all_added = true;
             }
         }
         all_added
@@ -276,18 +276,18 @@ impl Model for DefaultModel {
     }
 
     fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
-        let mut all_removed = false;
+        let mut all_removed = true;
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
                 for rule in &rules {
                     if !ast.policy.contains(rule) {
-                        return false;
+                        all_removed = false;
+                        return all_removed;
                     }
                 }
                 for rule in &rules {
                     ast.policy.remove(rule);
                 }
-                all_removed = true
             }
         }
         all_removed
