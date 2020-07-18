@@ -262,9 +262,7 @@ mod csv {
         let mut escape: Vec<char> = Vec::with_capacity(2);
         let mut tmp: Vec<char> = vec![];
 
-        let mut iter = s.chars().enumerate();
-
-        while let Some((i, ch)) = iter.next() {
+        for (i, ch) in s.chars().enumerate() {
             match ch {
                 SEP if escape.is_empty() => {
                     if !tmp.is_empty() {
