@@ -429,7 +429,7 @@ impl CoreApi for Enforcer {
         Ok(())
     }
 
-    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()> {
+    async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()> {
         self.model.clear_policy();
         self.adapter
             .load_filtered_policy(&mut *self.model, f)

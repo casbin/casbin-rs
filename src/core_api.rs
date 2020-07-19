@@ -45,7 +45,7 @@ pub trait CoreApi: Send + Sync {
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
-    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
+    async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()>;
     fn is_filtered(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     fn clear_policy(&mut self);
