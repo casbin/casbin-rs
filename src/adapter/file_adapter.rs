@@ -36,7 +36,8 @@ pub struct FileAdapter<P> {
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);
-type LoadFilteredPolicyFileHandler = fn(String, &mut dyn Model, f: &Filter) -> bool;
+type LoadFilteredPolicyFileHandler =
+    fn(String, &mut dyn Model, f: &Filter) -> bool;
 
 impl<P> FileAdapter<P>
 where
@@ -100,7 +101,11 @@ where
         Ok(())
     }
 
-    async fn load_filtered_policy(&mut self, m: &mut dyn Model, f: Filter) -> Result<()> {
+    async fn load_filtered_policy(
+        &mut self,
+        m: &mut dyn Model,
+        f: Filter,
+    ) -> Result<()> {
         self.is_filtered = self
             .load_filtered_policy_file(m, f, load_filtered_policy_line)
             .await?;
@@ -110,16 +115,17 @@ where
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(
-                IoError::new(ErrorKind::Other, "save policy failed, file path is empty").into(),
-            );
+            return Err(IoError::new(
+                ErrorKind::Other,
+                "save policy failed, file path is empty",
+            )
+            .into());
         }
 
         let mut policies = String::new();
-        let ast_map = m
-            .get_model()
-            .get("p")
-            .ok_or_else(|| ModelError::P("Missing policy definition in conf file".to_owned()))?;
+        let ast_map = m.get_model().get("p").ok_or_else(|| {
+            ModelError::P("Missing policy definition in conf file".to_owned())
+        })?;
 
         for (ptype, ast) in ast_map {
             for rule in ast.get_policy() {
@@ -130,7 +136,11 @@ where
         if let Some(ast_map) = m.get_model().get("g") {
             for (ptype, ast) in ast_map {
                 for rule in ast.get_policy() {
-                    policies.push_str(&format!("{}, {}\n", ptype, rule.join(",")));
+                    policies.push_str(&format!(
+                        "{}, {}\n",
+                        ptype,
+                        rule.join(",")
+                    ));
                 }
             }
         }
@@ -139,7 +149,17 @@ where
         Ok(())
     }
 
-    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<String>) -> Result<bool> {
+    async fn clear_policy(&mut self) -> Result<()> {
+        self.save_policy_file(String::new()).await?;
+        Ok(())
+    }
+
+    async fn add_policy(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<String>,
+    ) -> Result<bool> {
         // this api shouldn't implement, just for convenience
         Ok(true)
     }
@@ -208,7 +228,11 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
     }
 }
 
-fn load_filtered_policy_line(line: String, m: &mut dyn Model, f: &Filter) -> bool {
+fn load_filtered_policy_line(
+    line: String,
+    m: &mut dyn Model,
+    f: &Filter,
+) -> bool {
     if line.is_empty() || line.starts_with('#') {
         return false;
     }
@@ -350,7 +374,9 @@ mod tests {
     #[test]
     fn test_csv_parse_5() {
         assert_eq!(
-            csv::parse("alice, \"domain1, domain2\", \"data1, data2\", action1"),
+            csv::parse(
+                "alice, \"domain1, domain2\", \"data1, data2\", action1"
+            ),
             Some(vec![
                 "alice".to_owned(),
                 "domain1, domain2".to_owned(),

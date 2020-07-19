@@ -65,7 +65,11 @@ impl DefaultModel {
         let mut i = 1;
 
         loop {
-            if !self.load_assertion(cfg, sec, &format!("{}{}", sec, self.get_key_suffix(i)))? {
+            if !self.load_assertion(
+                cfg,
+                sec,
+                &format!("{}{}", sec, self.get_key_suffix(i)),
+            )? {
                 break Ok(());
             } else {
                 i += 1;
@@ -73,7 +77,12 @@ impl DefaultModel {
         }
     }
 
-    fn load_assertion(&mut self, cfg: &Config, sec: &str, key: &str) -> Result<bool> {
+    fn load_assertion(
+        &mut self,
+        cfg: &Config,
+        sec: &str,
+        key: &str,
+    ) -> Result<bool> {
         let sec_name = match sec {
             "r" => "request_definition",
             "p" => "policy_definition",
@@ -81,7 +90,11 @@ impl DefaultModel {
             "e" => "policy_effect",
             "m" => "matchers",
             _ => {
-                return Err(ModelError::Other(format!("Unknown section: `{}`", sec)).into());
+                return Err(ModelError::Other(format!(
+                    "Unknown section: `{}`",
+                    sec
+                ))
+                .into());
             }
         };
 
@@ -142,7 +155,10 @@ impl Model for DefaultModel {
         &mut self.model
     }
 
-    fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+    fn build_role_links(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()> {
         if let Some(asts) = self.model.get_mut("g") {
             for ast in asts.values_mut() {
                 ast.build_role_links(Arc::clone(&rm))?;
@@ -179,7 +195,12 @@ impl Model for DefaultModel {
         Ok(())
     }
 
-    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
+    fn add_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<String>,
+    ) -> bool {
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
                 return ast.policy.insert(rule);
@@ -188,7 +209,12 @@ impl Model for DefaultModel {
         false
     }
 
-    fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
+    fn add_policies(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<String>>,
+    ) -> bool {
         let mut all_added = true;
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
@@ -226,7 +252,9 @@ impl Model for DefaultModel {
                 for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
-                        if !field_value.is_empty() && &rule[field_index + i] != field_value {
+                        if !field_value.is_empty()
+                            && &rule[field_index + i] != field_value
+                        {
                             matched = false;
                             break;
                         }
@@ -266,7 +294,12 @@ impl Model for DefaultModel {
             .collect()
     }
 
-    fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool {
+    fn remove_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<String>,
+    ) -> bool {
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
                 return ast.policy.remove(&rule);
@@ -275,7 +308,12 @@ impl Model for DefaultModel {
         false
     }
 
-    fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool {
+    fn remove_policies(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<String>>,
+    ) -> bool {
         let mut all_removed = true;
         if let Some(ast_map) = self.model.get_mut(sec) {
             if let Some(ast) = ast_map.get_mut(ptype) {
@@ -321,7 +359,9 @@ impl Model for DefaultModel {
                 for rule in t2.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
-                        if !field_value.is_empty() && &rule[field_index + i] != field_value {
+                        if !field_value.is_empty()
+                            && &rule[field_index + i] != field_value
+                        {
                             matched = false;
                             break;
                         }
@@ -472,11 +512,13 @@ mod tests {
         tokio::test
     )]
     async fn test_basic_model_without_users() {
-        let m = DefaultModel::from_file("examples/basic_without_users_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/basic_without_users_model.conf")
+                .await
+                .unwrap();
 
-        let adapter = FileAdapter::new("examples/basic_without_users_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/basic_without_users_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert!(e.enforce(&["data1", "read"]).unwrap());
@@ -495,11 +537,14 @@ mod tests {
         tokio::test
     )]
     async fn test_basic_model_without_resources() {
-        let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
-            .await
-            .unwrap();
+        let m = DefaultModel::from_file(
+            "examples/basic_without_resources_model.conf",
+        )
+        .await
+        .unwrap();
 
-        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/basic_without_resources_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert!(e.enforce(&["alice", "read"]).unwrap());
@@ -545,11 +590,14 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_with_resource_roles() {
-        let m = DefaultModel::from_file("examples/rbac_with_resource_roles_model.conf")
-            .await
-            .unwrap();
+        let m = DefaultModel::from_file(
+            "examples/rbac_with_resource_roles_model.conf",
+        )
+        .await
+        .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
@@ -572,9 +620,10 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_with_domains() {
-        let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/rbac_with_domains_model.conf")
+                .await
+                .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
@@ -623,9 +672,10 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_with_domains_runtime() {
-        let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/rbac_with_domains_model.conf")
+                .await
+                .unwrap();
 
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter).await.unwrap();
@@ -814,9 +864,10 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_with_domains_at_runtime_mock_adapter() {
-        let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/rbac_with_domains_model.conf")
+                .await
+                .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_domains_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
@@ -916,9 +967,10 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_with_not_deny() {
-        let m = DefaultModel::from_file("examples/rbac_with_not_deny_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/rbac_with_not_deny_model.conf")
+                .await
+                .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
@@ -990,9 +1042,11 @@ mod tests {
         tokio::test
     )]
     async fn test_rbac_model_using_in_op() {
-        let m = DefaultModel::from_file("examples/rbac_model_matcher_using_in_op.conf")
-            .await
-            .unwrap();
+        let m = DefaultModel::from_file(
+            "examples/rbac_model_matcher_using_in_op.conf",
+        )
+        .await
+        .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();

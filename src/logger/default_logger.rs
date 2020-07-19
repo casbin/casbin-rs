@@ -18,7 +18,12 @@ impl Logger for DefaultLogger {
         self.enabled
     }
 
-    fn print_enforce_log(&self, rvals: Vec<String>, authorized: bool, cached: bool) {
+    fn print_enforce_log(
+        &self,
+        rvals: Vec<String>,
+        authorized: bool,
+        cached: bool,
+    ) {
         if !self.is_enabled() {
             return;
         }

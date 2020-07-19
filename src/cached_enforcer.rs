@@ -64,7 +64,8 @@ impl CachedEnforcer {
         &mut self,
         rvals: &[S],
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
-        let cache_key: Vec<String> = rvals.iter().map(|x| String::from(x.as_ref())).collect();
+        let cache_key: Vec<String> =
+            rvals.iter().map(|x| String::from(x.as_ref())).collect();
         Ok(if let Some(&authorized) = self.cache.get(&cache_key) {
             (authorized, true, None)
         } else {
@@ -77,7 +78,10 @@ impl CachedEnforcer {
 
 #[async_trait]
 impl CoreApi for CachedEnforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<CachedEnforcer> {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<CachedEnforcer> {
         let enforcer = Enforcer::new(m, a).await?;
         let cache = Box::new(DefaultCache::new(1000));
 
@@ -96,7 +100,11 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
+    fn add_function(
+        &mut self,
+        fname: &str,
+        f: fn(ImmutableString, ImmutableString) -> bool,
+    ) {
         self.enforcer.fm.add_function(fname, f);
     }
 
@@ -143,7 +151,10 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+    fn set_role_manager(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()> {
         self.enforcer.set_role_manager(rm)
     }
 
@@ -174,7 +185,10 @@ impl CoreApi for CachedEnforcer {
         self.enforcer.set_effector(e);
     }
 
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    fn enforce_mut<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+    ) -> Result<bool> {
         #[allow(unused_variables)]
         let (authorized, cached, indices) = self.private_enforce(rvals)?;
 
@@ -188,10 +202,13 @@ impl CoreApi for CachedEnforcer {
 
             #[cfg(feature = "explain")]
             if let Some(indices) = indices {
-                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
+                    .get_policy();
                 let rules: Vec<String> = indices
                     .into_iter()
-                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .filter_map(|y| {
+                        all_rules.get_index(y).map(|x| x.join(", "))
+                    })
                     .collect();
                 self.enforcer.get_logger().print_explain_log(rules);
             }
@@ -202,7 +219,10 @@ impl CoreApi for CachedEnforcer {
 
     /// CachedEnforcer should use `enforce_mut` instead so that
     /// enforce result can be saved to cache
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+    fn enforce<S: AsRef<str> + Send + Sync>(
+        &self,
+        rvals: &[S],
+    ) -> Result<bool> {
         self.enforcer.enforce(rvals)
     }
 
@@ -238,8 +258,8 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn clear_policy(&mut self) {
-        self.enforcer.clear_policy();
+    async fn clear_policy(&mut self) -> Result<()> {
+        self.enforcer.clear_policy().await
     }
 
     #[cfg(feature = "logging")]

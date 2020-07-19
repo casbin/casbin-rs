@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     let obj = "data1"; // the resource that is going to be accessed.
     let act = "read"; // the operation that the user performs on the resource.
 
-    if let Ok(authorized) = e.enforce(&[sub, obj, act]).await {
+    if let Ok(authorized) = e.enforce(&[sub, obj, act]) {
         if authorized {
             // permit alice to read data1
         } else {

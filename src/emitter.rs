@@ -23,6 +23,7 @@ pub enum EventData {
     RemovePolicies(String, String, Vec<Vec<String>>),
     RemoveFilteredPolicy(String, String, Vec<Vec<String>>),
     SavePolicy(Vec<Vec<String>>),
+    ClearPolicy,
     ClearCache,
 }
 
@@ -65,7 +66,10 @@ impl fmt::Display for EventData {
                 ptype,
                 p.len()
             ),
-            SavePolicy(ref p) => write!(f, "Event: SavePolicy, Saved: {}", p.len()),
+            SavePolicy(ref p) => {
+                write!(f, "Event: SavePolicy, Saved: {}", p.len())
+            }
+            ClearPolicy => write!(f, "Event: ClearPolicy"),
             ClearCache => write!(f, "Event: ClearCache, Data: ClearCache"),
         }
     }

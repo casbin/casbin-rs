@@ -4,9 +4,12 @@ use std::borrow::Cow;
 
 lazy_static! {
     static ref ESC_A: Regex = Regex::new(r"\b(r\d*|p\d*)\.").unwrap();
-    static ref ESC_G: Regex =
-        Regex::new(r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)").unwrap();
-    pub(crate) static ref ESC_E: Regex = Regex::new(r"\beval\(([^)]*)\)").unwrap();
+    static ref ESC_G: Regex = Regex::new(
+        r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)"
+    )
+    .unwrap();
+    pub(crate) static ref ESC_E: Regex =
+        Regex::new(r"\beval\(([^)]*)\)").unwrap();
 }
 
 pub fn escape_assertion(s: &str) -> String {

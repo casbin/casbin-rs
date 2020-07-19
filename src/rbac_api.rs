@@ -34,11 +34,18 @@ pub trait RbacApi: MgmtApi {
         role: &str,
         domain: Option<&str>,
     ) -> Result<bool>;
-    async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool>;
+    async fn delete_roles_for_user(
+        &mut self,
+        user: &str,
+        domain: Option<&str>,
+    ) -> Result<bool>;
     async fn delete_user(&mut self, name: &str) -> Result<bool>;
     async fn delete_role(&mut self, name: &str) -> Result<bool>;
 
-    async fn delete_permission(&mut self, permission: Vec<String>) -> Result<bool> {
+    async fn delete_permission(
+        &mut self,
+        permission: Vec<String>,
+    ) -> Result<bool> {
         self.remove_filtered_policy(1, permission).await
     }
     async fn delete_permission_for_user(
@@ -47,23 +54,57 @@ pub trait RbacApi: MgmtApi {
         permission: Vec<String>,
     ) -> Result<bool>;
 
-    async fn delete_permissions_for_user(&mut self, user: &str) -> Result<bool> {
-        self.remove_filtered_policy(0, vec![user].iter().map(|s| (*s).to_string()).collect())
-            .await
+    async fn delete_permissions_for_user(
+        &mut self,
+        user: &str,
+    ) -> Result<bool> {
+        self.remove_filtered_policy(
+            0,
+            vec![user].iter().map(|s| (*s).to_string()).collect(),
+        )
+        .await
     }
 
-    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
-    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String>;
-    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool;
-    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>>;
-    fn has_permission_for_user(&self, user: &str, permission: Vec<String>) -> bool;
-    fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String>;
+    fn get_roles_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String>;
+    fn get_users_for_role(
+        &self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String>;
+    fn has_role_for_user(
+        &mut self,
+        name: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> bool;
+    fn get_permissions_for_user(
+        &self,
+        user: &str,
+        domain: Option<&str>,
+    ) -> Vec<Vec<String>>;
+    fn has_permission_for_user(
+        &self,
+        user: &str,
+        permission: Vec<String>,
+    ) -> bool;
+    fn get_implicit_roles_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String>;
     fn get_implicit_permissions_for_user(
         &mut self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<Vec<String>>;
-    async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String>;
+    async fn get_implicit_users_for_permission(
+        &mut self,
+        permission: Vec<String>,
+    ) -> Vec<String>;
 }
 
 #[async_trait]
@@ -151,7 +192,11 @@ where
         .await
     }
 
-    async fn delete_roles_for_user(&mut self, user: &str, domain: Option<&str>) -> Result<bool> {
+    async fn delete_roles_for_user(
+        &mut self,
+        user: &str,
+        domain: Option<&str>,
+    ) -> Result<bool> {
         self.remove_filtered_grouping_policy(
             0,
             if let Some(domain) = domain {
@@ -166,7 +211,11 @@ where
         .await
     }
 
-    fn get_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+    fn get_roles_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String> {
         let mut roles = vec![];
         if let Some(t1) = self.get_mut_model().get_mut_model().get_mut("g") {
             if let Some(t2) = t1.get_mut("g") {
@@ -177,7 +226,11 @@ where
         roles
     }
 
-    fn get_users_for_role(&self, name: &str, domain: Option<&str>) -> Vec<String> {
+    fn get_users_for_role(
+        &self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String> {
         if let Some(t1) = self.get_model().get_model().get("g") {
             if let Some(t2) = t1.get("g") {
                 return t2.rm.read().unwrap().get_users(name, domain);
@@ -186,7 +239,12 @@ where
         return vec![];
     }
 
-    fn has_role_for_user(&mut self, name: &str, role: &str, domain: Option<&str>) -> bool {
+    fn has_role_for_user(
+        &mut self,
+        name: &str,
+        role: &str,
+        domain: Option<&str>,
+    ) -> bool {
         let roles = self.get_roles_for_user(name, domain);
         let mut has_role = false;
         for r in roles {
@@ -223,7 +281,11 @@ where
         self.remove_policy(permission).await
     }
 
-    fn get_permissions_for_user(&self, user: &str, domain: Option<&str>) -> Vec<Vec<String>> {
+    fn get_permissions_for_user(
+        &self,
+        user: &str,
+        domain: Option<&str>,
+    ) -> Vec<Vec<String>> {
         self.get_filtered_policy(0, {
             if let Some(domain) = domain {
                 vec![user, domain]
@@ -236,13 +298,21 @@ where
         })
     }
 
-    fn has_permission_for_user(&self, user: &str, permission: Vec<String>) -> bool {
+    fn has_permission_for_user(
+        &self,
+        user: &str,
+        permission: Vec<String>,
+    ) -> bool {
         let mut permission = permission;
         permission.insert(0, user.to_string());
         self.has_policy(permission)
     }
 
-    fn get_implicit_roles_for_user(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+    fn get_implicit_roles_for_user(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Vec<String> {
         let mut res: HashSet<String> = HashSet::new();
         let mut q: Vec<String> = vec![name.to_owned()];
         while !q.is_empty() {
@@ -278,7 +348,10 @@ where
         res
     }
 
-    async fn get_implicit_users_for_permission(&mut self, permission: Vec<String>) -> Vec<String> {
+    async fn get_implicit_users_for_permission(
+        &mut self,
+        permission: Vec<String>,
+    ) -> Vec<String> {
         let mut subjects = self.get_all_subjects();
         let roles = self.get_all_roles();
 
@@ -504,7 +577,11 @@ mod tests {
 
                     assert_eq!(
                         vec!["data1_admin", "data2_admin"],
-                        sort_unstable(ee.write().unwrap().get_roles_for_user("alice", None))
+                        sort_unstable(
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("alice", None)
+                        )
                     );
                     assert_eq!(
                         vec![String::new(); 0],
@@ -512,14 +589,19 @@ mod tests {
                     );
                     assert_eq!(
                         vec![String::new(); 0],
-                        ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                        ee.write()
+                            .unwrap()
+                            .get_roles_for_user("data2_admin", None)
                     );
 
                     ee.write()
                         .unwrap()
                         .add_roles_for_user(
                             "bob",
-                            vec!["data2_admin"].iter().map(|s| s.to_string()).collect(),
+                            vec!["data2_admin"]
+                                .iter()
+                                .map(|s| s.to_string())
+                                .collect(),
                             None,
                         )
                         .await
@@ -527,7 +609,11 @@ mod tests {
 
                     assert_eq!(
                         vec!["data1_admin", "data2_admin"],
-                        sort_unstable(ee.write().unwrap().get_roles_for_user("alice", None))
+                        sort_unstable(
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("alice", None)
+                        )
                     );
                     assert_eq!(
                         vec!["data2_admin"],
@@ -535,7 +621,9 @@ mod tests {
                     );
                     assert_eq!(
                         vec![String::new(); 0],
-                        ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                        ee.write()
+                            .unwrap()
+                            .get_roles_for_user("data2_admin", None)
                     );
                 });
             }
@@ -557,7 +645,9 @@ mod tests {
 
                         assert_eq!(
                             vec!["data2_admin", "data1_admin"],
-                            ee.write().unwrap().get_roles_for_user("alice", None)
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("alice", None)
                         );
                         assert_eq!(
                             vec![String::new(); 0],
@@ -565,18 +655,26 @@ mod tests {
                         );
                         assert_eq!(
                             vec![String::new(); 0],
-                            ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("data2_admin", None)
                         );
 
                         ee.write()
                             .unwrap()
-                            .add_roles_for_user("bob", vec!["data2_admin".to_owned()], None)
+                            .add_roles_for_user(
+                                "bob",
+                                vec!["data2_admin".to_owned()],
+                                None,
+                            )
                             .await
                             .unwrap();
 
                         assert_eq!(
                             vec!["data2_admin", "data1_admin"],
-                            ee.write().unwrap().get_roles_for_user("alice", None)
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("alice", None)
                         );
                         assert_eq!(
                             vec!["data2_admin"],
@@ -584,7 +682,9 @@ mod tests {
                         );
                         assert_eq!(
                             vec![String::new(); 0],
-                            ee.write().unwrap().get_roles_for_user("data2_admin", None)
+                            ee.write()
+                                .unwrap()
+                                .get_roles_for_user("data2_admin", None)
                         );
                     });
             }
@@ -783,11 +883,14 @@ mod tests {
         tokio::test
     )]
     async fn test_permission_api() {
-        let m = DefaultModel::from_file("examples/basic_without_resources_model.conf")
-            .await
-            .unwrap();
+        let m = DefaultModel::from_file(
+            "examples/basic_without_resources_model.conf",
+        )
+        .await
+        .unwrap();
 
-        let adapter = FileAdapter::new("examples/basic_without_resources_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/basic_without_resources_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(true, e.enforce(&vec!["alice", "read"]).unwrap());
@@ -820,25 +923,36 @@ mod tests {
         );
         assert_eq!(
             false,
-            e.has_permission_for_user("bob", vec!["read"].iter().map(|s| s.to_string()).collect())
+            e.has_permission_for_user(
+                "bob",
+                vec!["read"].iter().map(|s| s.to_string()).collect()
+            )
         );
         assert_eq!(
             true,
-            e.has_permission_for_user("bob", vec!["write"].iter().map(|s| s.to_string()).collect())
+            e.has_permission_for_user(
+                "bob",
+                vec!["write"].iter().map(|s| s.to_string()).collect()
+            )
         );
 
-        e.delete_permission(vec!["read"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.delete_permission(
+            vec!["read"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
         assert_eq!(false, e.enforce(&vec!["bob", "read"]).unwrap());
         assert_eq!(true, e.enforce(&vec!["bob", "write"]).unwrap());
 
-        e.add_permission_for_user("bob", vec!["read"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.add_permission_for_user(
+            "bob",
+            vec!["read"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
         e.add_permissions_for_user(
             "eve",
             vec![
@@ -856,9 +970,12 @@ mod tests {
         assert_eq!(true, e.enforce(&vec!["eve", "read"]).unwrap());
         assert_eq!(true, e.enforce(&vec!["eve", "write"]).unwrap());
 
-        e.delete_permission_for_user("bob", vec!["read"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.delete_permission_for_user(
+            "bob",
+            vec!["read"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(false, e.enforce(&vec!["alice", "read"]).unwrap());
         assert_eq!(false, e.enforce(&vec!["alice", "write"]).unwrap());
@@ -892,7 +1009,8 @@ mod tests {
             .await
             .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
@@ -928,7 +1046,8 @@ mod tests {
             .await
             .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
@@ -970,7 +1089,8 @@ mod tests {
             .await
             .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+        let adapter =
+            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
@@ -1027,11 +1147,14 @@ mod tests {
         tokio::test
     )]
     async fn test_implicit_permission_api_with_domain() {
-        let m = DefaultModel::from_file("examples/rbac_with_domains_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_file("examples/rbac_with_domains_model.conf")
+                .await
+                .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_with_hierarchy_with_domains_policy.csv");
+        let adapter = FileAdapter::new(
+            "examples/rbac_with_hierarchy_with_domains_policy.csv",
+        );
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
@@ -1040,7 +1163,9 @@ mod tests {
                 vec!["role:reader", "domain1", "data1", "read"],
                 vec!["role:writer", "domain1", "data1", "write"],
             ],
-            sort_unstable(e.get_implicit_permissions_for_user("alice", Some("domain1")))
+            sort_unstable(
+                e.get_implicit_permissions_for_user("alice", Some("domain1"))
+            )
         );
     }
 
@@ -1231,20 +1356,29 @@ mod tests {
             .unwrap());
 
         assert!(e
-            .add_grouping_policy(vec!["user2".to_owned(), "role::r2".to_owned(),])
+            .add_grouping_policy(vec![
+                "user2".to_owned(),
+                "role::r2".to_owned(),
+            ])
             .await
             .unwrap());
 
         assert!(e
-            .add_grouping_policy(vec!["user3".to_owned(), "role::r2".to_owned(),])
+            .add_grouping_policy(vec![
+                "user3".to_owned(),
+                "role::r2".to_owned(),
+            ])
             .await
             .unwrap());
 
         assert_eq!(
             vec!["user1".to_owned(), "user2".to_owned(), "user3".to_owned()],
             sort_unstable(
-                e.get_implicit_users_for_permission(vec!["data2".to_owned(), "writer".to_owned()])
-                    .await
+                e.get_implicit_users_for_permission(vec![
+                    "data2".to_owned(),
+                    "writer".to_owned()
+                ])
+                .await
             )
         );
     }

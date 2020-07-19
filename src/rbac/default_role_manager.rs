@@ -27,7 +27,11 @@ impl DefaultRoleManager {
         }
     }
 
-    fn create_role(&mut self, name: &str, domain: Option<&str>) -> Arc<RwLock<Role>> {
+    fn create_role(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Arc<RwLock<Role>> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
         Arc::clone(
@@ -56,9 +60,16 @@ impl RoleManager for DefaultRoleManager {
         self.cache.clear();
     }
 
-    fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
+    fn delete_link(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: Option<&str>,
+    ) -> Result<()> {
         if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
-            return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
+            return Err(
+                RbacError::NotFound(format!("{} OR {}", name1, name2)).into()
+            );
         }
 
         let role1 = self.create_role(name1, domain);
@@ -71,7 +82,12 @@ impl RoleManager for DefaultRoleManager {
         Ok(())
     }
 
-    fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
+    fn has_link(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: Option<&str>,
+    ) -> bool {
         if name1 == name2 {
             return true;
         }
@@ -112,9 +128,9 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        self.all_roles
-            .get(domain.unwrap_or(DEFAULT_DOMAIN))
-            .map_or(vec![], |roles| {
+        self.all_roles.get(domain.unwrap_or(DEFAULT_DOMAIN)).map_or(
+            vec![],
+            |roles| {
                 roles
                     .values()
                     .filter_map(|role| {
@@ -126,7 +142,8 @@ impl RoleManager for DefaultRoleManager {
                         }
                     })
                     .collect()
-            })
+            },
+        )
     }
 
     fn clear(&mut self) {

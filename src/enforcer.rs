@@ -28,7 +28,10 @@ use crate::{DefaultLogger, Logger};
 use async_trait::async_trait;
 use rhai::{
     def_package,
-    packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
+    packages::{
+        ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage,
+        Package,
+    },
     Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
 };
 
@@ -110,14 +113,21 @@ impl Enforcer {
         let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
 
         if r_ast.tokens.len() != rvals.len() {
-            return Err(
-                RequestError::UnmatchRequestDefinition(r_ast.tokens.len(), rvals.len()).into(),
-            );
+            return Err(RequestError::UnmatchRequestDefinition(
+                r_ast.tokens.len(),
+                rvals.len(),
+            )
+            .into());
         }
 
-        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref())) {
+        for (rtoken, rval) in
+            r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref()))
+        {
             if rval.starts_with('{') && rval.ends_with('}') {
-                scope.push_constant(rtoken, self.engine.parse_json(rval, false)?);
+                scope.push_constant(
+                    rtoken,
+                    self.engine.parse_json(rval, false)?,
+                );
             } else {
                 scope.push_constant(rtoken, rval.to_owned());
             }
@@ -126,7 +136,8 @@ impl Enforcer {
         let policies = p_ast.get_policy();
         let (policy_len, scope_len) = (policies.len(), scope.len());
 
-        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
+        let mut eft_stream =
+            self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self
             .engine
             .compile_expression(&escape_eval(&m_ast.value))
@@ -155,9 +166,11 @@ impl Enforcer {
             scope.rewind(scope_len);
 
             if p_ast.tokens.len() != pvals.len() {
-                return Err(
-                    PolicyError::UnmatchPolicyDefinition(p_ast.tokens.len(), pvals.len()).into(),
-                );
+                return Err(PolicyError::UnmatchPolicyDefinition(
+                    p_ast.tokens.len(),
+                    pvals.len(),
+                )
+                .into());
             }
             for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
                 scope.push_constant(ptoken, pval.to_owned());
@@ -211,7 +224,10 @@ impl Enforcer {
 
 #[async_trait]
 impl CoreApi for Enforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self> {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
@@ -256,7 +272,11 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
+    fn add_function(
+        &mut self,
+        fname: &str,
+        f: fn(ImmutableString, ImmutableString) -> bool,
+    ) {
         self.fm.add_function(fname, f);
         self.engine.register_fn(fname, f);
     }
@@ -325,7 +345,10 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+    fn set_role_manager(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()> {
         self.rm = rm;
         if self.auto_build_role_links {
             self.build_role_links()?;
@@ -376,9 +399,12 @@ impl CoreApi for Enforcer {
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+    fn enforce<S: AsRef<str> + Send + Sync>(
+        &self,
+        rvals: &[S],
+    ) -> Result<bool> {
         #[allow(unused_variables)]
-        let (authorized, indexes) = self.private_enforce(rvals)?;
+        let (authorized, indices) = self.private_enforce(rvals)?;
 
         #[cfg(feature = "logging")]
         {
@@ -389,11 +415,14 @@ impl CoreApi for Enforcer {
             );
 
             #[cfg(feature = "explain")]
-            if let Some(indices) = indexes {
-                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+            if let Some(indices) = indices {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
+                    .get_policy();
                 let rules: Vec<String> = indices
                     .into_iter()
-                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .filter_map(|y| {
+                        all_rules.get_index(y).map(|x| x.join(", "))
+                    })
                     .collect();
                 self.logger.print_explain_log(rules);
             }
@@ -402,13 +431,17 @@ impl CoreApi for Enforcer {
         Ok(authorized)
     }
 
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    fn enforce_mut<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+    ) -> Result<bool> {
         self.enforce(rvals)
     }
 
     fn build_role_links(&mut self) -> Result<()> {
         self.rm.write().unwrap().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
+
         Ok(())
     }
 
@@ -416,6 +449,7 @@ impl CoreApi for Enforcer {
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()> {
         self.model
             .build_incremental_role_links(Arc::clone(&self.rm), d)?;
+
         Ok(())
     }
 
@@ -426,6 +460,7 @@ impl CoreApi for Enforcer {
         if self.auto_build_role_links {
             self.build_role_links()?;
         }
+
         Ok(())
     }
 
@@ -438,6 +473,7 @@ impl CoreApi for Enforcer {
         if self.auto_build_role_links {
             self.build_role_links()?;
         }
+
         Ok(())
     }
 
@@ -465,8 +501,16 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn clear_policy(&mut self) {
+    async fn clear_policy(&mut self) -> Result<()> {
+        if self.auto_save {
+            self.adapter.clear_policy().await?;
+        }
         self.model.clear_policy();
+
+        #[cfg(any(feature = "logging", feature = "watcher"))]
+        self.emit(Event::PolicyChange, EventData::ClearPolicy);
+
+        Ok(())
     }
 
     #[inline]
@@ -501,6 +545,7 @@ impl CoreApi for Enforcer {
         } else {
             self.on(Event::PolicyChange, notify_logger_and_watcher);
         }
+
         self.auto_notify_watcher = auto_notify_watcher;
     }
 
@@ -566,14 +611,22 @@ mod tests {
         // this should fail since FileAdapter has basically no add_policy
         assert!(e
             .adapter
-            .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
+            .add_policy(
+                "p",
+                "p",
+                vec!["alice".into(), "data".into(), "read".into()]
+            )
             .await
             .unwrap());
         e.set_adapter(mem).await.unwrap();
         // this passes since our MemoryAdapter has a working add_policy method
         assert!(e
             .adapter
-            .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
+            .add_policy(
+                "p",
+                "p",
+                vec!["alice".into(), "data".into(), "read".into()]
+            )
             .await
             .unwrap())
     }
@@ -1001,7 +1054,10 @@ mod tests {
         let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
-        assert_eq!(false, e.enforce(&vec!["user501", "data9", "read"]).unwrap());
+        assert_eq!(
+            false,
+            e.enforce(&vec!["user501", "data9", "read"]).unwrap()
+        );
     }
 
     #[cfg(not(target_arch = "wasm32"))]

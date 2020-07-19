@@ -82,7 +82,9 @@ impl EffectorStream for DefaultEffectStream {
 
                 push_index_if_explain!(self);
             }
-        } else if self.expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
+        } else if self.expr
+            == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+        {
             if eft == EffectKind::Allow {
                 self.res = true;
 
@@ -100,7 +102,9 @@ impl EffectorStream for DefaultEffectStream {
 
                 push_index_if_explain!(self)
             }
-        } else if self.expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
+        } else if self.expr == "priority(p_eft) || deny"
+            && eft != EffectKind::Indeterminate
+        {
             if eft == EffectKind::Allow {
                 self.res = true;
             } else {

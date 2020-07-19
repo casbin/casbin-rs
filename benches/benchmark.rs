@@ -106,7 +106,8 @@ fn b_benchmark_cached_rbac_model(b: &mut Bencher) {
 
 #[bench]
 fn b_benchmark_role_manager_small(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -142,16 +143,19 @@ fn b_benchmark_role_manager_small(b: &mut Bencher) {
 
     b.iter(|| {
         (0..100_u64).for_each(|i| {
-            rm.write()
-                .unwrap()
-                .has_link("user501", &format!("group{}", i), None);
+            rm.write().unwrap().has_link(
+                "user501",
+                &format!("group{}", i),
+                None,
+            );
         })
     });
 }
 
 #[bench]
 fn b_benchmark_rbac_model_small(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -189,7 +193,9 @@ fn b_benchmark_rbac_model_small(b: &mut Bencher) {
 #[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_small(b: &mut Bencher) {
-    let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(CachedEnforcer::new("examples/rbac_model.conf", ()))
+            .unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -226,7 +232,8 @@ fn b_benchmark_cached_rbac_model_small(b: &mut Bencher) {
 
 #[bench]
 fn b_benchmark_role_manager_medium(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -262,16 +269,19 @@ fn b_benchmark_role_manager_medium(b: &mut Bencher) {
 
     b.iter(|| {
         (0..1000_u64).for_each(|i| {
-            rm.write()
-                .unwrap()
-                .has_link("user5001", &format!("group{}", i), None);
+            rm.write().unwrap().has_link(
+                "user5001",
+                &format!("group{}", i),
+                None,
+            );
         })
     });
 }
 
 #[bench]
 fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -309,7 +319,9 @@ fn b_benchmark_rbac_model_medium(b: &mut Bencher) {
 #[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_medium(b: &mut Bencher) {
-    let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(CachedEnforcer::new("examples/rbac_model.conf", ()))
+            .unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -346,7 +358,8 @@ fn b_benchmark_cached_rbac_model_medium(b: &mut Bencher) {
 
 #[bench]
 fn b_benchmark_role_manager_large(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -382,16 +395,19 @@ fn b_benchmark_role_manager_large(b: &mut Bencher) {
 
     b.iter(|| {
         (0..10000_u64).for_each(|i| {
-            rm.write()
-                .unwrap()
-                .has_link("user50001", &format!("group{}", i), None);
+            rm.write().unwrap().has_link(
+                "user50001",
+                &format!("group{}", i),
+                None,
+            );
         })
     });
 }
 
 #[bench]
 fn b_benchmark_rbac_model_large(b: &mut Bencher) {
-    let mut e = await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(Enforcer::new("examples/rbac_model.conf", ())).unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -429,7 +445,9 @@ fn b_benchmark_rbac_model_large(b: &mut Bencher) {
 #[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_rbac_model_large(b: &mut Bencher) {
-    let mut e = await_future(CachedEnforcer::new("examples/rbac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(CachedEnforcer::new("examples/rbac_model.conf", ()))
+            .unwrap();
 
     e.enable_auto_build_role_links(false);
 
@@ -515,7 +533,8 @@ fn b_benchmark_cached_rbac_model_with_domains(b: &mut Bencher) {
 
 #[bench]
 fn b_benchmark_abac_model(b: &mut Bencher) {
-    let e = await_future(Enforcer::new("examples/abac_model.conf", ())).unwrap();
+    let e =
+        await_future(Enforcer::new("examples/abac_model.conf", ())).unwrap();
 
     b.iter(|| {
         e.enforce(&["alice", r#"{"Owner": "alice"}"#, "read"])
@@ -526,7 +545,9 @@ fn b_benchmark_abac_model(b: &mut Bencher) {
 #[cfg(feature = "cached")]
 #[bench]
 fn b_benchmark_cached_abac_model(b: &mut Bencher) {
-    let mut e = await_future(CachedEnforcer::new("examples/abac_model.conf", ())).unwrap();
+    let mut e =
+        await_future(CachedEnforcer::new("examples/abac_model.conf", ()))
+            .unwrap();
 
     b.iter(|| {
         e.enforce_mut(&["alice", r#"{"Owner": "alice"}"#, "read"])

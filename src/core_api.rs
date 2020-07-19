@@ -1,4 +1,7 @@
-use crate::{Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel};
+use crate::{
+    Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter,
+    TryIntoModel,
+};
 
 #[cfg(feature = "watcher")]
 use crate::Watcher;
@@ -16,10 +19,17 @@ use std::sync::{Arc, RwLock};
 
 #[async_trait]
 pub trait CoreApi: Send + Sync {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self>
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self>
     where
         Self: Sized;
-    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool);
+    fn add_function(
+        &mut self,
+        fname: &str,
+        f: fn(ImmutableString, ImmutableString) -> bool,
+    );
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;
     fn get_adapter(&self) -> &dyn Adapter;
@@ -31,7 +41,10 @@ pub trait CoreApi: Send + Sync {
     #[cfg(feature = "watcher")]
     fn get_mut_watcher(&mut self) -> Option<&mut dyn Watcher>;
     fn get_role_manager(&self) -> Arc<RwLock<dyn RoleManager>>;
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()>;
+    fn set_role_manager(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()>;
     #[cfg(feature = "logging")]
     fn get_logger(&self) -> &dyn Logger;
     #[cfg(feature = "logging")]
@@ -39,8 +52,12 @@ pub trait CoreApi: Send + Sync {
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
     async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
     fn set_effector(&mut self, e: Box<dyn Effector>);
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool>;
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool>;
+    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S])
+        -> Result<bool>;
+    fn enforce_mut<S: AsRef<str> + Send + Sync>(
+        &mut self,
+        rvals: &[S],
+    ) -> Result<bool>;
     fn build_role_links(&mut self) -> Result<()>;
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
@@ -48,7 +65,7 @@ pub trait CoreApi: Send + Sync {
     async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
     fn is_filtered(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
-    fn clear_policy(&mut self);
+    async fn clear_policy(&mut self) -> Result<()>;
     #[cfg(feature = "logging")]
     fn enable_log(&mut self, enabled: bool);
     fn enable_auto_save(&mut self, auto_save: bool);

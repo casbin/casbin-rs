@@ -12,7 +12,9 @@ use async_std::{fs::File, path::Path};
 #[cfg(feature = "runtime-tokio")]
 use std::{io::Cursor, path::Path};
 #[cfg(feature = "runtime-tokio")]
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind};
+use tokio::io::{
+    AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind,
+};
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
 use tokio::fs::File;
@@ -55,11 +57,15 @@ impl Config {
         let mut c = Vec::new();
         f.read_to_end(&mut c).await?;
 
-        let mut reader: BufReader<Cursor<&[u8]>> = BufReader::new(Cursor::new(&c));
+        let mut reader: BufReader<Cursor<&[u8]>> =
+            BufReader::new(Cursor::new(&c));
         self.parse_buffer(&mut reader).await
     }
 
-    async fn parse_buffer(&mut self, reader: &mut BufReader<Cursor<&[u8]>>) -> Result<()> {
+    async fn parse_buffer(
+        &mut self,
+        reader: &mut BufReader<Cursor<&[u8]>>,
+    ) -> Result<()> {
         let mut section = String::new();
 
         loop {
@@ -96,8 +102,10 @@ impl Config {
                         continue;
                     }
 
-                    if inner_line.starts_with('[') && inner_line.ends_with(']') {
-                        next_section = inner_line[1..inner_line.len() - 1].to_string();
+                    if inner_line.starts_with('[') && inner_line.ends_with(']')
+                    {
+                        next_section =
+                            inner_line[1..inner_line.len() - 1].to_string();
                     } else {
                         line.push_str(&inner_line);
                     }
@@ -106,7 +114,8 @@ impl Config {
                 let option_val: Vec<&str> = line
                     .trim_end_matches(|c| {
                         char::is_whitespace(c)
-                            || char::to_string(&c) == DEFAULT_MULTI_LINE_SEPARATOR
+                            || char::to_string(&c)
+                                == DEFAULT_MULTI_LINE_SEPARATOR
                     })
                     .splitn(2, '=')
                     .map(|e| e.trim())
@@ -133,11 +142,17 @@ impl Config {
         }
     }
 
-    pub(crate) fn add_config(&mut self, mut section: String, option: String, value: String) {
+    pub(crate) fn add_config(
+        &mut self,
+        mut section: String,
+        option: String,
+        value: String,
+    ) {
         if section.is_empty() {
             section = DEFAULT_SECTION.to_owned();
         }
-        let section_value = self.data.entry(section).or_insert_with(HashMap::new);
+        let section_value =
+            self.data.entry(section).or_insert_with(HashMap::new);
 
         // if key not exists then insert, else update
         let key_value = section_value.get_mut(&option);
@@ -152,7 +167,8 @@ impl Config {
     }
 
     pub fn get(&self, key: &str) -> Option<&str> {
-        let keys: Vec<String> = key.to_lowercase().split("::").map(String::from).collect();
+        let keys: Vec<String> =
+            key.to_lowercase().split("::").map(String::from).collect();
         if keys.len() >= 2 {
             let section = &keys[0];
             let option = &keys[1];
@@ -173,15 +189,24 @@ impl Config {
         if key.is_empty() {
             panic!("key can't be empty");
         }
-        let keys: Vec<String> = key.to_lowercase().split("::").map(String::from).collect();
+        let keys: Vec<String> =
+            key.to_lowercase().split("::").map(String::from).collect();
         if keys.len() >= 2 {
             let section = &keys[0];
             let option = &keys[1];
-            self.add_config(section.to_owned(), option.to_owned(), value.to_owned());
+            self.add_config(
+                section.to_owned(),
+                option.to_owned(),
+                value.to_owned(),
+            );
         } else {
             let section = DEFAULT_SECTION;
             let option = &keys[0];
-            self.add_config(section.to_owned(), option.to_owned(), value.to_owned());
+            self.add_config(
+                section.to_owned(),
+                option.to_owned(),
+                value.to_owned(),
+            );
         }
     }
 
@@ -224,7 +249,8 @@ mod tests {
         tokio::test
     )]
     async fn test_get() {
-        let mut config = Config::from_file("examples/testini.ini").await.unwrap();
+        let mut config =
+            Config::from_file("examples/testini.ini").await.unwrap();
 
         assert_eq!(Some(true), config.get_bool("debug"));
         assert_eq!(Some(64), config.get_int("math::math.i64"));
