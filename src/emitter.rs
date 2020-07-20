@@ -79,7 +79,9 @@ pub trait EventEmitter<K>
 where
     K: EventKey,
 {
-    fn on(&mut self, e: K, f: fn(&mut Self, EventData));
+    fn on(&mut self, e: K, f: fn(&mut Self, EventData))
+    where
+        Self: Sized;
     fn off(&mut self, e: K);
     fn emit(&mut self, e: K, d: EventData);
 }
