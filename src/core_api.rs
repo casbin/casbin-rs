@@ -1,4 +1,7 @@
-use crate::{Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter, TryIntoModel};
+use crate::{
+    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
+    TryIntoModel,
+};
 
 #[cfg(feature = "watcher")]
 use crate::Watcher;
@@ -61,3 +64,7 @@ pub trait CoreApi: Send + Sync {
     fn has_auto_notify_watcher_enabled(&self) -> bool;
     fn has_auto_build_role_links_enabled(&self) -> bool;
 }
+
+pub trait IEnforcer: CoreApi + EventEmitter<Event> {}
+
+impl<T> IEnforcer for T where T: CoreApi + EventEmitter<Event> {}

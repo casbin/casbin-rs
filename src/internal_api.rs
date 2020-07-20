@@ -1,8 +1,4 @@
-use crate::{
-    core_api::CoreApi,
-    emitter::{Event, EventEmitter},
-    Result,
-};
+use crate::{core_api::IEnforcer, Result};
 
 #[cfg(any(
     feature = "watcher",
@@ -12,10 +8,13 @@ use crate::{
 ))]
 use crate::emitter::EventData;
 
+#[cfg(any(feature = "watcher", feature = "cached", feature = "logging",))]
+use crate::emitter::Event;
+
 use async_trait::async_trait;
 
 #[async_trait]
-pub trait InternalApi: CoreApi + EventEmitter<Event> {
+pub trait InternalApi: IEnforcer {
     async fn add_policy_internal(
         &mut self,
         sec: &str,
@@ -52,7 +51,7 @@ pub trait InternalApi: CoreApi + EventEmitter<Event> {
 #[async_trait]
 impl<T> InternalApi for T
 where
-    T: CoreApi + EventEmitter<Event>,
+    T: IEnforcer,
 {
     async fn add_policy_internal(
         &mut self,
