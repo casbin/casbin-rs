@@ -42,10 +42,8 @@ pub use cached_api::CachedApi;
 #[cfg(feature = "cached")]
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
-pub use core_api::CoreApi;
-pub use effector::{
-    DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream,
-};
+pub use core_api::{CoreApi, IEnforcer};
+pub use effector::{DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream};
 pub use emitter::{Event, EventData, EventEmitter, EventKey};
 pub use enforcer::Enforcer;
 pub use error::Error;
@@ -60,3 +58,8 @@ pub use rbac_api::RbacApi;
 pub use watcher::Watcher;
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+// re-exports
+pub mod rhai {
+    pub use rhai::*;
+}

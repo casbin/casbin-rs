@@ -1,6 +1,6 @@
 [package]
 name = "casbin"
-version = "1.1.1"
+version = "1.1.2"
 authors = ["Joey <joey.xf@gmail.com>", "Cheng JIANG <jiang.cheng@vip.163.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -18,8 +18,8 @@ rhai = { version = "0.17.0", features = ["sync", "only_i32", "no_function", "no_
 ip_network = { version = "0.3.4", optional = true }
 ttl_cache = { version = "0.5.1", optional = true }
 lazy_static = "1.4.0"
-indexmap = "1.4.0"
-async-std = { version = "1.6.1", optional = true }
+indexmap = "1.5.0"
+async-std = { version = "1.6.2", optional = true }
 async-trait = "0.1.35"
 log = { version = "0.4.8", optional = true }
 tokio = { version = "0.2.21", optional = true, default-features = false }

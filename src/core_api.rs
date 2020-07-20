@@ -1,5 +1,5 @@
 use crate::{
-    Adapter, Effector, Filter, Model, Result, RoleManager, TryIntoAdapter,
+    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
     TryIntoModel,
 };
 
@@ -62,7 +62,7 @@ pub trait CoreApi: Send + Sync {
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
-    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()>;
+    async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()>;
     fn is_filtered(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     async fn clear_policy(&mut self) -> Result<()>;
@@ -78,3 +78,7 @@ pub trait CoreApi: Send + Sync {
     fn has_auto_notify_watcher_enabled(&self) -> bool;
     fn has_auto_build_role_links_enabled(&self) -> bool;
 }
+
+pub trait IEnforcer: CoreApi + EventEmitter<Event> {}
+
+impl<T> IEnforcer for T where T: CoreApi + EventEmitter<Event> {}

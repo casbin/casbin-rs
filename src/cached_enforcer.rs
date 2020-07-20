@@ -243,7 +243,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    async fn load_filtered_policy(&mut self, f: Filter) -> Result<()> {
+    async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()> {
         self.enforcer.load_filtered_policy(f).await
     }
 

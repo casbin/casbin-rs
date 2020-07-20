@@ -31,11 +31,7 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn load_filtered_policy(
-        &mut self,
-        m: &mut dyn Model,
-        f: Filter,
-    ) -> Result<()> {
+    async fn load_filtered_policy<'a>(&mut self, m: &mut dyn Model, f: Filter<'a>) -> Result<()> {
         for line in self.policy.iter() {
             let sec = &line[0];
             let ptype = &line[1];
