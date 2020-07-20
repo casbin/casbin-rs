@@ -11,7 +11,7 @@ use std::{
 const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 pub struct DefaultRoleManager {
-    all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
+    all_domains: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
     #[cfg(feature = "cached")]
     cache: Box<dyn Cache<(String, String, Option<String>), bool>>,
     max_hierarchy_level: usize,
@@ -20,7 +20,7 @@ pub struct DefaultRoleManager {
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
-            all_roles: HashMap::new(),
+            all_domains: HashMap::new(),
             max_hierarchy_level,
             #[cfg(feature = "cached")]
             cache: Box::new(DefaultCache::new(50)),
@@ -35,7 +35,7 @@ impl DefaultRoleManager {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
         Arc::clone(
-            self.all_roles
+            self.all_domains
                 .entry(domain.into())
                 .or_insert_with(HashMap::new)
                 .entry(name.into())
@@ -44,7 +44,7 @@ impl DefaultRoleManager {
     }
 
     fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
-        self.all_roles
+        self.all_domains
             .get(domain.unwrap_or(DEFAULT_DOMAIN))
             .map_or(false, |roles| roles.contains_key(name))
     }
@@ -56,6 +56,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().add_role(Arc::clone(&role2));
+
         #[cfg(feature = "cached")]
         self.cache.clear();
     }
@@ -76,6 +77,7 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().delete_role(role2);
+
         #[cfg(feature = "cached")]
         self.cache.clear();
 
@@ -128,9 +130,9 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        self.all_roles.get(domain.unwrap_or(DEFAULT_DOMAIN)).map_or(
-            vec![],
-            |roles| {
+        self.all_domains
+            .get(domain.unwrap_or(DEFAULT_DOMAIN))
+            .map_or(vec![], |roles| {
                 roles
                     .values()
                     .filter_map(|role| {
@@ -142,12 +144,11 @@ impl RoleManager for DefaultRoleManager {
                         }
                     })
                     .collect()
-            },
-        )
+            })
     }
 
     fn clear(&mut self) {
-        self.all_roles.clear();
+        self.all_domains.clear();
         #[cfg(feature = "cached")]
         self.cache.clear();
     }
