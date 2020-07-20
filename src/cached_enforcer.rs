@@ -78,11 +78,11 @@ impl CachedEnforcer {
 
 #[async_trait]
 impl CoreApi for CachedEnforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+    async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
         m: M,
         a: A,
     ) -> Result<CachedEnforcer> {
-        let enforcer = Enforcer::new(m, a).await?;
+        let enforcer = Enforcer::new_raw(m, a).await?;
         let cache = Box::new(DefaultCache::new(1000));
 
         let mut cached_enforcer = CachedEnforcer {
@@ -96,6 +96,16 @@ impl CoreApi for CachedEnforcer {
         #[cfg(any(feature = "logging", feature = "watcher"))]
         cached_enforcer.on(Event::PolicyChange, notify_logger_and_watcher);
 
+        Ok(cached_enforcer)
+    }
+
+    #[inline]
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<CachedEnforcer> {
+        let mut cached_enforcer = Self::new_raw(m, a).await?;
+        cached_enforcer.load_policy().await?;
         Ok(cached_enforcer)
     }
 

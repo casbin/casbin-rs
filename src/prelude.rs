@@ -1,7 +1,7 @@
 pub use crate::{
-    CoreApi, DefaultModel, Enforcer, Event, EventData, EventEmitter, Filter, IEnforcer,
-    InternalApi, MemoryAdapter, MgmtApi, Model, NullAdapter, RbacApi, Result, TryIntoAdapter,
-    TryIntoModel,
+    CoreApi, DefaultModel, Enforcer, Event, EventData, EventEmitter, Filter,
+    IEnforcer, InternalApi, MemoryAdapter, MgmtApi, Model, NullAdapter,
+    RbacApi, Result, TryIntoAdapter, TryIntoModel,
 };
 
 #[cfg(not(target_arch = "wasm32"))]

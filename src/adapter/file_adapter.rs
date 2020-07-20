@@ -36,7 +36,8 @@ pub struct FileAdapter<P> {
 }
 
 type LoadPolicyFileHandler = fn(String, &mut dyn Model);
-type LoadFilteredPolicyFileHandler<'a> = fn(String, &mut dyn Model, f: &Filter<'a>) -> bool;
+type LoadFilteredPolicyFileHandler<'a> =
+    fn(String, &mut dyn Model, f: &Filter<'a>) -> bool;
 
 impl<P> FileAdapter<P>
 where
@@ -100,7 +101,11 @@ where
         Ok(())
     }
 
-    async fn load_filtered_policy<'a>(&mut self, m: &mut dyn Model, f: Filter<'a>) -> Result<()> {
+    async fn load_filtered_policy<'a>(
+        &mut self,
+        m: &mut dyn Model,
+        f: Filter<'a>,
+    ) -> Result<()> {
         self.is_filtered = self
             .load_filtered_policy_file(m, f, load_filtered_policy_line)
             .await?;
@@ -223,7 +228,11 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
     }
 }
 
-fn load_filtered_policy_line<'a>(line: String, m: &mut dyn Model, f: &Filter<'a>) -> bool {
+fn load_filtered_policy_line<'a>(
+    line: String,
+    m: &mut dyn Model,
+    f: &Filter<'a>,
+) -> bool {
     if line.is_empty() || line.starts_with('#') {
         return false;
     }

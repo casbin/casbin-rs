@@ -1,6 +1,6 @@
 use crate::{
-    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
-    TryIntoModel,
+    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager,
+    TryIntoAdapter, TryIntoModel,
 };
 
 #[cfg(feature = "watcher")]
@@ -19,6 +19,12 @@ use std::sync::{Arc, RwLock};
 
 #[async_trait]
 pub trait CoreApi: Send + Sync {
+    async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self>
+    where
+        Self: Sized;
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(
         m: M,
         a: A,

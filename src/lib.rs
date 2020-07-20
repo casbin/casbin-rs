@@ -43,7 +43,9 @@ pub use cached_api::CachedApi;
 pub use cached_enforcer::CachedEnforcer;
 pub use convert::{TryIntoAdapter, TryIntoModel};
 pub use core_api::{CoreApi, IEnforcer};
-pub use effector::{DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream};
+pub use effector::{
+    DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream,
+};
 pub use emitter::{Event, EventData, EventEmitter, EventKey};
 pub use enforcer::Enforcer;
 pub use error::Error;

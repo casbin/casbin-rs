@@ -224,7 +224,7 @@ impl Enforcer {
 
 #[async_trait]
 impl CoreApi for Enforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+    async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
         m: M,
         a: A,
     ) -> Result<Self> {
@@ -266,8 +266,16 @@ impl CoreApi for Enforcer {
 
         e.register_g_functions()?;
 
-        e.load_policy().await?;
+        Ok(e)
+    }
 
+    #[inline]
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self> {
+        let mut e = Self::new_raw(m, a).await?;
+        e.load_policy().await?;
         Ok(e)
     }
 
