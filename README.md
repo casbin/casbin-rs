@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     let mut e = Enforcer::new("examples/rbac_with_domains_model.conf", "examples/rbac_with_domains_policy.csv").await?;
     e.enable_log(true);
 
-    e.enforce(&["alice", "domain1", "data1", "read"]).await?;
+    e.enforce(&["alice", "domain1", "data1", "read"])?;
     Ok(())
 }
 ```

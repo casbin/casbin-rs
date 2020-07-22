@@ -238,8 +238,8 @@ impl CoreApi for Enforcer {
 
         engine.load_package(CASBIN_PACKAGE.get());
 
-        for (key, func) in fm.get_functions() {
-            engine.register_fn(key, *func);
+        for (key, &func) in fm.get_functions() {
+            engine.register_fn(key, func);
         }
 
         let mut e = Self {
@@ -426,6 +426,7 @@ impl CoreApi for Enforcer {
             if let Some(indices) = indices {
                 let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
                     .get_policy();
+
                 let rules: Vec<String> = indices
                     .into_iter()
                     .filter_map(|y| {

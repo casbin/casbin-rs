@@ -36,9 +36,9 @@ impl Logger for DefaultLogger {
         );
 
         if authorized {
-            info!("[Enforce]{}", text);
+            info!("[Enforce] {}", text);
         } else {
-            error!("[Enforce]{}", text);
+            error!("[Enforce] {}", text);
         }
     }
 
