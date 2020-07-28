@@ -195,6 +195,10 @@ impl Adapter for MemoryAdapter {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
+        if field_values.is_empty() {
+            return Ok(false);
+        }
+
         let mut tmp = IndexSet::new();
         let mut res = false;
         for rule in &self.policy {

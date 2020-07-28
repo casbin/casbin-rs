@@ -352,11 +352,15 @@ impl Model for DefaultModel {
         field_index: usize,
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>) {
+        if field_values.is_empty() {
+            return (false, vec![])
+        }
+
         let mut res = false;
         let mut rules_removed: Vec<Vec<String>> = vec![];
-        if let Some(t1) = self.model.get_mut(sec) {
-            if let Some(t2) = t1.get_mut(ptype) {
-                for rule in t2.policy.iter() {
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                for rule in ast.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
                         if !field_value.is_empty()
@@ -373,7 +377,7 @@ impl Model for DefaultModel {
                 }
                 if res && !rules_removed.is_empty() {
                     for rule in rules_removed.iter() {
-                        t2.policy.remove(rule);
+                        ast.policy.remove(rule);
                     }
                 }
             }
