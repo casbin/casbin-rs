@@ -353,7 +353,7 @@ impl Model for DefaultModel {
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>) {
         if field_values.is_empty() {
-            return (false, vec![])
+            return (false, vec![]);
         }
 
         let mut res = false;
