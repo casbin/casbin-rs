@@ -2,14 +2,13 @@ use crate::cache::Cache;
 
 use lru_cache::LruCache;
 
-use std::{hash::Hash, time::Duration};
+use std::hash::Hash;
 
 pub struct DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
     V: Send + Sync + 'static,
 {
-    pub ttl: Duration,
     cache: LruCache<K, V>,
 }
 
@@ -20,7 +19,6 @@ where
 {
     pub fn new(cap: usize) -> DefaultCache<K, V> {
         DefaultCache {
-            ttl: Duration::from_secs(120),
             cache: LruCache::new(cap),
         }
     }
