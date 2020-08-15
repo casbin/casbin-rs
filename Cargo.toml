@@ -18,11 +18,11 @@ rhai = { version = "0.18.1", features = ["sync", "only_i32", "no_function", "no_
 ip_network = { version = "0.3.4", optional = true }
 lru-cache = { version = "0.1.2", optional = true }
 lazy_static = "1.4.0"
-indexmap = "1.5.0"
-async-std = { version = "1.6.2", optional = true }
-async-trait = "0.1.35"
+indexmap = "1.5.1"
+async-std = { version = "1.6.3", optional = true }
+async-trait = "0.1.37"
 log = { version = "0.4.8", optional = true }
-tokio = { version = "0.2.21", optional = true, default-features = false }
+tokio = { version = "0.2.22", optional = true, default-features = false }
 globset = { version = "0.4.5", optional = true }
 thiserror = "1.0.20"
 
@@ -43,8 +43,8 @@ explain = []
 opt-level = 0
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-async-std = { version = "1.6.1", features = [ "attributes" ] }
+async-std = { version = "1.6.3", features = [ "attributes" ] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "0.2.21", features = [ "full" ] }
-async-std = { version = "1.6.1", features = [ "attributes" ] }
+tokio = { version = "0.2.22", features = [ "full" ] }
+async-std = { version = "1.6.3", features = [ "attributes" ] }
