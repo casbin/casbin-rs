@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use std::{hash::Hash, time::Duration};
+use std::hash::Hash;
 
 pub mod default_cache;
 
@@ -12,9 +12,8 @@ where
     K: Eq + Hash,
 {
     fn set_capacity(&mut self, c: usize);
-    fn set_ttl(&mut self, t: Duration);
-    fn get(&self, k: &K) -> Option<&V>;
-    fn has(&self, k: &K) -> bool;
+    fn get(&mut self, k: &K) -> Option<&mut V>;
+    fn has(&mut self, k: &K) -> bool;
     fn set(&mut self, k: K, v: V);
     fn clear(&mut self);
 }

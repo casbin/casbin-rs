@@ -30,7 +30,6 @@ use rhai::ImmutableString;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
-    time::Duration,
 };
 
 type EventCallback = fn(&mut CachedEnforcer, EventData);
@@ -66,7 +65,7 @@ impl CachedEnforcer {
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
         let cache_key: Vec<String> =
             rvals.iter().map(|x| String::from(x.as_ref())).collect();
-        Ok(if let Some(&authorized) = self.cache.get(&cache_key) {
+        Ok(if let Some(&mut authorized) = self.cache.get(&cache_key) {
             (authorized, true, None)
         } else {
             let (authorized, indices) = self.enforcer.private_enforce(rvals)?;
@@ -83,7 +82,7 @@ impl CoreApi for CachedEnforcer {
         a: A,
     ) -> Result<CachedEnforcer> {
         let enforcer = Enforcer::new_raw(m, a).await?;
-        let cache = Box::new(DefaultCache::new(1000));
+        let cache = Box::new(DefaultCache::new(200));
 
         let mut cached_enforcer = CachedEnforcer {
             enforcer,
@@ -325,10 +324,6 @@ impl CachedApi for CachedEnforcer {
 
     fn set_cache(&mut self, cache: Box<dyn Cache<Vec<String>, bool>>) {
         self.cache = cache;
-    }
-
-    fn set_ttl(&mut self, ttl: Duration) {
-        self.cache.set_ttl(ttl);
     }
 
     fn set_capacity(&mut self, cap: usize) {
