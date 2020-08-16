@@ -33,7 +33,7 @@ where
         self.cache.set_capacity(cap);
     }
 
-    fn get<'a>(&'a mut self, k: &K) -> Option<Cow<'a, V>> {
+    fn get(&mut self, k: &K) -> Option<Cow<'_, V>> {
         self.cache.get_mut(k).map(|x| Cow::Borrowed(&*x))
     }
 
