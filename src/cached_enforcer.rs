@@ -65,8 +65,8 @@ impl CachedEnforcer {
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
         let cache_key: Vec<String> =
             rvals.iter().map(|x| String::from(x.as_ref())).collect();
-        Ok(if let Some(&mut authorized) = self.cache.get(&cache_key) {
-            (authorized, true, None)
+        Ok(if let Some(authorized) = self.cache.get(&cache_key) {
+            (authorized.into_owned(), true, None)
         } else {
             let (authorized, indices) = self.enforcer.private_enforce(rvals)?;
             self.cache.set(cache_key, authorized);

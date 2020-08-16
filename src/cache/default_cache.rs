@@ -2,12 +2,12 @@ use crate::cache::Cache;
 
 use lru_cache::LruCache;
 
-use std::hash::Hash;
+use std::{borrow::Cow, hash::Hash};
 
 pub struct DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
     cache: LruCache<K, V>,
 }
@@ -15,7 +15,7 @@ where
 impl<K, V> DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
     pub fn new(cap: usize) -> DefaultCache<K, V> {
         DefaultCache {
@@ -27,14 +27,14 @@ where
 impl<K, V> Cache<K, V> for DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
     fn set_capacity(&mut self, cap: usize) {
         self.cache.set_capacity(cap);
     }
 
-    fn get<'a>(&'a mut self, k: &K) -> Option<&'a mut V> {
-        self.cache.get_mut(k)
+    fn get<'a>(&'a mut self, k: &K) -> Option<Cow<'a, V>> {
+        self.cache.get_mut(k).map(|x| Cow::Borrowed(&*x))
     }
 
     fn has(&mut self, k: &K) -> bool {
@@ -64,7 +64,8 @@ mod tests {
 
         cache.set(vec!["alice", "/data1", "read"], false);
         assert!(
-            cache.get(&vec!["alice", "/data1", "read"]) == Some(&mut false)
+            cache.get(&vec!["alice", "/data1", "read"])
+                == Some(Cow::Borrowed(&false))
         );
     }
 

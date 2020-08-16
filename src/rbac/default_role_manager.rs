@@ -102,8 +102,8 @@ impl RoleManager for DefaultRoleManager {
         );
 
         #[cfg(feature = "cached")]
-        if let Some(&mut res) = self.cache.get(&cache_key) {
-            return res;
+        if let Some(res) = self.cache.get(&cache_key) {
+            return res.into_owned();
         }
 
         #[allow(clippy::let_and_return)]
