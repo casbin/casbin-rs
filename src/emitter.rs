@@ -33,44 +33,44 @@ impl fmt::Display for EventData {
         match *self {
             AddPolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: AddPolicy, Assertion: {}::{},  Data: {:?}",
+                "Type: AddPolicy, Assertion: {}::{},  Data: {:?}",
                 sec,
                 ptype,
                 p.join(", ")
             ),
             AddPolicies(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: AddPolicies, Assertion: {}::{}, Added: {}",
+                "Type: AddPolicies, Assertion: {}::{}, Added: {}",
                 sec,
                 ptype,
                 p.len()
             ),
             RemovePolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemovePolicy, Assertion: {}::{}, Data: {:?}",
+                "Type: RemovePolicy, Assertion: {}::{}, Data: {:?}",
                 sec,
                 ptype,
                 p.join(", ")
             ),
             RemovePolicies(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemovePolicies, Assertion: {}::{}, Removed: {}",
+                "Type: RemovePolicies, Assertion: {}::{}, Removed: {}",
                 sec,
                 ptype,
                 p.len()
             ),
             RemoveFilteredPolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemoveFilteredPolicy, Assertion: {}::{}, Removed: {}",
+                "Type: RemoveFilteredPolicy, Assertion: {}::{}, Removed: {}",
                 sec,
                 ptype,
                 p.len()
             ),
             SavePolicy(ref p) => {
-                write!(f, "Event: SavePolicy, Saved: {}", p.len())
+                write!(f, "Type: SavePolicy, Saved: {}", p.len())
             }
-            ClearPolicy => write!(f, "Event: ClearPolicy"),
-            ClearCache => write!(f, "Event: ClearCache, Data: ClearCache"),
+            ClearPolicy => write!(f, "Type: ClearPolicy"),
+            ClearCache => write!(f, "Type: ClearCache, Data: ClearCache"),
         }
     }
 }

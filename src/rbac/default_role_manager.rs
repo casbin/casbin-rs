@@ -13,7 +13,7 @@ const DEFAULT_DOMAIN: &str = "DEFAULT";
 pub struct DefaultRoleManager {
     all_domains: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
     #[cfg(feature = "cached")]
-    cache: Box<dyn Cache<(String, String, Option<String>), bool>>,
+    cache: DefaultCache<(String, String, Option<String>), bool>,
     max_hierarchy_level: usize,
 }
 
@@ -23,7 +23,7 @@ impl DefaultRoleManager {
             all_domains: HashMap::new(),
             max_hierarchy_level,
             #[cfg(feature = "cached")]
-            cache: Box::new(DefaultCache::new(50)),
+            cache: DefaultCache::new(50),
         }
     }
 
@@ -111,7 +111,7 @@ impl RoleManager for DefaultRoleManager {
             && self.has_role(name2, domain)
             && self
                 .create_role(name1, domain)
-                .write()
+                .read()
                 .unwrap()
                 .has_role(name2, self.max_hierarchy_level);
 
