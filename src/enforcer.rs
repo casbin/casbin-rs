@@ -1253,7 +1253,7 @@ mod tests {
         all(feature = "runtime-tokio", not(target_arch = "wasm32")),
         tokio::test
     )]
-    async fn test_policy_abac() {
+    async fn test_policy_abac1() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub_rule, obj, act");
@@ -1284,6 +1284,71 @@ mod tests {
         );
         assert_eq!(
             e.enforce(&[r#"{"name": "bob", "age": 19}"#, "/data1", "read"])
+                .unwrap(),
+            true
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_policy_abac2() {
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def("g", "g", "_, _");
+        m.add_def(
+            "m",
+            "m",
+            "(g(r.sub, p.sub) || eval(p.sub) == true) && r.act == p.act",
+        );
+
+        let a = MemoryAdapter::default();
+
+        let mut e = Enforcer::new(m, a).await.unwrap();
+
+        e.add_policy(
+            vec![r#""admin""#, "post", "write"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        e.add_policy(
+            vec!["r.sub == r.obj.Author", "post", "write"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        e.add_grouping_policy(
+            vec!["alice", r#""admin""#]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            e.enforce(&["alice", r#"{"Author": "bob"}"#, "write"])
+                .unwrap(),
+            true
+        );
+
+        assert_eq!(
+            e.enforce(&["bob", r#"{"Author": "bob"}"#, "write"])
                 .unwrap(),
             true
         );
