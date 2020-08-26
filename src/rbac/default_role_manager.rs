@@ -51,7 +51,7 @@ impl RoleManager for DefaultRoleManager {
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
-        role1.write().unwrap().add_role(Arc::clone(&role2));
+        role1.write().unwrap().add_role(role2);
         #[cfg(feature = "cached")]
         self.cache.clear();
     }
@@ -93,7 +93,7 @@ impl RoleManager for DefaultRoleManager {
             && self.has_role(name2, domain)
             && self
                 .create_role(name1, domain)
-                .write()
+                .read()
                 .unwrap()
                 .has_role(name2, self.max_hierarchy_level);
 
@@ -151,15 +151,12 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Arc<RwLock<Role>>) {
+        if self
+            .roles
+            .iter()
+            .any(|role| role.read().unwrap().name == other_role.read().unwrap().name)
         {
-            let other_role_locked = other_role.read().unwrap();
-            if self
-                .roles
-                .iter()
-                .any(|role| role.read().unwrap().name == other_role_locked.name)
-            {
-                return;
-            }
+            return;
         }
 
         self.roles.push(other_role);
