@@ -30,7 +30,7 @@ slog-async = { version = "2.5.0", optional = true }
 serde = "1.0.115"
 
 [features]
-default = ["runtime-async-std", "incremental"]
+default = ["runtime-async-std", "incremental", "cached", "logging", "explain", "glob", "watcher"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util"]
 runtime-async-std = ["async-std"]

@@ -1,5 +1,3 @@
-use lazy_static::lazy_static;
-
 use crate::{
     adapter::{Adapter, Filter},
     convert::{TryIntoAdapter, TryIntoModel},
@@ -26,6 +24,7 @@ use crate::watcher::Watcher;
 use crate::{DefaultLogger, Logger};
 
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use rhai::{
     def_package,
     packages::{
@@ -60,22 +59,22 @@ type EventCallback = fn(&mut Enforcer, EventData);
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
-    pub(crate) model: Box<dyn Model>,
-    pub(crate) adapter: Box<dyn Adapter>,
-    pub(crate) fm: FunctionMap,
-    pub(crate) eft: Box<dyn Effector>,
-    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
-    pub(crate) enabled: bool,
-    pub(crate) auto_save: bool,
-    pub(crate) auto_build_role_links: bool,
+    model: Box<dyn Model>,
+    adapter: Box<dyn Adapter>,
+    fm: FunctionMap,
+    eft: Box<dyn Effector>,
+    rm: Arc<RwLock<dyn RoleManager>>,
+    enabled: bool,
+    auto_save: bool,
+    auto_build_role_links: bool,
     #[cfg(feature = "watcher")]
-    pub(crate) auto_notify_watcher: bool,
+    auto_notify_watcher: bool,
     #[cfg(feature = "watcher")]
-    pub(crate) watcher: Option<Box<dyn Watcher>>,
-    pub(crate) events: HashMap<Event, Vec<EventCallback>>,
-    pub(crate) engine: Engine,
+    watcher: Option<Box<dyn Watcher>>,
+    events: HashMap<Event, Vec<EventCallback>>,
+    engine: Engine,
     #[cfg(feature = "logging")]
-    pub(crate) logger: Box<dyn Logger>,
+    logger: Box<dyn Logger>,
 }
 
 impl EventEmitter<Event> for Enforcer {

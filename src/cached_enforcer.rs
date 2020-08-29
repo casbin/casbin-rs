@@ -35,9 +35,9 @@ use std::{
 type EventCallback = fn(&mut CachedEnforcer, EventData);
 
 pub struct CachedEnforcer {
-    pub(crate) enforcer: Enforcer,
-    pub(crate) cache: Box<dyn Cache<Vec<String>, bool>>,
-    pub(crate) events: HashMap<Event, Vec<EventCallback>>,
+    enforcer: Enforcer,
+    cache: Box<dyn Cache<Vec<String>, bool>>,
+    events: HashMap<Event, Vec<EventCallback>>,
 }
 
 impl EventEmitter<Event> for CachedEnforcer {
@@ -114,7 +114,7 @@ impl CoreApi for CachedEnforcer {
         fname: &str,
         f: fn(ImmutableString, ImmutableString) -> bool,
     ) {
-        self.enforcer.fm.add_function(fname, f);
+        self.enforcer.add_function(fname, f);
     }
 
     #[inline]
