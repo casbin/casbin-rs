@@ -1,9 +1,12 @@
+#![allow(non_snake_case)]
 use crate::{Adapter, DefaultModel, Model, NullAdapter, Result};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::FileAdapter;
 
 use async_trait::async_trait;
+use rhai::{ser::to_dynamic, Dynamic};
+use serde::Serialize;
 
 #[async_trait]
 pub trait TryIntoModel: Send + Sync {
@@ -99,3 +102,35 @@ where
         Ok(Box::new(self))
     }
 }
+
+pub trait EnforceArgs {
+    fn into_vec(self) -> Result<Vec<Dynamic>>;
+}
+
+macro_rules! impl_args {
+    ($($p:ident),*) => {
+        impl<$($p: Serialize),*> EnforceArgs for ($($p,)*)
+        {
+            fn into_vec(self) -> Result<Vec<Dynamic>> {
+                let ($($p,)*) = self;
+
+                let mut _v = Vec::new();
+                $(_v.push(to_dynamic($p)?);)*
+
+                Ok(_v)
+            }
+        }
+
+        impl_args!(@pop $($p),*);
+    };
+    (@pop) => {
+    };
+    (@pop $head:ident) => {
+        impl_args!();
+    };
+    (@pop $head:ident $(, $tail:ident)+) => {
+        impl_args!($($tail),*);
+    };
+}
+
+impl_args!(A, B, C, D, E, F, G, H, J, K, L, M, N, P, Q, R, S, T, U, V);

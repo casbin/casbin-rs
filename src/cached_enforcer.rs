@@ -262,6 +262,11 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
+    fn is_enabled(&self) -> bool {
+        self.enforcer.is_enabled()
+    }
+
+    #[inline]
     async fn save_policy(&mut self) -> Result<()> {
         self.enforcer.save_policy().await
     }

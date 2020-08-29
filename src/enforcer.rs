@@ -1,6 +1,6 @@
 use crate::{
     adapter::{Adapter, Filter},
-    convert::{TryIntoAdapter, TryIntoModel},
+    convert::{EnforceArgs, TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{Event, EventData, EventEmitter},
@@ -96,14 +96,15 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    pub(crate) fn private_enforce<S: AsRef<str> + Send + Sync>(
+    pub(crate) fn private_enforce<S: EnforceArgs>(
         &self,
-        rvals: &[S],
+        rvals: S,
     ) -> Result<(bool, Option<Vec<usize>>)> {
         if !self.enabled {
             return Ok((true, None));
         }
 
+        let rvals = rvals.into_vec()?;
         let mut scope: Scope = Scope::new();
 
         let r_ast = get_or_err!(self, "r", ModelError::R, "request");
@@ -119,17 +120,8 @@ impl Enforcer {
             .into());
         }
 
-        for (rtoken, rval) in
-            r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref()))
-        {
-            if rval.starts_with('{') && rval.ends_with('}') {
-                scope.push_constant(
-                    rtoken,
-                    self.engine.parse_json(rval, false)?,
-                );
-            } else {
-                scope.push_constant(rtoken, rval.to_owned());
-            }
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.into_iter()) {
+            scope.push_constant(rtoken, rval);
         }
 
         let policies = p_ast.get_policy();
@@ -406,10 +398,7 @@ impl CoreApi for Enforcer {
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    fn enforce<S: AsRef<str> + Send + Sync>(
-        &self,
-        rvals: &[S],
-    ) -> Result<bool> {
+    fn enforce<S: EnforceArgs>(&self, rvals: S) -> Result<bool> {
         #[allow(unused_variables)]
         let (authorized, indices) = self.private_enforce(rvals)?;
 
@@ -439,10 +428,7 @@ impl CoreApi for Enforcer {
         Ok(authorized)
     }
 
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(
-        &mut self,
-        rvals: &[S],
-    ) -> Result<bool> {
+    fn enforce_mut<S: EnforceArgs>(&mut self, rvals: S) -> Result<bool> {
         self.enforce(rvals)
     }
 
@@ -488,6 +474,11 @@ impl CoreApi for Enforcer {
     #[inline]
     fn is_filtered(&self) -> bool {
         self.adapter.is_filtered()
+    }
+
+    #[inline]
+    fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     async fn save_policy(&mut self) -> Result<()> {

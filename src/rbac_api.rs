@@ -1,4 +1,4 @@
-use crate::{MgmtApi, Result};
+use crate::{tuplet, MgmtApi, Result};
 
 use async_trait::async_trait;
 
@@ -376,7 +376,8 @@ where
         for user in users.iter() {
             let mut req = permission.clone();
             req.insert(0, user.to_string());
-            if let Ok(r) = self.enforce(&req) {
+            tuplet!((a, b, c, d, e, f) = req);
+            if let Ok(r) = self.enforce((a, b, c, d, e, f)) {
                 if r && !res.contains(user) {
                     res.push(user.to_owned());
                 }

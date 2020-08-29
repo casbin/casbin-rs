@@ -1,6 +1,6 @@
 use crate::{
-    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager,
-    TryIntoAdapter, TryIntoModel,
+    Adapter, Effector, EnforceArgs, Event, EventEmitter, Filter, Model, Result,
+    RoleManager, TryIntoAdapter, TryIntoModel,
 };
 
 #[cfg(feature = "watcher")]
@@ -62,13 +62,10 @@ pub trait CoreApi: Send + Sync {
     where
         Self: Sized;
     fn set_effector(&mut self, e: Box<dyn Effector>);
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool>
+    fn enforce<A: EnforceArgs>(&self, rvals: A) -> Result<bool>
     where
         Self: Sized;
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(
-        &mut self,
-        rvals: &[S],
-    ) -> Result<bool>
+    fn enforce_mut<A: EnforceArgs>(&mut self, rvals: A) -> Result<bool>
     where
         Self: Sized;
     fn build_role_links(&mut self) -> Result<()>;
@@ -77,6 +74,7 @@ pub trait CoreApi: Send + Sync {
     async fn load_policy(&mut self) -> Result<()>;
     async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()>;
     fn is_filtered(&self) -> bool;
+    fn is_enabled(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     async fn clear_policy(&mut self) -> Result<()>;
     #[cfg(feature = "logging")]

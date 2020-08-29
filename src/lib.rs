@@ -41,7 +41,7 @@ pub use cache::{Cache, DefaultCache};
 pub use cached_api::CachedApi;
 #[cfg(feature = "cached")]
 pub use cached_enforcer::CachedEnforcer;
-pub use convert::{TryIntoAdapter, TryIntoModel};
+pub use convert::{TryIntoAdapter, TryIntoModel, EnforceArgs};
 pub use core_api::{CoreApi, IEnforcer};
 pub use effector::{
     DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream,
