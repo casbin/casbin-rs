@@ -52,6 +52,10 @@ impl DefaultRoleManager {
 
 impl RoleManager for DefaultRoleManager {
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
+        if name1 == name2 {
+            return;
+        }
+
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
