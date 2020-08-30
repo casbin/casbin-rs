@@ -27,7 +27,6 @@ thiserror = "1.0.20"
 slog = { version = "2.5.2", optional = true }
 slog-term = { version = "2.6.0", optional = true }
 slog-async = { version = "2.5.0", optional = true }
-serde = "1.0.115"
 
 [features]
 default = ["runtime-async-std", "incremental", "cached", "logging", "explain", "glob", "watcher"]
