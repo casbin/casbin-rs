@@ -62,10 +62,10 @@ pub trait CoreApi: Send + Sync {
     where
         Self: Sized;
     fn set_effector(&mut self, e: Box<dyn Effector>);
-    fn enforce<A: EnforceArgs>(&self, rvals: A) -> Result<bool>
+    fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool>
     where
         Self: Sized;
-    fn enforce_mut<A: EnforceArgs>(&mut self, rvals: A) -> Result<bool>
+    fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool>
     where
         Self: Sized;
     fn build_role_links(&mut self) -> Result<()>;

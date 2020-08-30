@@ -62,29 +62,3 @@ macro_rules! push_index_if_explain {
         }
     }};
 }
-
-#[macro_export]
-macro_rules! tuplet {
- { ($y:ident $(, $x:ident)*) = $v:expr } => {
-    let ($y,$($x),*, _) = tuplet!($v ; 1 ; ($($x),*) ; ($v.get(0)) ); };
- { ($y:ident , * $x:ident) = $v:expr } => {
-    let ($y,$x) = tuplet!($v ; 1 ; () ; ($v.get(0)) ); };
- { ($y:ident $(, $x:ident)* , * $z:ident) = $v:expr } => {
-    let ($y,$($x),*, $z) = tuplet!($v ; 1 ; ($($x),*) ; ($v.get(0)) ); };
- { $v:expr ; $j:expr ; ($y:ident $(, $x:ident)*) ; ($($a:expr),*)  } => {
-    tuplet!( $v ; $j+1 ; ($($x),*) ; ($($a),*,$v.get($j)) ) };
- { $v:expr ; $j:expr ; () ; ($($a:expr),*) } => {
-   {
-    if $v.len() >= $j {
-        let remain = $v.len() - $j;
-        if remain > 0 {
-            ($($a),*, Some(&$v[$j..]))
-        } else {
-            ($($a),*, None)
-        }
-    } else {
-        ($($a),*, None)
-    }
-   }
- }
-}

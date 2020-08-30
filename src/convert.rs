@@ -107,6 +107,12 @@ pub trait EnforceArgs {
     fn into_vec(self) -> Result<Vec<Dynamic>>;
 }
 
+impl EnforceArgs for Vec<String> {
+    fn into_vec(self) -> Result<Vec<Dynamic>> {
+        Ok(self.into_iter().map(|x| Dynamic::from(x)).collect())
+    }
+}
+
 macro_rules! impl_args {
     ($($p:ident),*) => {
         impl<$($p: Serialize),*> EnforceArgs for ($($p,)*)
