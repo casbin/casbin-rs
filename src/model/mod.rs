@@ -20,15 +20,24 @@ pub trait Model: Send + Sync {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool;
     fn get_model(&self) -> &HashMap<String, AssertionMap>;
     fn get_mut_model(&mut self) -> &mut HashMap<String, AssertionMap>;
-    fn build_role_links(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()>;
+    fn build_role_links(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()>;
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(
         &mut self,
         rm: Arc<RwLock<dyn RoleManager>>,
         d: EventData,
     ) -> Result<()>;
-    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool;
-    fn add_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool;
+    fn add_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>)
+        -> bool;
+    fn add_policies(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<String>>,
+    ) -> bool;
     fn get_policy(&self, sec: &str, ptype: &str) -> Vec<Vec<String>>;
     fn get_filtered_policy(
         &self,
@@ -44,8 +53,18 @@ pub trait Model: Send + Sync {
         ptype: &str,
         field_index: usize,
     ) -> Vec<String>;
-    fn remove_policy(&mut self, sec: &str, ptype: &str, rule: Vec<String>) -> bool;
-    fn remove_policies(&mut self, sec: &str, ptype: &str, rules: Vec<Vec<String>>) -> bool;
+    fn remove_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rule: Vec<String>,
+    ) -> bool;
+    fn remove_policies(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        rules: Vec<Vec<String>>,
+    ) -> bool;
     fn clear_policy(&mut self);
     fn remove_filtered_policy(
         &mut self,

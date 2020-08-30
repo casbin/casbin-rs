@@ -23,6 +23,7 @@ pub enum EventData {
     RemovePolicies(String, String, Vec<Vec<String>>),
     RemoveFilteredPolicy(String, String, Vec<Vec<String>>),
     SavePolicy(Vec<Vec<String>>),
+    ClearPolicy,
     ClearCache,
 }
 
@@ -32,41 +33,44 @@ impl fmt::Display for EventData {
         match *self {
             AddPolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: AddPolicy, Assertion: {}::{},  Data: {:?}",
+                "Type: AddPolicy, Assertion: {}::{},  Data: {:?}",
                 sec,
                 ptype,
                 p.join(", ")
             ),
             AddPolicies(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: AddPolicies, Assertion: {}::{}, Added: {}",
+                "Type: AddPolicies, Assertion: {}::{}, Added: {}",
                 sec,
                 ptype,
                 p.len()
             ),
             RemovePolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemovePolicy, Assertion: {}::{}, Data: {:?}",
+                "Type: RemovePolicy, Assertion: {}::{}, Data: {:?}",
                 sec,
                 ptype,
                 p.join(", ")
             ),
             RemovePolicies(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemovePolicies, Assertion: {}::{}, Removed: {}",
+                "Type: RemovePolicies, Assertion: {}::{}, Removed: {}",
                 sec,
                 ptype,
                 p.len()
             ),
             RemoveFilteredPolicy(ref sec, ref ptype, ref p) => write!(
                 f,
-                "Event: RemoveFilteredPolicy, Assertion: {}::{}, Removed: {}",
+                "Type: RemoveFilteredPolicy, Assertion: {}::{}, Removed: {}",
                 sec,
                 ptype,
                 p.len()
             ),
-            SavePolicy(ref p) => write!(f, "Event: SavePolicy, Saved: {}", p.len()),
-            ClearCache => write!(f, "Event: ClearCache, Data: ClearCache"),
+            SavePolicy(ref p) => {
+                write!(f, "Type: SavePolicy, Saved: {}", p.len())
+            }
+            ClearPolicy => write!(f, "Type: ClearPolicy"),
+            ClearCache => write!(f, "Type: ClearCache, Data: ClearCache"),
         }
     }
 }
@@ -75,7 +79,9 @@ pub trait EventEmitter<K>
 where
     K: EventKey,
 {
-    fn on(&mut self, e: K, f: fn(&mut Self, EventData));
+    fn on(&mut self, e: K, f: fn(&mut Self, EventData))
+    where
+        Self: Sized;
     fn off(&mut self, e: K);
     fn emit(&mut self, e: K, d: EventData);
 }

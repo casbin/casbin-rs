@@ -20,12 +20,16 @@ lazy_static! {
 use std::{borrow::Cow, collections::HashMap};
 
 pub struct FunctionMap {
-    pub(crate) fm: HashMap<String, fn(ImmutableString, ImmutableString) -> bool>,
+    pub(crate) fm:
+        HashMap<String, fn(ImmutableString, ImmutableString) -> bool>,
 }
 
 impl Default for FunctionMap {
     fn default() -> FunctionMap {
-        let mut fm: HashMap<String, fn(ImmutableString, ImmutableString) -> bool> = HashMap::new();
+        let mut fm: HashMap<
+            String,
+            fn(ImmutableString, ImmutableString) -> bool,
+        > = HashMap::new();
         fm.insert(
             "keyMatch".to_owned(),
             |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
@@ -61,14 +65,19 @@ impl Default for FunctionMap {
 
 impl FunctionMap {
     #[inline]
-    pub fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
+    pub fn add_function(
+        &mut self,
+        fname: &str,
+        f: fn(ImmutableString, ImmutableString) -> bool,
+    ) {
         self.fm.insert(fname.to_owned(), f);
     }
 
     #[inline]
     pub fn get_functions(
         &self,
-    ) -> impl Iterator<Item = (&String, &fn(ImmutableString, ImmutableString) -> bool)> {
+    ) -> impl Iterator<Item = (&String, &fn(ImmutableString, ImmutableString) -> bool)>
+    {
         self.fm.iter()
     }
 }
@@ -134,17 +143,23 @@ pub fn ip_match(key1: &str, key2: &str) -> bool {
     let key2_split = key2.splitn(2, '/').collect::<Vec<&str>>();
     let ip_addr2 = key2_split[0];
 
-    if let (Ok(ip_addr1), Ok(ip_addr2)) = (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>()) {
+    if let (Ok(ip_addr1), Ok(ip_addr2)) =
+        (key1.parse::<IpAddr>(), ip_addr2.parse::<IpAddr>())
+    {
         if key2_split.len() == 2 {
             match key2_split[1].parse::<u8>() {
-                Ok(ip_netmask) => match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
-                    Ok(ip_network) => ip_network.contains(ip_addr1),
-                    Err(err) => panic!("invalid ip network {}", err),
-                },
+                Ok(ip_netmask) => {
+                    match IpNetwork::new_truncate(ip_addr2, ip_netmask) {
+                        Ok(ip_network) => ip_network.contains(ip_addr1),
+                        Err(err) => panic!("invalid ip network {}", err),
+                    }
+                }
                 _ => panic!("invalid netmask {}", key2_split[1]),
             }
         } else {
-            if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) = (ip_addr1, ip_addr2) {
+            if let (IpAddr::V4(ip_addr1_new), IpAddr::V6(ip_addr2_new)) =
+                (ip_addr1, ip_addr2)
+            {
                 if let Some(ip_addr2_new) = ip_addr2_new.to_ipv4() {
                     return ip_addr2_new == ip_addr1_new;
                 }

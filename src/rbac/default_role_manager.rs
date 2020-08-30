@@ -1,101 +1,237 @@
-use crate::{error::RbacError, rbac::RoleManager, Result};
+use crate::{
+    error::RbacError,
+    rbac::{MatchingFn, RoleManager},
+    Result,
+};
 
 #[cfg(feature = "cached")]
 use crate::cache::{Cache, DefaultCache};
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
+};
+
+#[cfg(feature = "cached")]
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
 };
 
 const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 pub struct DefaultRoleManager {
-    all_roles: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
+    all_domains: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
     #[cfg(feature = "cached")]
-    cache: Box<dyn Cache<(String, String, Option<String>), bool>>,
+    cache: DefaultCache<u64, bool>,
     max_hierarchy_level: usize,
+    role_matching_fn: Option<MatchingFn>,
+    domain_matching_fn: Option<MatchingFn>,
 }
 
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
-            all_roles: HashMap::new(),
+            all_domains: HashMap::new(),
             max_hierarchy_level,
             #[cfg(feature = "cached")]
-            cache: Box::new(DefaultCache::new(50)),
+            cache: DefaultCache::new(50),
+            role_matching_fn: None,
+            domain_matching_fn: None,
         }
     }
 
-    fn create_role(&mut self, name: &str, domain: Option<&str>) -> Arc<RwLock<Role>> {
+    fn create_role(
+        &mut self,
+        name: &str,
+        domain: Option<&str>,
+    ) -> Arc<RwLock<Role>> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
-        Arc::clone(
-            self.all_roles
+        let mut created = false;
+
+        let role = Arc::clone(
+            self.all_domains
                 .entry(domain.into())
                 .or_insert_with(HashMap::new)
                 .entry(name.into())
-                .or_insert_with(|| Arc::new(RwLock::new(Role::new(name)))),
-        )
+                .or_insert_with(|| {
+                    created = true;
+                    Arc::new(RwLock::new(Role::new(name)))
+                }),
+        );
+
+        let mut added = false;
+        if let (Some(role_matching_fn), Some(roles), true) =
+            (self.role_matching_fn, self.all_domains.get(domain), created)
+        {
+            for (key, value) in roles {
+                if key != name && role_matching_fn(name, key) {
+                    if role.write().unwrap().add_role(Arc::clone(value)) {
+                        added = true;
+                    }
+                }
+            }
+        }
+        if added {
+            #[cfg(feature = "cached")]
+            self.cache.clear();
+        }
+
+        role
+    }
+
+    fn create_temp_role(&mut self, name: &str, domain: Option<&str>) -> Role {
+        let mut cloned_role =
+            self.create_role(name, domain).read().unwrap().clone();
+
+        if let Some(domain_matching_fn) = self.domain_matching_fn {
+            let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+            let matched_domains: Vec<String> = {
+                self.all_domains
+                    .keys()
+                    .filter(|&key| {
+                        key != domain && domain_matching_fn(domain, key)
+                    })
+                    .map(|domain| domain.to_owned())
+                    .collect()
+            };
+            for domain in matched_domains {
+                for direct_role in
+                    &self.create_role(name, Some(&domain)).read().unwrap().roles
+                {
+                    cloned_role.add_role(Arc::clone(direct_role));
+                }
+            }
+        }
+
+        cloned_role
     }
 
     fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
-        self.all_roles
-            .get(domain.unwrap_or(DEFAULT_DOMAIN))
-            .map_or(false, |roles| roles.contains_key(name))
+        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+        let matched_domains =
+            if let Some(domain_matching_fn) = self.domain_matching_fn {
+                self.all_domains
+                    .keys()
+                    .filter_map(|key| {
+                        if domain_matching_fn(domain, key) {
+                            Some(key.as_str())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<&str>>()
+            } else {
+                self.all_domains
+                    .get(domain)
+                    .map_or(vec![], |_| vec![domain])
+            };
+        return !matched_domains.is_empty()
+            && matched_domains.into_iter().any(|domain| {
+                self.all_domains.get(domain).map_or(false, |roles| {
+                    if roles.contains_key(name) {
+                        return true;
+                    }
+
+                    if let Some(role_matching_fn) = self.role_matching_fn {
+                        return roles
+                            .keys()
+                            .any(|key| role_matching_fn(name, key));
+                    }
+
+                    false
+                })
+            });
     }
 }
 
 impl RoleManager for DefaultRoleManager {
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
+        if name1 == name2 {
+            return;
+        }
+
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
-        role1.write().unwrap().add_role(role2);
+        if !role1.write().unwrap().add_role(role2) {
+            return;
+        }
+
         #[cfg(feature = "cached")]
         self.cache.clear();
     }
 
-    fn delete_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> Result<()> {
+    fn matching_fn(
+        &mut self,
+        role_matching_fn: Option<MatchingFn>,
+        domain_matching_fn: Option<MatchingFn>,
+    ) {
+        self.domain_matching_fn = domain_matching_fn;
+        self.role_matching_fn = role_matching_fn;
+    }
+
+    fn delete_link(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: Option<&str>,
+    ) -> Result<()> {
         if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
-            return Err(RbacError::NotFound(format!("{} OR {}", name1, name2)).into());
+            return Err(
+                RbacError::NotFound(format!("{} OR {}", name1, name2)).into()
+            );
         }
 
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
         role1.write().unwrap().delete_role(role2);
+
         #[cfg(feature = "cached")]
         self.cache.clear();
 
         Ok(())
     }
 
-    fn has_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
+    fn has_link(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: Option<&str>,
+    ) -> bool {
         if name1 == name2 {
             return true;
         }
 
         #[cfg(feature = "cached")]
-        let cache_key = (
-            name1.to_owned(),
-            name2.to_owned(),
-            domain.map(|x| x.to_owned()),
-        );
+        let cache_key = {
+            let mut hasher = DefaultHasher::new();
+            name1.hash(&mut hasher);
+            name2.hash(&mut hasher);
+            domain.unwrap_or(DEFAULT_DOMAIN).hash(&mut hasher);
+            hasher.finish()
+        };
 
         #[cfg(feature = "cached")]
-        if let Some(&res) = self.cache.get(&cache_key) {
-            return res;
+        if let Some(res) = self.cache.get(&cache_key) {
+            return res.into_owned();
         }
 
-        #[allow(clippy::let_and_return)]
-        let res = self.has_role(name1, domain)
-            && self.has_role(name2, domain)
-            && self
-                .create_role(name1, domain)
-                .read()
-                .unwrap()
-                .has_role(name2, self.max_hierarchy_level);
+        let has_roles =
+            self.has_role(name1, domain) && self.has_role(name2, domain);
+
+        let res = has_roles
+            && if self.domain_matching_fn.is_some() {
+                self.create_temp_role(name1, domain)
+                    .has_role(name2, self.max_hierarchy_level)
+            } else {
+                self.create_role(name1, domain)
+                    .read()
+                    .unwrap()
+                    .has_role(name2, self.max_hierarchy_level)
+            };
 
         #[cfg(feature = "cached")]
         self.cache.set(cache_key, res);
@@ -108,29 +244,57 @@ impl RoleManager for DefaultRoleManager {
             return vec![];
         }
 
-        self.create_role(name, domain).read().unwrap().get_roles()
+        self.create_temp_role(name, domain).get_roles()
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        self.all_roles
-            .get(domain.unwrap_or(DEFAULT_DOMAIN))
-            .map_or(vec![], |roles| {
-                roles
-                    .values()
-                    .filter_map(|role| {
-                        let role = role.read().unwrap();
-                        if role.has_direct_role(name) {
-                            Some(role.name.to_owned())
+        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+
+        let matched_domains =
+            if let Some(domain_matching_fn) = self.domain_matching_fn {
+                self.all_domains
+                    .keys()
+                    .filter_map(|key| {
+                        if domain_matching_fn(domain, key) {
+                            Some(key.as_str())
                         } else {
                             None
                         }
                     })
-                    .collect()
-            })
+                    .collect::<Vec<&str>>()
+            } else {
+                self.all_domains
+                    .get(domain)
+                    .map_or(vec![], |_| vec![domain])
+            };
+
+        let res =
+            matched_domains
+                .into_iter()
+                .fold(HashSet::new(), |mut acc, x| {
+                    let users =
+                        self.all_domains.get(x).map_or(vec![], |roles| {
+                            roles
+                                .values()
+                                .filter_map(|role| {
+                                    let role = role.read().unwrap();
+                                    if role.has_direct_role(name) {
+                                        Some(role.name.to_owned())
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()
+                        });
+                    acc.extend(users);
+                    return acc;
+                });
+
+        res.into_iter().collect()
     }
 
     fn clear(&mut self) {
-        self.all_roles.clear();
+        self.all_domains.clear();
         #[cfg(feature = "cached")]
         self.cache.clear();
     }
@@ -150,16 +314,16 @@ impl Role {
         }
     }
 
-    fn add_role(&mut self, other_role: Arc<RwLock<Role>>) {
-        if self
-            .roles
-            .iter()
-            .any(|role| role.read().unwrap().name == other_role.read().unwrap().name)
-        {
-            return;
+    fn add_role(&mut self, other_role: Arc<RwLock<Role>>) -> bool {
+        if self.roles.iter().any(|role| {
+            role.read().unwrap().name == other_role.read().unwrap().name
+        }) {
+            return false;
         }
 
         self.roles.push(other_role);
+
+        true
     }
 
     fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
@@ -365,5 +529,15 @@ mod tests {
             sort_unstable(rm.get_users("g2", Some("domain2")))
         );
         assert_eq!(vec!["u5"], rm.get_users("g3", None));
+    }
+
+    #[test]
+    fn test_pattern_domain() {
+        use crate::model::key_match;
+        let mut rm = DefaultRoleManager::new(3);
+        rm.matching_fn(None, Some(key_match));
+        rm.add_link("u1", "g1", Some("*"));
+
+        assert!(rm.has_role("u1", Some("domain2")));
     }
 }

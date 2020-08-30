@@ -1,10 +1,31 @@
 use crate::{emitter::EventData, logger::Logger};
 
-use log::{error, info, warn};
+use slog::Drain;
+use slog::Logger as SLogger;
+use slog::{info, o};
 
-#[derive(Default)]
 pub struct DefaultLogger {
     enabled: bool,
+    slogger: SLogger,
+}
+
+impl Default for DefaultLogger {
+    fn default() -> Self {
+        let decorator = slog_term::TermDecorator::new().build();
+        let drain = slog_term::FullFormat::new(decorator).build().fuse();
+        let drain = slog_async::Async::new(drain)
+            .chan_size(4096)
+            .overflow_strategy(slog_async::OverflowStrategy::Block)
+            .build()
+            .fuse();
+
+        let slogger = SLogger::root(drain, o!());
+
+        Self {
+            enabled: false,
+            slogger,
+        }
+    }
 }
 
 impl Logger for DefaultLogger {
@@ -18,31 +39,25 @@ impl Logger for DefaultLogger {
         self.enabled
     }
 
-    fn print_enforce_log(&self, rvals: Vec<String>, authorized: bool, cached: bool) {
+    fn print_enforce_log(
+        &self,
+        rvals: Vec<String>,
+        authorized: bool,
+        cached: bool,
+    ) {
         if !self.is_enabled() {
             return;
         }
 
-        let text = format!(
-            "{} Request: {}, Response: {}",
-            if cached { "[CACHE]" } else { "[FRESH]" },
-            rvals.join(", "),
-            authorized
-        );
-
-        if authorized {
-            info!("[Enforce]{}", text);
-        } else {
-            error!("[Enforce]{}", text);
-        }
+        info!(self.slogger, "Enforce Request"; "Request" => rvals.join(","), "Cached" => cached, "Response" => authorized);
     }
 
-    fn print_mgmt_log(&self, d: &EventData) {
+    fn print_mgmt_log(&self, e: &EventData) {
         if !self.is_enabled() {
             return;
         }
 
-        info!("[Mgmt] {}", d);
+        info!(self.slogger, "Policy Management"; "Event" => e.to_string());
     }
 
     #[cfg(feature = "explain")]
@@ -51,7 +66,7 @@ impl Logger for DefaultLogger {
             return;
         }
 
-        info!("[Explain] {}", rules.join(", "));
+        info!(self.slogger, "Hitted Policies"; "Explain" => rules.join(","));
     }
 
     fn print_status_log(&self, enabled: bool) {
@@ -59,10 +74,6 @@ impl Logger for DefaultLogger {
             return;
         }
 
-        if enabled {
-            info!("[Status] casbin has been enabled!");
-        } else {
-            warn!("[Status] casbin has been disabled!");
-        }
+        info!(self.slogger, "Status"; "Enabled" => enabled);
     }
 }

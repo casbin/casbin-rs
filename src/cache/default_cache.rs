@@ -1,27 +1,25 @@
 use crate::cache::Cache;
 
-use ttl_cache::TtlCache;
+use lru_cache::LruCache;
 
-use std::{hash::Hash, time::Duration};
+use std::{borrow::Cow, hash::Hash};
 
 pub struct DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
-    pub ttl: Duration,
-    cache: TtlCache<K, V>,
+    cache: LruCache<K, V>,
 }
 
 impl<K, V> DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
     pub fn new(cap: usize) -> DefaultCache<K, V> {
         DefaultCache {
-            ttl: Duration::from_secs(120),
-            cache: TtlCache::new(cap),
+            cache: LruCache::new(cap),
         }
     }
 }
@@ -29,21 +27,17 @@ where
 impl<K, V> Cache<K, V> for DefaultCache<K, V>
 where
     K: Eq + Hash + Send + Sync + 'static,
-    V: Send + Sync + 'static,
+    V: Send + Sync + Clone + 'static,
 {
     fn set_capacity(&mut self, cap: usize) {
         self.cache.set_capacity(cap);
     }
 
-    fn set_ttl(&mut self, ttl: Duration) {
-        self.ttl = ttl;
+    fn get(&mut self, k: &K) -> Option<Cow<'_, V>> {
+        self.cache.get_mut(k).map(|x| Cow::Borrowed(&*x))
     }
 
-    fn get<'a>(&'a self, k: &K) -> Option<&'a V> {
-        self.cache.get(k)
-    }
-
-    fn has(&self, k: &K) -> bool {
+    fn has(&mut self, k: &K) -> bool {
         self.cache.contains_key(k)
     }
 
@@ -51,7 +45,7 @@ where
         if self.has(&k) {
             self.cache.remove(&k);
         }
-        self.cache.insert(k, v, self.ttl);
+        self.cache.insert(k, v);
     }
 
     fn clear(&mut self) {
@@ -62,7 +56,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread::sleep;
 
     #[cfg(feature = "cached")]
     #[test]
@@ -70,22 +63,10 @@ mod tests {
         let mut cache = DefaultCache::new(1);
 
         cache.set(vec!["alice", "/data1", "read"], false);
-        assert!(cache.get(&vec!["alice", "/data1", "read"]) == Some(&false));
-    }
-
-    #[cfg(feature = "cached")]
-    #[test]
-    fn test_set_ttl() {
-        let mut cache = DefaultCache::new(1);
-        cache.set_ttl(Duration::from_secs(2));
-
-        cache.set(vec!["alice", "/data1", "read"], false);
-
-        sleep(Duration::from_secs(1));
-        assert!(cache.get(&vec!["alice", "/data1", "read"]) == Some(&false));
-
-        sleep(Duration::from_secs(2));
-        assert!(!cache.has(&vec!["alice", "/data1", "read"]));
+        assert!(
+            cache.get(&vec!["alice", "/data1", "read"])
+                == Some(Cow::Borrowed(&false))
+        );
     }
 
     #[cfg(feature = "cached")]

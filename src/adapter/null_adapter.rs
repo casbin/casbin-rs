@@ -14,7 +14,11 @@ impl Adapter for NullAdapter {
         Ok(())
     }
 
-    async fn load_filtered_policy<'a>(&mut self, _m: &mut dyn Model, _f: Filter<'a>) -> Result<()> {
+    async fn load_filtered_policy<'a>(
+        &mut self,
+        _m: &mut dyn Model,
+        _f: Filter<'a>,
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -22,7 +26,16 @@ impl Adapter for NullAdapter {
         Ok(())
     }
 
-    async fn add_policy(&mut self, _sec: &str, _ptype: &str, _rule: Vec<String>) -> Result<bool> {
+    async fn clear_policy(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    async fn add_policy(
+        &mut self,
+        _sec: &str,
+        _ptype: &str,
+        _rule: Vec<String>,
+    ) -> Result<bool> {
         Ok(true)
     }
 

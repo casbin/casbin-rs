@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use std::{hash::Hash, time::Duration};
+use std::{borrow::Cow, hash::Hash};
 
 pub mod default_cache;
 
@@ -10,11 +10,11 @@ pub use default_cache::DefaultCache;
 pub trait Cache<K, V>: Send + Sync
 where
     K: Eq + Hash,
+    V: Clone,
 {
     fn set_capacity(&mut self, c: usize);
-    fn set_ttl(&mut self, t: Duration);
-    fn get(&self, k: &K) -> Option<&V>;
-    fn has(&self, k: &K) -> bool;
+    fn get(&mut self, k: &K) -> Option<Cow<'_, V>>;
+    fn has(&mut self, k: &K) -> bool;
     fn set(&mut self, k: K, v: V);
     fn clear(&mut self);
 }

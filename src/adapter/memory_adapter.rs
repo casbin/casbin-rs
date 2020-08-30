@@ -31,7 +31,11 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn load_filtered_policy<'a>(&mut self, m: &mut dyn Model, f: Filter<'a>) -> Result<()> {
+    async fn load_filtered_policy<'a>(
+        &mut self,
+        m: &mut dyn Model,
+        f: Filter<'a>,
+    ) -> Result<()> {
         for line in self.policy.iter() {
             let sec = &line[0];
             let ptype = &line[1];
@@ -98,7 +102,18 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn add_policy(&mut self, sec: &str, ptype: &str, mut rule: Vec<String>) -> Result<bool> {
+    async fn clear_policy(&mut self) -> Result<()> {
+        self.policy.clear();
+        self.is_filtered = false;
+        Ok(())
+    }
+
+    async fn add_policy(
+        &mut self,
+        sec: &str,
+        ptype: &str,
+        mut rule: Vec<String>,
+    ) -> Result<bool> {
         rule.insert(0, ptype.to_owned());
         rule.insert(0, sec.to_owned());
 
@@ -180,13 +195,19 @@ impl Adapter for MemoryAdapter {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
+        if field_values.is_empty() {
+            return Ok(false);
+        }
+
         let mut tmp = IndexSet::new();
         let mut res = false;
         for rule in &self.policy {
             if sec == rule[0] && ptype == rule[1] {
                 let mut matched = true;
                 for (i, field_value) in field_values.iter().enumerate() {
-                    if !field_value.is_empty() && &rule[field_index + i + 2] != field_value {
+                    if !field_value.is_empty()
+                        && &rule[field_index + i + 2] != field_value
+                    {
                         matched = false;
                         break;
                     }

@@ -1,6 +1,6 @@
 [package]
 name = "casbin"
-version = "1.1.3"
+version = "2.0.0"
 authors = ["Joey <joey.xf@gmail.com>", "Cheng JIANG <jiang.cheng@vip.163.com>"]
 edition = "2018"
 license = "Apache-2.0"
@@ -14,27 +14,30 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 
 [dependencies]
 regex = "1.3.9"
-rhai = { version = "0.17.0", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize", "no_module"] }
+rhai = { version = "0.18.2", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize", "no_module", "no_closure", "serde", "unchecked"] }
 ip_network = { version = "0.3.4", optional = true }
-ttl_cache = { version = "0.5.1", optional = true }
+lru-cache = { version = "0.1.2", optional = true }
 lazy_static = "1.4.0"
-indexmap = "1.5.0"
-async-std = { version = "1.6.2", optional = true }
-async-trait = "0.1.35"
-log = { version = "0.4.8", optional = true }
-tokio = { version = "0.2.21", optional = true, default-features = false }
+indexmap = "1.5.1"
+async-std = { version = "1.6.3", optional = true }
+async-trait = "0.1.37"
+tokio = { version = "0.2.22", optional = true, default-features = false }
 globset = { version = "0.4.5", optional = true }
 thiserror = "1.0.20"
+slog = { version = "2.5.2", optional = true }
+slog-term = { version = "2.6.0", optional = true }
+slog-async = { version = "2.5.0", optional = true }
+serde = "1.0.115"
 
 [features]
 default = ["runtime-async-std", "incremental"]
 
 runtime-tokio = ["tokio/fs", "tokio/io-util"]
 runtime-async-std = ["async-std"]
-logging = ["log"]
+logging = ["slog", "slog-term", "slog-async"]
 ip = ["ip_network"]
 glob = ["globset"]
-cached = ["ttl_cache"]
+cached = ["lru-cache"]
 watcher = []
 incremental = []
 explain = []
@@ -43,8 +46,10 @@ explain = []
 opt-level = 0
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-async-std = { version = "1.6.1", features = [ "attributes" ] }
+async-std = { version = "1.6.3", features = [ "attributes" ] }
+serde = { version = "1.0.115", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-tokio = { version = "0.2.21", features = [ "full" ] }
-async-std = { version = "1.6.1", features = [ "attributes" ] }
+tokio = { version = "0.2.22", features = [ "full" ] }
+async-std = { version = "1.6.3", features = [ "attributes" ] }
+serde = { version = "1.0.115", features = ["derive"] }

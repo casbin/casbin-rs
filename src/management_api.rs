@@ -8,7 +8,10 @@ pub trait MgmtApi: InternalApi {
         self.add_named_policy("p", params).await
     }
 
-    async fn add_policies(&mut self, paramss: Vec<Vec<String>>) -> Result<bool> {
+    async fn add_policies(
+        &mut self,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool> {
         self.add_named_policies("p", paramss).await
     }
 
@@ -16,37 +19,67 @@ pub trait MgmtApi: InternalApi {
         self.remove_named_policy("p", params).await
     }
 
-    async fn remove_policies(&mut self, paramss: Vec<Vec<String>>) -> Result<bool> {
+    async fn remove_policies(
+        &mut self,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool> {
         self.remove_named_policies("p", paramss).await
     }
 
-    async fn add_named_policy(&mut self, ptype: &str, params: Vec<String>) -> Result<bool>;
-    async fn add_named_policies(&mut self, ptype: &str, paramss: Vec<Vec<String>>) -> Result<bool>;
-    async fn remove_named_policy(&mut self, ptype: &str, params: Vec<String>) -> Result<bool>;
+    async fn add_named_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> Result<bool>;
+    async fn add_named_policies(
+        &mut self,
+        ptype: &str,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool>;
+    async fn remove_named_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> Result<bool>;
     async fn remove_named_policies(
         &mut self,
         ptype: &str,
         paramss: Vec<Vec<String>>,
     ) -> Result<bool>;
 
-    async fn add_grouping_policy(&mut self, params: Vec<String>) -> Result<bool> {
+    async fn add_grouping_policy(
+        &mut self,
+        params: Vec<String>,
+    ) -> Result<bool> {
         self.add_named_grouping_policy("g", params).await
     }
 
-    async fn add_grouping_policies(&mut self, paramss: Vec<Vec<String>>) -> Result<bool> {
+    async fn add_grouping_policies(
+        &mut self,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool> {
         self.add_named_grouping_policies("g", paramss).await
     }
 
-    async fn remove_grouping_policy(&mut self, params: Vec<String>) -> Result<bool> {
+    async fn remove_grouping_policy(
+        &mut self,
+        params: Vec<String>,
+    ) -> Result<bool> {
         self.remove_named_grouping_policy("g", params).await
     }
 
-    async fn remove_grouping_policies(&mut self, paramss: Vec<Vec<String>>) -> Result<bool> {
+    async fn remove_grouping_policies(
+        &mut self,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool> {
         self.remove_named_grouping_policies("g", paramss).await
     }
 
-    async fn add_named_grouping_policy(&mut self, ptype: &str, params: Vec<String>)
-        -> Result<bool>;
+    async fn add_named_grouping_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> Result<bool>;
     async fn add_named_grouping_policies(
         &mut self,
         ptype: &str,
@@ -77,8 +110,12 @@ pub trait MgmtApi: InternalApi {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
-        self.remove_filtered_named_grouping_policy("g", field_index, field_values)
-            .await
+        self.remove_filtered_named_grouping_policy(
+            "g",
+            field_index,
+            field_values,
+        )
+        .await
     }
 
     async fn remove_filtered_named_policy(
@@ -146,7 +183,11 @@ pub trait MgmtApi: InternalApi {
     fn has_grouping_policy(&self, params: Vec<String>) -> bool {
         self.has_grouping_named_policy("g", params)
     }
-    fn has_grouping_named_policy(&self, ptype: &str, params: Vec<String>) -> bool;
+    fn has_grouping_named_policy(
+        &self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> bool;
 
     fn get_all_subjects(&self) -> Vec<String> {
         self.get_all_named_subjects("p")
@@ -178,15 +219,27 @@ impl<T> MgmtApi for T
 where
     T: InternalApi,
 {
-    async fn add_named_policy(&mut self, ptype: &str, params: Vec<String>) -> Result<bool> {
+    async fn add_named_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> Result<bool> {
         self.add_policy_internal("p", ptype, params).await
     }
 
-    async fn add_named_policies(&mut self, ptype: &str, paramss: Vec<Vec<String>>) -> Result<bool> {
+    async fn add_named_policies(
+        &mut self,
+        ptype: &str,
+        paramss: Vec<Vec<String>>,
+    ) -> Result<bool> {
         self.add_policies_internal("p", ptype, paramss).await
     }
 
-    async fn remove_named_policy(&mut self, ptype: &str, params: Vec<String>) -> Result<bool> {
+    async fn remove_named_policy(
+        &mut self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> Result<bool> {
         self.remove_policy_internal("p", ptype, params).await
     }
 
@@ -221,7 +274,8 @@ where
         ptype: &str,
         params: Vec<String>,
     ) -> Result<bool> {
-        let rule_removed = self.remove_policy_internal("g", ptype, params).await?;
+        let rule_removed =
+            self.remove_policy_internal("g", ptype, params).await?;
         Ok(rule_removed)
     }
 
@@ -230,7 +284,8 @@ where
         ptype: &str,
         paramss: Vec<Vec<String>>,
     ) -> Result<bool> {
-        let all_removed = self.remove_policies_internal("g", ptype, paramss).await?;
+        let all_removed =
+            self.remove_policies_internal("g", ptype, paramss).await?;
         Ok(all_removed)
     }
 
@@ -242,7 +297,12 @@ where
     ) -> Result<bool> {
         #[allow(unused_variables)]
         let (rule_removed, rules) = self
-            .remove_filtered_policy_internal("g", ptype, field_index, field_values)
+            .remove_filtered_policy_internal(
+                "g",
+                ptype,
+                field_index,
+                field_values,
+            )
             .await?;
         Ok(rule_removed)
     }
@@ -254,7 +314,12 @@ where
         field_values: Vec<String>,
     ) -> Result<bool> {
         Ok(self
-            .remove_filtered_policy_internal("p", ptype, field_index, field_values)
+            .remove_filtered_policy_internal(
+                "p",
+                ptype,
+                field_index,
+                field_values,
+            )
             .await?
             .0)
     }
@@ -285,8 +350,12 @@ where
         field_index: usize,
         field_values: Vec<String>,
     ) -> Vec<Vec<String>> {
-        self.get_model()
-            .get_filtered_policy("p", ptype, field_index, field_values)
+        self.get_model().get_filtered_policy(
+            "p",
+            ptype,
+            field_index,
+            field_values,
+        )
     }
 
     fn has_named_policy(&self, ptype: &str, params: Vec<String>) -> bool {
@@ -319,11 +388,19 @@ where
         field_index: usize,
         field_values: Vec<String>,
     ) -> Vec<Vec<String>> {
-        self.get_model()
-            .get_filtered_policy("g", ptype, field_index, field_values)
+        self.get_model().get_filtered_policy(
+            "g",
+            ptype,
+            field_index,
+            field_values,
+        )
     }
 
-    fn has_grouping_named_policy(&self, ptype: &str, params: Vec<String>) -> bool {
+    fn has_grouping_named_policy(
+        &self,
+        ptype: &str,
+        params: Vec<String>,
+    ) -> bool {
         self.get_model().has_policy("g", ptype, params)
     }
 
@@ -407,7 +484,8 @@ mod tests {
         .await
         .unwrap();
 
-        let named_grouping_policy = vec!["alice".to_string(), "data2_admin".to_string()];
+        let named_grouping_policy =
+            vec!["alice".to_string(), "data2_admin".to_string()];
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         e.add_named_grouping_policy("g", named_grouping_policy.clone())
             .await
@@ -449,9 +527,12 @@ mod tests {
         );
         assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
 
-        e.remove_filtered_grouping_policy(0, vec!["bob"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.remove_filtered_grouping_policy(
+            0,
+            vec!["bob"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -540,7 +621,8 @@ mod tests {
         .await
         .unwrap();
 
-        let named_policy = vec!["eve".to_string(), "data3".to_string(), "read".to_string()];
+        let named_policy =
+            vec!["eve".to_string(), "data3".to_string(), "read".to_string()];
         e.remove_named_policy("p", named_policy.clone())
             .await
             .unwrap();
@@ -555,9 +637,12 @@ mod tests {
             sort_unstable(e.get_policy())
         );
 
-        e.remove_filtered_policy(1, vec!["data2"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.remove_filtered_policy(
+            1,
+            vec!["data2"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
     }
 
@@ -590,11 +675,17 @@ mod tests {
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
-            e.get_filtered_policy(0, vec!["alice"].iter().map(|s| s.to_string()).collect())
+            e.get_filtered_policy(
+                0,
+                vec!["alice"].iter().map(|s| s.to_string()).collect()
+            )
         );
         assert_eq!(
             vec![vec!["bob", "data2", "write"]],
-            e.get_filtered_policy(0, vec!["bob"].iter().map(|s| s.to_string()).collect())
+            e.get_filtered_policy(
+                0,
+                vec!["bob"].iter().map(|s| s.to_string()).collect()
+            )
         );
         assert_eq!(
             vec![
@@ -608,7 +699,10 @@ mod tests {
         );
         assert_eq!(
             vec![vec!["alice", "data1", "read"],],
-            e.get_filtered_policy(1, vec!["data1"].iter().map(|s| s.to_string()).collect())
+            e.get_filtered_policy(
+                1,
+                vec!["data1"].iter().map(|s| s.to_string()).collect()
+            )
         );
         assert_eq!(
             vec![
@@ -616,27 +710,30 @@ mod tests {
                 vec!["data2_admin", "data2", "read"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            sort_unstable(
-                e.get_filtered_policy(1, vec!["data2"].iter().map(|s| s.to_string()).collect())
-            )
+            sort_unstable(e.get_filtered_policy(
+                1,
+                vec!["data2"].iter().map(|s| s.to_string()).collect()
+            ))
         );
         assert_eq!(
             vec![
                 vec!["alice", "data1", "read"],
                 vec!["data2_admin", "data2", "read"],
             ],
-            sort_unstable(
-                e.get_filtered_policy(2, vec!["read"].iter().map(|s| s.to_string()).collect())
-            )
+            sort_unstable(e.get_filtered_policy(
+                2,
+                vec!["read"].iter().map(|s| s.to_string()).collect()
+            ))
         );
         assert_eq!(
             vec![
                 vec!["bob", "data2", "write"],
                 vec!["data2_admin", "data2", "write"],
             ],
-            sort_unstable(
-                e.get_filtered_policy(2, vec!["write"].iter().map(|s| s.to_string()).collect())
-            )
+            sort_unstable(e.get_filtered_policy(
+                2,
+                vec!["write"].iter().map(|s| s.to_string()).collect()
+            ))
         );
         assert_eq!(
             vec![
@@ -727,7 +824,10 @@ mod tests {
         let empty_policy: Vec<Vec<String>> = vec![];
         assert_eq!(
             empty_policy,
-            e.get_filtered_grouping_policy(0, vec!["bob"].iter().map(|s| s.to_string()).collect())
+            e.get_filtered_grouping_policy(
+                0,
+                vec!["bob"].iter().map(|s| s.to_string()).collect()
+            )
         );
         assert_eq!(
             empty_policy,
@@ -943,7 +1043,8 @@ mod tests {
             )
         );
 
-        let named_policy = vec!["eve".to_string(), "data3".to_string(), "read".to_string()];
+        let named_policy =
+            vec!["eve".to_string(), "data3".to_string(), "read".to_string()];
         e.remove_named_policies("p", vec![named_policy.clone()])
             .await
             .unwrap();
@@ -960,9 +1061,12 @@ mod tests {
             sort_unstable(e.get_policy())
         );
 
-        e.remove_filtered_policy(1, vec!["data2"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.remove_filtered_policy(
+            1,
+            vec!["data2"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
         assert_eq!(vec![vec!["eve", "data3", "read"],], e.get_policy());
     }
 
@@ -1013,15 +1117,19 @@ mod tests {
         assert_eq!(vec!["data1_admin"], e.get_roles_for_user("bob", None));
         assert_eq!(vec!["data3_admin"], e.get_roles_for_user("eve", None));
 
-        let named_grouping_policy = vec!["alice".to_string(), "data2_admin".to_string()];
+        let named_grouping_policy =
+            vec!["alice".to_string(), "data2_admin".to_string()];
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         e.add_named_grouping_policies("g", vec![named_grouping_policy.clone()])
             .await
             .unwrap();
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
-        e.remove_named_grouping_policies("g", vec![named_grouping_policy.clone()])
-            .await
-            .unwrap();
+        e.remove_named_grouping_policies(
+            "g",
+            vec![named_grouping_policy.clone()],
+        )
+        .await
+        .unwrap();
 
         e.remove_grouping_policies(vec![vec!["alice", "data2_admin"]
             .iter()
@@ -1050,9 +1158,12 @@ mod tests {
         );
         assert_eq!(vec!["eve"], e.get_users_for_role("data3_admin", None));
 
-        e.remove_filtered_grouping_policy(0, vec!["bob"].iter().map(|s| s.to_string()).collect())
-            .await
-            .unwrap();
+        e.remove_filtered_grouping_policy(
+            0,
+            vec!["bob"].iter().map(|s| s.to_string()).collect(),
+        )
+        .await
+        .unwrap();
 
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));

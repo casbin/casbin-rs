@@ -69,7 +69,11 @@ where
         }
 
         let rule_added = self.get_mut_model().add_policy(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
+            #[cfg(any(
+                feature = "watcher",
+                feature = "logging",
+                feature = "incremental"
+            ))]
             {
                 rule.clone()
             }
@@ -84,16 +88,17 @@ where
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::AddPolicy(sec.to_owned(), ptype.to_owned(), {
-                #[cfg(feature = "incremental")]
-                {
-                    rule.clone()
-                }
-                #[cfg(not(feature = "incremental"))]
-                {
-                    rule
-                }
-            });
+            let event_data =
+                EventData::AddPolicy(sec.to_owned(), ptype.to_owned(), {
+                    #[cfg(feature = "incremental")]
+                    {
+                        rule.clone()
+                    }
+                    #[cfg(not(feature = "incremental"))]
+                    {
+                        rule
+                    }
+                });
             #[cfg(feature = "watcher")]
             {
                 if rule_added && self.has_auto_notify_watcher_enabled() {
@@ -148,7 +153,11 @@ where
         }
 
         let rules_added = self.get_mut_model().add_policies(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
+            #[cfg(any(
+                feature = "watcher",
+                feature = "logging",
+                feature = "incremental"
+            ))]
             {
                 rules.clone()
             }
@@ -163,16 +172,17 @@ where
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::AddPolicies(sec.to_owned(), ptype.to_owned(), {
-                #[cfg(feature = "incremental")]
-                {
-                    rules.clone()
-                }
-                #[cfg(not(feature = "incremental"))]
-                {
-                    rules
-                }
-            });
+            let event_data =
+                EventData::AddPolicies(sec.to_owned(), ptype.to_owned(), {
+                    #[cfg(feature = "incremental")]
+                    {
+                        rules.clone()
+                    }
+                    #[cfg(not(feature = "incremental"))]
+                    {
+                        rules
+                    }
+                });
             #[cfg(feature = "watcher")]
             {
                 if rules_added && self.has_auto_notify_watcher_enabled() {
@@ -227,7 +237,11 @@ where
         }
 
         let rule_removed = self.get_mut_model().remove_policy(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
+            #[cfg(any(
+                feature = "watcher",
+                feature = "logging",
+                feature = "incremental"
+            ))]
             {
                 rule.clone()
             }
@@ -242,16 +256,17 @@ where
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::RemovePolicy(sec.to_owned(), ptype.to_owned(), {
-                #[cfg(feature = "incremental")]
-                {
-                    rule.clone()
-                }
-                #[cfg(not(feature = "incremental"))]
-                {
-                    rule
-                }
-            });
+            let event_data =
+                EventData::RemovePolicy(sec.to_owned(), ptype.to_owned(), {
+                    #[cfg(feature = "incremental")]
+                    {
+                        rule.clone()
+                    }
+                    #[cfg(not(feature = "incremental"))]
+                    {
+                        rule
+                    }
+                });
             #[cfg(feature = "watcher")]
             {
                 if rule_removed && self.has_auto_notify_watcher_enabled() {
@@ -306,7 +321,11 @@ where
         }
 
         let rules_removed = self.get_mut_model().remove_policies(sec, ptype, {
-            #[cfg(any(feature = "watcher", feature = "logging", feature = "incremental"))]
+            #[cfg(any(
+                feature = "watcher",
+                feature = "logging",
+                feature = "incremental"
+            ))]
             {
                 rules.clone()
             }
@@ -321,16 +340,17 @@ where
         });
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data = EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), {
-                #[cfg(feature = "incremental")]
-                {
-                    rules.clone()
-                }
-                #[cfg(not(feature = "incremental"))]
-                {
-                    rules
-                }
-            });
+            let event_data =
+                EventData::RemovePolicies(sec.to_owned(), ptype.to_owned(), {
+                    #[cfg(feature = "incremental")]
+                    {
+                        rules.clone()
+                    }
+                    #[cfg(not(feature = "incremental"))]
+                    {
+                        rules
+                    }
+                });
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
@@ -379,19 +399,27 @@ where
         if self.has_auto_save_enabled()
             && !self
                 .get_mut_adapter()
-                .remove_filtered_policy(sec, ptype, field_index, field_values.clone())
+                .remove_filtered_policy(
+                    sec,
+                    ptype,
+                    field_index,
+                    field_values.clone(),
+                )
                 .await?
         {
             return Ok((false, vec![]));
         }
 
-        let (rules_removed, rules) =
-            self.get_mut_model()
-                .remove_filtered_policy(sec, ptype, field_index, field_values);
+        let (rules_removed, rules) = self
+            .get_mut_model()
+            .remove_filtered_policy(sec, ptype, field_index, field_values);
         #[cfg(any(feature = "watcher", feature = "logging"))]
         {
-            let event_data =
-                EventData::RemoveFilteredPolicy(sec.to_owned(), ptype.to_owned(), rules.clone());
+            let event_data = EventData::RemoveFilteredPolicy(
+                sec.to_owned(),
+                ptype.to_owned(),
+                rules.clone(),
+            );
             #[cfg(feature = "watcher")]
             {
                 if rules_removed && self.has_auto_notify_watcher_enabled() {
@@ -420,11 +448,13 @@ where
         }
         #[cfg(feature = "incremental")]
         {
-            self.build_incremental_role_links(EventData::RemoveFilteredPolicy(
-                sec.to_owned(),
-                ptype.to_owned(),
-                rules.clone(),
-            ))?;
+            self.build_incremental_role_links(
+                EventData::RemoveFilteredPolicy(
+                    sec.to_owned(),
+                    ptype.to_owned(),
+                    rules.clone(),
+                ),
+            )?;
         }
 
         Ok((rules_removed, rules))

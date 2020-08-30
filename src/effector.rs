@@ -26,7 +26,7 @@ pub struct DefaultEffectStream {
     idx: usize,
     cap: usize,
     #[cfg(feature = "explain")]
-    explain: Vec<usize>,
+    expl: Vec<usize>,
 }
 
 #[derive(Default)]
@@ -51,7 +51,7 @@ impl Effector for DefaultEffector {
             cap,
             idx: 0,
             #[cfg(feature = "explain")]
-            explain: Vec::with_capacity(10),
+            expl: Vec::with_capacity(10),
         })
     }
 }
@@ -67,10 +67,10 @@ impl EffectorStream for DefaultEffectStream {
     #[inline]
     fn explain(&self) -> Option<Vec<usize>> {
         assert!(self.done);
-        if self.explain.is_empty() {
+        if self.expl.is_empty() {
             None
         } else {
-            Some(self.explain.clone())
+            Some(self.expl.clone())
         }
     }
 
@@ -82,7 +82,9 @@ impl EffectorStream for DefaultEffectStream {
 
                 push_index_if_explain!(self);
             }
-        } else if self.expr == "some(where (p_eft == allow)) && !some(where (p_eft == deny))" {
+        } else if self.expr
+            == "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
+        {
             if eft == EffectKind::Allow {
                 self.res = true;
 
@@ -100,7 +102,9 @@ impl EffectorStream for DefaultEffectStream {
 
                 push_index_if_explain!(self)
             }
-        } else if self.expr == "priority(p_eft) || deny" && eft != EffectKind::Indeterminate {
+        } else if self.expr == "priority(p_eft) || deny"
+            && eft != EffectKind::Indeterminate
+        {
             if eft == EffectKind::Allow {
                 self.res = true;
             } else {

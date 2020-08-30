@@ -1,8 +1,6 @@
-use lazy_static::lazy_static;
-
 use crate::{
     adapter::{Adapter, Filter},
-    convert::{TryIntoAdapter, TryIntoModel},
+    convert::{EnforceArgs, TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
     effector::{DefaultEffector, EffectKind, Effector},
     emitter::{Event, EventData, EventEmitter},
@@ -26,10 +24,14 @@ use crate::watcher::Watcher;
 use crate::{DefaultLogger, Logger};
 
 use async_trait::async_trait;
+use lazy_static::lazy_static;
 use rhai::{
     def_package,
-    packages::{ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage, Package},
-    Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
+    packages::{
+        ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage,
+        Package,
+    },
+    Dynamic, Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -57,22 +59,22 @@ type EventCallback = fn(&mut Enforcer, EventData);
 
 /// Enforcer is the main interface for authorization enforcement and policy management.
 pub struct Enforcer {
-    pub(crate) model: Box<dyn Model>,
-    pub(crate) adapter: Box<dyn Adapter>,
-    pub(crate) fm: FunctionMap,
-    pub(crate) eft: Box<dyn Effector>,
-    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
-    pub(crate) enabled: bool,
-    pub(crate) auto_save: bool,
-    pub(crate) auto_build_role_links: bool,
+    model: Box<dyn Model>,
+    adapter: Box<dyn Adapter>,
+    fm: FunctionMap,
+    eft: Box<dyn Effector>,
+    rm: Arc<RwLock<dyn RoleManager>>,
+    enabled: bool,
+    auto_save: bool,
+    auto_build_role_links: bool,
     #[cfg(feature = "watcher")]
-    pub(crate) auto_notify_watcher: bool,
+    auto_notify_watcher: bool,
     #[cfg(feature = "watcher")]
-    pub(crate) watcher: Option<Box<dyn Watcher>>,
-    pub(crate) events: HashMap<Event, Vec<EventCallback>>,
-    pub(crate) engine: Engine,
+    watcher: Option<Box<dyn Watcher>>,
+    events: HashMap<Event, Vec<EventCallback>>,
+    engine: Engine,
     #[cfg(feature = "logging")]
-    pub(crate) logger: Box<dyn Logger>,
+    logger: Box<dyn Logger>,
 }
 
 impl EventEmitter<Event> for Enforcer {
@@ -94,9 +96,9 @@ impl EventEmitter<Event> for Enforcer {
 }
 
 impl Enforcer {
-    pub(crate) fn private_enforce<S: AsRef<str> + Send + Sync>(
+    pub(crate) fn private_enforce(
         &self,
-        rvals: &[S],
+        rvals: &[Dynamic],
     ) -> Result<(bool, Option<Vec<usize>>)> {
         if !self.enabled {
             return Ok((true, None));
@@ -110,23 +112,22 @@ impl Enforcer {
         let e_ast = get_or_err!(self, "e", ModelError::E, "effector");
 
         if r_ast.tokens.len() != rvals.len() {
-            return Err(
-                RequestError::UnmatchRequestDefinition(r_ast.tokens.len(), rvals.len()).into(),
-            );
+            return Err(RequestError::UnmatchRequestDefinition(
+                r_ast.tokens.len(),
+                rvals.len(),
+            )
+            .into());
         }
 
-        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter().map(|x| x.as_ref())) {
-            if rval.starts_with('{') && rval.ends_with('}') {
-                scope.push_constant(rtoken, self.engine.parse_json(rval, false)?);
-            } else {
-                scope.push_constant(rtoken, rval.to_owned());
-            }
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.into_iter()) {
+            scope.push_constant_dynamic(rtoken, rval.to_owned());
         }
 
         let policies = p_ast.get_policy();
         let (policy_len, scope_len) = (policies.len(), scope.len());
 
-        let mut eft_stream = self.eft.new_stream(&e_ast.value, max(policy_len, 1));
+        let mut eft_stream =
+            self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self
             .engine
             .compile_expression(&escape_eval(&m_ast.value))
@@ -155,9 +156,11 @@ impl Enforcer {
             scope.rewind(scope_len);
 
             if p_ast.tokens.len() != pvals.len() {
-                return Err(
-                    PolicyError::UnmatchPolicyDefinition(p_ast.tokens.len(), pvals.len()).into(),
-                );
+                return Err(PolicyError::UnmatchPolicyDefinition(
+                    p_ast.tokens.len(),
+                    pvals.len(),
+                )
+                .into());
             }
             for (ptoken, pval) in p_ast.tokens.iter().zip(pvals.iter()) {
                 scope.push_constant(ptoken, pval.to_owned());
@@ -211,7 +214,10 @@ impl Enforcer {
 
 #[async_trait]
 impl CoreApi for Enforcer {
-    async fn new<M: TryIntoModel, A: TryIntoAdapter>(m: M, a: A) -> Result<Self> {
+    async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self> {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
@@ -222,8 +228,8 @@ impl CoreApi for Enforcer {
 
         engine.load_package(CASBIN_PACKAGE.get());
 
-        for (key, func) in fm.get_functions() {
-            engine.register_fn(key, *func);
+        for (key, &func) in fm.get_functions() {
+            engine.register_fn(key, func);
         }
 
         let mut e = Self {
@@ -250,13 +256,25 @@ impl CoreApi for Enforcer {
 
         e.register_g_functions()?;
 
-        e.load_policy().await?;
-
         Ok(e)
     }
 
     #[inline]
-    fn add_function(&mut self, fname: &str, f: fn(ImmutableString, ImmutableString) -> bool) {
+    async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self> {
+        let mut e = Self::new_raw(m, a).await?;
+        e.load_policy().await?;
+        Ok(e)
+    }
+
+    #[inline]
+    fn add_function(
+        &mut self,
+        fname: &str,
+        f: fn(ImmutableString, ImmutableString) -> bool,
+    ) {
         self.fm.add_function(fname, f);
         self.engine.register_fn(fname, f);
     }
@@ -325,7 +343,10 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn set_role_manager(&mut self, rm: Arc<RwLock<dyn RoleManager>>) -> Result<()> {
+    fn set_role_manager(
+        &mut self,
+        rm: Arc<RwLock<dyn RoleManager>>,
+    ) -> Result<()> {
         self.rm = rm;
         if self.auto_build_role_links {
             self.build_role_links()?;
@@ -361,7 +382,7 @@ impl CoreApi for Enforcer {
     /// #[async_std::main]
     /// async fn main() -> Result<()> {
     ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"])?);
+    ///     assert_eq!(true, e.enforce(("alice", "data1", "read"))?);
     ///     Ok(())
     /// }
     ///
@@ -369,32 +390,38 @@ impl CoreApi for Enforcer {
     /// #[tokio::main]
     /// async fn main() -> Result<()> {
     ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce(&["alice", "data1", "read"])?);
+    ///     assert_eq!(true, e.enforce(("alice", "data1", "read"))?);
     ///
     ///     Ok(())
     /// }
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S]) -> Result<bool> {
+    fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool> {
+        let rvals = rvals.try_into_vec()?;
         #[allow(unused_variables)]
-        let (authorized, indexes) = self.private_enforce(rvals)?;
+        let (authorized, indices) = self.private_enforce(&rvals)?;
 
         #[cfg(feature = "logging")]
         {
             self.logger.print_enforce_log(
-                rvals.iter().map(|x| String::from(x.as_ref())).collect(),
+                rvals.iter().map(|x| x.to_string()).collect(),
                 authorized,
                 false,
             );
 
             #[cfg(feature = "explain")]
-            if let Some(indices) = indexes {
-                let all_rules = get_or_err!(self, "p", ModelError::P, "policy").get_policy();
+            if let Some(indices) = indices {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
+                    .get_policy();
+
                 let rules: Vec<String> = indices
                     .into_iter()
-                    .filter_map(|y| all_rules.get_index(y).map(|x| x.join(", ")))
+                    .filter_map(|y| {
+                        all_rules.get_index(y).map(|x| x.join(", "))
+                    })
                     .collect();
+
                 self.logger.print_explain_log(rules);
             }
         }
@@ -402,13 +429,14 @@ impl CoreApi for Enforcer {
         Ok(authorized)
     }
 
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(&mut self, rvals: &[S]) -> Result<bool> {
+    fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool> {
         self.enforce(rvals)
     }
 
     fn build_role_links(&mut self) -> Result<()> {
         self.rm.write().unwrap().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
+
         Ok(())
     }
 
@@ -416,6 +444,7 @@ impl CoreApi for Enforcer {
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()> {
         self.model
             .build_incremental_role_links(Arc::clone(&self.rm), d)?;
+
         Ok(())
     }
 
@@ -426,6 +455,7 @@ impl CoreApi for Enforcer {
         if self.auto_build_role_links {
             self.build_role_links()?;
         }
+
         Ok(())
     }
 
@@ -438,12 +468,18 @@ impl CoreApi for Enforcer {
         if self.auto_build_role_links {
             self.build_role_links()?;
         }
+
         Ok(())
     }
 
     #[inline]
     fn is_filtered(&self) -> bool {
         self.adapter.is_filtered()
+    }
+
+    #[inline]
+    fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     async fn save_policy(&mut self) -> Result<()> {
@@ -465,8 +501,16 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn clear_policy(&mut self) {
+    async fn clear_policy(&mut self) -> Result<()> {
+        if self.auto_save {
+            self.adapter.clear_policy().await?;
+        }
         self.model.clear_policy();
+
+        #[cfg(any(feature = "logging", feature = "watcher"))]
+        self.emit(Event::PolicyChange, EventData::ClearPolicy);
+
+        Ok(())
     }
 
     #[inline]
@@ -501,6 +545,7 @@ impl CoreApi for Enforcer {
         } else {
             self.on(Event::PolicyChange, notify_logger_and_watcher);
         }
+
         self.auto_notify_watcher = auto_notify_watcher;
     }
 
@@ -566,14 +611,22 @@ mod tests {
         // this should fail since FileAdapter has basically no add_policy
         assert!(e
             .adapter
-            .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
+            .add_policy(
+                "p",
+                "p",
+                vec!["alice".into(), "data".into(), "read".into()]
+            )
             .await
             .unwrap());
         e.set_adapter(mem).await.unwrap();
         // this passes since our MemoryAdapter has a working add_policy method
         assert!(e
             .adapter
-            .add_policy("p", "p", vec!["alice".into(), "data".into(), "read".into()])
+            .add_policy(
+                "p",
+                "p",
+                vec!["alice".into(), "data".into(), "read".into()]
+            )
             .await
             .unwrap())
     }
@@ -602,97 +655,79 @@ mod tests {
         let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/resource1", "GET"])
+            e.enforce(("alice", "/alice_data/resource1", "GET"))
                 .unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])
+            e.enforce(("alice", "/alice_data/resource1", "POST"))
                 .unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/resource2", "GET"])
+            e.enforce(("alice", "/alice_data/resource2", "GET"))
                 .unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
+            e.enforce(("alice", "/alice_data/resource2", "POST"))
                 .unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["alice", "/bob_data/resource1", "GET"])
-                .unwrap()
+            e.enforce(("alice", "/bob_data/resource1", "GET")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["alice", "/bob_data/resource1", "POST"])
-                .unwrap()
+            e.enforce(("alice", "/bob_data/resource1", "POST")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["alice", "/bob_data/resource2", "GET"])
-                .unwrap()
+            e.enforce(("alice", "/bob_data/resource2", "GET")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["alice", "/bob_data/resource2", "POST"])
-                .unwrap()
+            e.enforce(("alice", "/bob_data/resource2", "POST")).unwrap()
         );
 
         assert_eq!(
             false,
-            e.enforce(&vec!["bob", "/alice_data/resource1", "GET"])
-                .unwrap()
+            e.enforce(("bob", "/alice_data/resource1", "GET")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["bob", "/alice_data/resource1", "POST"])
-                .unwrap()
+            e.enforce(("bob", "/alice_data/resource1", "POST")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["bob", "/alice_data/resource2", "GET"])
-                .unwrap()
+            e.enforce(("bob", "/alice_data/resource2", "GET")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["bob", "/alice_data/resource2", "POST"])
-                .unwrap()
+            e.enforce(("bob", "/alice_data/resource2", "POST")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["bob", "/bob_data/resource1", "GET"])
-                .unwrap()
+            e.enforce(("bob", "/bob_data/resource1", "GET")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["bob", "/bob_data/resource1", "POST"])
-                .unwrap()
+            e.enforce(("bob", "/bob_data/resource1", "POST")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&vec!["bob", "/bob_data/resource2", "GET"])
-                .unwrap()
+            e.enforce(("bob", "/bob_data/resource2", "GET")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["bob", "/bob_data/resource2", "POST"])
-                .unwrap()
+            e.enforce(("bob", "/bob_data/resource2", "POST")).unwrap()
         );
 
-        assert_eq!(
-            true,
-            e.enforce(&vec!["cathy", "/cathy_data", "GET"]).unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["cathy", "/cathy_data", "POST"]).unwrap()
-        );
+        assert_eq!(true, e.enforce(("cathy", "/cathy_data", "GET")).unwrap());
+        assert_eq!(true, e.enforce(("cathy", "/cathy_data", "POST")).unwrap());
         assert_eq!(
             false,
-            e.enforce(&vec!["cathy", "/cathy_data", "DELETE"]).unwrap()
+            e.enforce(("cathy", "/cathy_data", "DELETE")).unwrap()
         );
     }
 
@@ -720,7 +755,7 @@ mod tests {
         let e = Enforcer::new(m, adapter).await.unwrap();
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/resource2", "POST"])
+            e.enforce(("alice", "/alice_data/resource2", "POST"))
                 .unwrap()
         );
     }
@@ -758,7 +793,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -824,14 +859,14 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -876,14 +911,14 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(feature = "ip")]
@@ -904,27 +939,27 @@ mod tests {
         let adapter = FileAdapter::new("examples/ipmatch_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&vec!["192.168.2.123", "data1", "read"]).unwrap());
+        assert!(e.enforce(("192.168.2.123", "data1", "read")).unwrap());
 
-        assert!(e.enforce(&vec!["10.0.0.5", "data2", "write"]).unwrap());
+        assert!(e.enforce(("10.0.0.5", "data2", "write")).unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.2.123", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.2.123", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.2.123", "data2", "write"]).unwrap());
+        assert!(!e.enforce(("192.168.2.123", "data1", "write")).unwrap());
+        assert!(!e.enforce(("192.168.2.123", "data2", "read")).unwrap());
+        assert!(!e.enforce(("192.168.2.123", "data2", "write")).unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.0.123", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.123", "data2", "write"]).unwrap());
+        assert!(!e.enforce(("192.168.0.123", "data1", "read")).unwrap());
+        assert!(!e.enforce(("192.168.0.123", "data1", "write")).unwrap());
+        assert!(!e.enforce(("192.168.0.123", "data2", "read")).unwrap());
+        assert!(!e.enforce(("192.168.0.123", "data2", "write")).unwrap());
 
-        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["10.0.0.5", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["10.0.0.5", "data2", "read"]).unwrap());
+        assert!(!e.enforce(("10.0.0.5", "data1", "read")).unwrap());
+        assert!(!e.enforce(("10.0.0.5", "data1", "write")).unwrap());
+        assert!(!e.enforce(("10.0.0.5", "data2", "read")).unwrap());
 
-        assert!(!e.enforce(&vec!["192.168.0.1", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&vec!["192.168.0.1", "data2", "write"]).unwrap());
+        assert!(!e.enforce(("192.168.0.1", "data1", "read")).unwrap());
+        assert!(!e.enforce(("192.168.0.1", "data1", "write")).unwrap());
+        assert!(!e.enforce(("192.168.0.1", "data2", "read")).unwrap());
+        assert!(!e.enforce(("192.168.0.1", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -954,14 +989,14 @@ mod tests {
         .unwrap();
         e.load_policy().await.unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
 
         e.enable_auto_save(true);
         e.remove_policy(
@@ -973,14 +1008,14 @@ mod tests {
         .await
         .unwrap();
         e.load_policy().await.unwrap();
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1001,7 +1036,7 @@ mod tests {
         let mut e = Enforcer::new(m, adapter).await.unwrap();
         e.enable_auto_build_role_links(false);
         e.build_role_links().unwrap();
-        assert_eq!(false, e.enforce(&vec!["user501", "data9", "read"]).unwrap());
+        assert_eq!(false, e.enforce(("user501", "data9", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1020,7 +1055,7 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        assert_eq!(false, e.enforce(&vec!["root", "data1", "read"]).unwrap());
+        assert_eq!(false, e.enforce(("root", "data1", "read")).unwrap());
 
         let m2 = DefaultModel::from_file("examples/basic_with_root_model.conf")
             .await
@@ -1029,7 +1064,7 @@ mod tests {
         let e2 = Enforcer::new(m2, adapter2).await.unwrap();
 
         e.model = e2.model;
-        assert_eq!(true, e.enforce(&vec!["root", "data1", "read"]).unwrap());
+        assert_eq!(true, e.enforce(("root", "data1", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1048,8 +1083,8 @@ mod tests {
         let adapter1 = FileAdapter::new("examples/basic_policy.csv");
         let mut e = Enforcer::new(m1, adapter1).await.unwrap();
 
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
 
         let m2 = DefaultModel::from_file("examples/basic_model.conf")
             .await
@@ -1059,8 +1094,8 @@ mod tests {
 
         e.adapter = e2.adapter;
         e.load_policy().await.unwrap();
-        assert_eq!(false, e.enforce(&vec!["alice", "data1", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&vec!["alice", "data1", "write"]).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1088,34 +1123,26 @@ mod tests {
 
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/123", "GET"]).unwrap()
+            e.enforce(("alice", "/alice_data/123", "GET")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&vec!["alice", "/alice_data/resource1", "POST"])
+            e.enforce(("alice", "/alice_data/resource1", "POST"))
                 .unwrap()
         );
 
         assert_eq!(
             true,
-            e.enforce(&vec!["bob", "/alice_data/resource2", "GET"])
-                .unwrap()
+            e.enforce(("bob", "/alice_data/resource2", "GET")).unwrap()
         );
 
         assert_eq!(
             true,
-            e.enforce(&vec!["bob", "/bob_data/resource1", "POST"])
-                .unwrap()
+            e.enforce(("bob", "/bob_data/resource1", "POST")).unwrap()
         );
 
-        assert_eq!(
-            true,
-            e.enforce(&vec!["cathy", "/cathy_data", "GET"]).unwrap()
-        );
-        assert_eq!(
-            true,
-            e.enforce(&vec!["cathy", "/cathy_data", "POST"]).unwrap()
-        );
+        assert_eq!(true, e.enforce(("cathy", "/cathy_data", "GET")).unwrap());
+        assert_eq!(true, e.enforce(("cathy", "/cathy_data", "POST")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1142,14 +1169,14 @@ mod tests {
 
         e.load_filtered_policy(filter).await.unwrap();
         assert_eq!(
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap(),
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap(),
             true
         );
-        assert!(e.enforce(&["alice", "domain1", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "domain1", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "domain1", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "domain2", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "domain2", "data2", "write"]).unwrap());
+        assert!(e.enforce(("alice", "domain1", "data1", "write")).unwrap());
+        assert!(!e.enforce(("alice", "domain1", "data2", "read")).unwrap());
+        assert!(!e.enforce(("alice", "domain1", "data2", "write")).unwrap());
+        assert!(!e.enforce(("bob", "domain2", "data2", "read")).unwrap());
+        assert!(!e.enforce(("bob", "domain2", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1173,10 +1200,10 @@ mod tests {
 
         e.set_role_manager(new_rm).unwrap();
 
-        assert!(e.enforce(&["alice", "domain1", "data1", "read"]).unwrap(),);
-        assert!(e.enforce(&["alice", "domain1", "data1", "write"]).unwrap());
-        assert!(e.enforce(&["bob", "domain2", "data2", "read"]).unwrap());
-        assert!(e.enforce(&["bob", "domain2", "data2", "write"]).unwrap());
+        assert!(e.enforce(("alice", "domain1", "data1", "read")).unwrap(),);
+        assert!(e.enforce(("alice", "domain1", "data1", "write")).unwrap());
+        assert!(e.enforce(("bob", "domain2", "data2", "read")).unwrap());
+        assert!(e.enforce(("bob", "domain2", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1188,7 +1215,9 @@ mod tests {
         all(feature = "runtime-tokio", not(target_arch = "wasm32")),
         tokio::test
     )]
-    async fn test_policy_abac() {
+    async fn test_policy_abac1() {
+        use serde::Serialize;
+
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
         m.add_def("p", "p", "sub_rule, obj, act");
@@ -1212,14 +1241,105 @@ mod tests {
         .await
         .unwrap();
 
+        #[derive(Serialize, Hash)]
+        pub struct Person<'a> {
+            name: &'a str,
+            age: u8,
+        }
+
         assert_eq!(
-            e.enforce(&[r#"{"name": "alice", "age": 16}"#, "/data1", "read"])
-                .unwrap(),
+            e.enforce((
+                Person {
+                    name: "alice",
+                    age: 16
+                },
+                "/data1",
+                "read"
+            ))
+            .unwrap(),
             false
         );
         assert_eq!(
-            e.enforce(&[r#"{"name": "bob", "age": 19}"#, "/data1", "read"])
+            e.enforce((
+                Person {
+                    name: "bob",
+                    age: 19
+                },
+                "/data1",
+                "read"
+            ))
+            .unwrap(),
+            true
+        );
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_policy_abac2() {
+        use serde::Serialize;
+
+        let mut m = DefaultModel::default();
+        m.add_def("r", "r", "sub, obj, act");
+        m.add_def("p", "p", "sub, obj, act");
+        m.add_def("e", "e", "some(where (p.eft == allow))");
+        m.add_def("g", "g", "_, _");
+        m.add_def(
+            "m",
+            "m",
+            "(g(r.sub, p.sub) || eval(p.sub) == true) && r.act == p.act",
+        );
+
+        let a = MemoryAdapter::default();
+
+        let mut e = Enforcer::new(m, a).await.unwrap();
+
+        e.add_policy(
+            vec![r#""admin""#, "post", "write"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        e.add_policy(
+            vec!["r.sub == r.obj.author", "post", "write"]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        e.add_grouping_policy(
+            vec!["alice", r#""admin""#]
+                .into_iter()
+                .map(|x| x.to_string())
+                .collect(),
+        )
+        .await
+        .unwrap();
+
+        #[derive(Serialize, Hash)]
+        pub struct Post<'a> {
+            author: &'a str,
+        }
+
+        assert_eq!(
+            e.enforce(("alice", Post { author: "bob" }, "write"))
                 .unwrap(),
+            true
+        );
+
+        assert_eq!(
+            e.enforce(("bob", Post { author: "bob" }, "write")).unwrap(),
             true
         );
     }
