@@ -321,7 +321,7 @@ impl CoreApi for CachedEnforcer {
     }
 }
 
-impl CachedApi for CachedEnforcer {
+impl CachedApi<u64, bool> for CachedEnforcer {
     fn get_mut_cache(&mut self) -> &mut dyn Cache<u64, bool> {
         &mut *self.cache
     }
