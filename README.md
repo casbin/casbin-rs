@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     let mut e = Enforcer::new("examples/rbac_with_domains_model.conf", "examples/rbac_with_domains_policy.csv").await?;
     e.enable_log(true);
 
-    e.enforce(&["alice", "domain1", "data1", "read"])?;
+    e.enforce(("alice", "domain1", "data1", "read"))?;
     Ok(())
 }
 ```
@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     let obj = "data1"; // the resource that is going to be accessed.
     let act = "read"; // the operation that the user performs on the resource.
 
-    if let Ok(authorized) = e.enforce(&[sub, obj, act]) {
+    if let Ok(authorized) = e.enforce((sub, obj, act)) {
         if authorized {
             // permit alice to read data1
         } else {
