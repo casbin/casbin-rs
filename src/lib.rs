@@ -54,7 +54,7 @@ pub use internal_api::InternalApi;
 pub use logger::{DefaultLogger, Logger};
 pub use management_api::MgmtApi;
 pub use model::{function_map, Assertion, DefaultModel, Model};
-pub use rbac::{DefaultRoleManager, RoleManager};
+pub use rbac::{DefaultRoleManager, MatchingFn, RoleManager};
 pub use rbac_api::RbacApi;
 #[cfg(feature = "watcher")]
 pub use watcher::Watcher;
