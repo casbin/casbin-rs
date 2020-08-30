@@ -8,12 +8,18 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+#[cfg(feature = "cached")]
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
+
 const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 pub struct DefaultRoleManager {
     all_domains: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
     #[cfg(feature = "cached")]
-    cache: DefaultCache<(String, String, Option<String>), bool>,
+    cache: DefaultCache<u64, bool>,
     max_hierarchy_level: usize,
 }
 
@@ -99,11 +105,13 @@ impl RoleManager for DefaultRoleManager {
         }
 
         #[cfg(feature = "cached")]
-        let cache_key = (
-            name1.to_owned(),
-            name2.to_owned(),
-            domain.map(|x| x.to_owned()),
-        );
+        let cache_key = {
+            let mut hasher = DefaultHasher::new();
+            name1.hash(&mut hasher);
+            name2.hash(&mut hasher);
+            domain.unwrap_or(DEFAULT_DOMAIN).hash(&mut hasher);
+            hasher.finish()
+        };
 
         #[cfg(feature = "cached")]
         if let Some(res) = self.cache.get(&cache_key) {
