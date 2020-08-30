@@ -31,7 +31,6 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 [dependencies]
 casbin = { version = "2.0.0", default-features = false, features = ["runtime-async-std", "logging"] }
 async-std = { version = "1.5.0", features = ["attributes"] }
-env_logger = "0.7.1"
 ```
 
 ## Get started
@@ -44,9 +43,6 @@ use casbin::prelude::*;
 
 #[async_std::main]
 async fn main() -> Result<()> {
-    ::std::env::set_var("RUST_LOG", "casbin=info");
-    env_logger::init();
-
     let mut e = Enforcer::new("examples/rbac_with_domains_model.conf", "examples/rbac_with_domains_policy.csv").await?;
     e.enable_log(true);
 
