@@ -36,7 +36,7 @@ type EventCallback = fn(&mut CachedEnforcer, EventData);
 
 pub struct CachedEnforcer {
     enforcer: Enforcer,
-    cache: Box<dyn Cache<Vec<String>, bool>>,
+    cache: Box<dyn Cache<u64, bool>>,
     events: HashMap<Event, Vec<EventCallback>>,
 }
 
@@ -62,9 +62,8 @@ impl CachedEnforcer {
     pub(crate) fn private_enforce(
         &mut self,
         rvals: &[Dynamic],
+        cache_key: u64,
     ) -> Result<(bool, bool, Option<Vec<usize>>)> {
-        let cache_key: Vec<String> =
-            rvals.into_iter().map(|x| x.to_string()).collect();
         Ok(if let Some(authorized) = self.cache.get(&cache_key) {
             (authorized.into_owned(), true, None)
         } else {
@@ -196,9 +195,11 @@ impl CoreApi for CachedEnforcer {
     }
 
     fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool> {
-        let rvals = rvals.into_vec()?;
+        let cache_key = rvals.cache_key();
+        let rvals = rvals.try_into_vec()?;
         #[allow(unused_variables)]
-        let (authorized, cached, indices) = self.private_enforce(&rvals)?;
+        let (authorized, cached, indices) =
+            self.private_enforce(&rvals, cache_key)?;
 
         #[cfg(feature = "logging")]
         {
@@ -212,12 +213,14 @@ impl CoreApi for CachedEnforcer {
             if let Some(indices) = indices {
                 let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
                     .get_policy();
+
                 let rules: Vec<String> = indices
                     .into_iter()
                     .filter_map(|y| {
                         all_rules.get_index(y).map(|x| x.join(", "))
                     })
                     .collect();
+
                 self.enforcer.get_logger().print_explain_log(rules);
             }
         }
@@ -319,11 +322,11 @@ impl CoreApi for CachedEnforcer {
 }
 
 impl CachedApi for CachedEnforcer {
-    fn get_mut_cache(&mut self) -> &mut dyn Cache<Vec<String>, bool> {
+    fn get_mut_cache(&mut self) -> &mut dyn Cache<u64, bool> {
         &mut *self.cache
     }
 
-    fn set_cache(&mut self, cache: Box<dyn Cache<Vec<String>, bool>>) {
+    fn set_cache(&mut self, cache: Box<dyn Cache<u64, bool>>) {
         self.cache = cache;
     }
 

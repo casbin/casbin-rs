@@ -1084,7 +1084,7 @@ mod tests {
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        #[derive(Serialize)]
+        #[derive(Serialize, Hash)]
         pub struct Book<'a> {
             owner: &'a str,
         }

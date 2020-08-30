@@ -538,7 +538,7 @@ fn b_benchmark_abac_model(b: &mut Bencher) {
     let e =
         await_future(Enforcer::new("examples/abac_model.conf", ())).unwrap();
 
-    #[derive(Serialize)]
+    #[derive(Serialize, Hash)]
     struct Book<'a> {
         owner: &'a str,
     }
@@ -557,7 +557,7 @@ fn b_benchmark_cached_abac_model(b: &mut Bencher) {
         await_future(CachedEnforcer::new("examples/abac_model.conf", ()))
             .unwrap();
 
-    #[derive(Serialize)]
+    #[derive(Serialize, Hash)]
     struct Book<'a> {
         owner: &'a str,
     }

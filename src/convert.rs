@@ -8,6 +8,11 @@ use async_trait::async_trait;
 use rhai::{ser::to_dynamic, Dynamic};
 use serde::Serialize;
 
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
+
 #[async_trait]
 pub trait TryIntoModel: Send + Sync {
     async fn try_into_model(self) -> Result<Box<dyn Model>>;
@@ -104,26 +109,42 @@ where
 }
 
 pub trait EnforceArgs {
-    fn into_vec(self) -> Result<Vec<Dynamic>>;
+    fn try_into_vec(self) -> Result<Vec<Dynamic>>;
+    fn cache_key(&self) -> u64;
 }
 
 impl EnforceArgs for Vec<String> {
-    fn into_vec(self) -> Result<Vec<Dynamic>> {
+    fn try_into_vec(self) -> Result<Vec<Dynamic>> {
         Ok(self.into_iter().map(|x| Dynamic::from(x)).collect())
+    }
+
+    fn cache_key(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        hasher.finish()
     }
 }
 
 macro_rules! impl_args {
     ($($p:ident),*) => {
-        impl<$($p: Serialize),*> EnforceArgs for ($($p,)*)
+        impl<$($p: Serialize + Hash),*> EnforceArgs for ($($p,)*)
         {
-            fn into_vec(self) -> Result<Vec<Dynamic>> {
+            fn try_into_vec(self) -> Result<Vec<Dynamic>> {
                 let ($($p,)*) = self;
 
                 let mut _v = Vec::new();
                 $(_v.push(to_dynamic($p)?);)*
 
                 Ok(_v)
+            }
+
+            fn cache_key(&self) -> u64 {
+                let ($($p,)*) = self;
+                let mut _hasher = DefaultHasher::new();
+
+                $($p.hash(&mut _hasher);)*
+
+                _hasher.finish()
             }
         }
 

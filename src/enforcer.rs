@@ -120,7 +120,7 @@ impl Enforcer {
         }
 
         for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.into_iter()) {
-            scope.push_constant(rtoken, rval.to_owned());
+            scope.push_constant_dynamic(rtoken, rval.to_owned());
         }
 
         let policies = p_ast.get_policy();
@@ -398,7 +398,7 @@ impl CoreApi for Enforcer {
     /// fn main() {}
     /// ```
     fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool> {
-        let rvals = rvals.into_vec()?;
+        let rvals = rvals.try_into_vec()?;
         #[allow(unused_variables)]
         let (authorized, indices) = self.private_enforce(&rvals)?;
 
@@ -1241,7 +1241,7 @@ mod tests {
         .await
         .unwrap();
 
-        #[derive(Serialize)]
+        #[derive(Serialize, Hash)]
         pub struct Person<'a> {
             name: &'a str,
             age: u8,
@@ -1327,7 +1327,7 @@ mod tests {
         .await
         .unwrap();
 
-        #[derive(Serialize)]
+        #[derive(Serialize, Hash)]
         pub struct Post<'a> {
             author: &'a str,
         }
