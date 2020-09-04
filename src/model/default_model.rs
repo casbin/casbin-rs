@@ -352,11 +352,15 @@ impl Model for DefaultModel {
         field_index: usize,
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>) {
+        if field_values.is_empty() {
+            return (false, vec![]);
+        }
+
         let mut res = false;
         let mut rules_removed: Vec<Vec<String>> = vec![];
-        if let Some(t1) = self.model.get_mut(sec) {
-            if let Some(t2) = t1.get_mut(ptype) {
-                for rule in t2.policy.iter() {
+        if let Some(ast_map) = self.model.get_mut(sec) {
+            if let Some(ast) = ast_map.get_mut(ptype) {
+                for rule in ast.policy.iter() {
                     let mut matched = true;
                     for (i, field_value) in field_values.iter().enumerate() {
                         if !field_value.is_empty()
@@ -373,7 +377,7 @@ impl Model for DefaultModel {
                 }
                 if res && !rules_removed.is_empty() {
                     for rule in rules_removed.iter() {
-                        t2.policy.remove(rule);
+                        ast.policy.remove(rule);
                     }
                 }
             }
@@ -403,14 +407,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert!(e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert!(e.enforce(("alice", "data1", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data1", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "read")).unwrap());
+        assert!(e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -430,14 +434,14 @@ mod tests {
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(!e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert!(!e.enforce(("alice", "data1", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data1", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -457,18 +461,18 @@ mod tests {
         let adapter = FileAdapter::new("examples/basic_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert!(e.enforce(&["bob", "data2", "write"]).unwrap());
-        assert!(e.enforce(&["root", "data1", "read"]).unwrap());
-        assert!(e.enforce(&["root", "data1", "write"]).unwrap());
-        assert!(e.enforce(&["root", "data2", "read"]).unwrap());
-        assert!(e.enforce(&["root", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "read"]).unwrap());
+        assert!(e.enforce(("alice", "data1", "read")).unwrap());
+        assert!(e.enforce(("bob", "data2", "write")).unwrap());
+        assert!(e.enforce(("root", "data1", "read")).unwrap());
+        assert!(e.enforce(("root", "data1", "write")).unwrap());
+        assert!(e.enforce(("root", "data2", "read")).unwrap());
+        assert!(e.enforce(("root", "data2", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data1", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -488,18 +492,18 @@ mod tests {
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(!e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "write"]).unwrap());
-        assert!(e.enforce(&["root", "data1", "read"]).unwrap());
-        assert!(e.enforce(&["root", "data1", "write"]).unwrap());
-        assert!(e.enforce(&["root", "data2", "read"]).unwrap());
-        assert!(e.enforce(&["root", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert!(!e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert!(!e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "data2", "read"]).unwrap());
+        assert!(!e.enforce(("alice", "data1", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "write")).unwrap());
+        assert!(e.enforce(("root", "data1", "read")).unwrap());
+        assert!(e.enforce(("root", "data1", "write")).unwrap());
+        assert!(e.enforce(("root", "data2", "read")).unwrap());
+        assert!(e.enforce(("root", "data2", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data1", "write")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "read")).unwrap());
+        assert!(!e.enforce(("alice", "data2", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "read")).unwrap());
+        assert!(!e.enforce(("bob", "data1", "write")).unwrap());
+        assert!(!e.enforce(("bob", "data2", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -521,10 +525,10 @@ mod tests {
             FileAdapter::new("examples/basic_without_users_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&["data1", "read"]).unwrap());
-        assert!(!e.enforce(&["data1", "write"]).unwrap());
-        assert!(!e.enforce(&["data2", "read"]).unwrap());
-        assert!(e.enforce(&["data2", "write"]).unwrap());
+        assert!(e.enforce(("data1", "read")).unwrap());
+        assert!(!e.enforce(("data1", "write")).unwrap());
+        assert!(!e.enforce(("data2", "read")).unwrap());
+        assert!(e.enforce(("data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -547,10 +551,10 @@ mod tests {
             FileAdapter::new("examples/basic_without_resources_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert!(e.enforce(&["alice", "read"]).unwrap());
-        assert!(e.enforce(&["bob", "write"]).unwrap());
-        assert!(!e.enforce(&["alice", "write"]).unwrap());
-        assert!(!e.enforce(&["bob", "read"]).unwrap());
+        assert!(e.enforce(("alice", "read")).unwrap());
+        assert!(e.enforce(("bob", "write")).unwrap());
+        assert!(!e.enforce(("alice", "write")).unwrap());
+        assert!(!e.enforce(("bob", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -570,14 +574,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -600,14 +604,14 @@ mod tests {
             FileAdapter::new("examples/rbac_with_resource_roles_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -630,35 +634,35 @@ mod tests {
 
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain1", "data1", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "write")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "write")).unwrap()
         );
     }
 
@@ -731,35 +735,35 @@ mod tests {
 
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain1", "data1", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "write")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "write")).unwrap()
         );
 
         assert_eq!(
@@ -777,35 +781,35 @@ mod tests {
 
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data1", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "write")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "write")).unwrap()
         );
 
         assert_eq!(
@@ -822,35 +826,35 @@ mod tests {
 
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data1", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data2", "write"]).unwrap()
+            e.enforce(("alice", "domain1", "data2", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data1", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "write"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "write")).unwrap()
         );
     }
 
@@ -891,11 +895,11 @@ mod tests {
 
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain3", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain3", "data1", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
 
         e.remove_filtered_policy(
@@ -909,11 +913,11 @@ mod tests {
         .unwrap();
         assert_eq!(
             false,
-            e.enforce(&["alice", "domain1", "data1", "read"]).unwrap()
+            e.enforce(("alice", "domain1", "data1", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
 
         e.remove_policy(
@@ -926,7 +930,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             false,
-            e.enforce(&["bob", "domain2", "data2", "read"]).unwrap()
+            e.enforce(("bob", "domain2", "data2", "read")).unwrap()
         );
     }
 
@@ -947,14 +951,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -975,7 +979,7 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_with_deny_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(false, e.enforce(&["alice", "data2", "write"]).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1004,14 +1008,14 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
 
         e.remove_grouping_policy(
             vec!["bob", "data2_admin", "custom_data"]
@@ -1022,14 +1026,14 @@ mod tests {
         .await
         .unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data1", "write"]).unwrap());
-        assert_eq!(false, e.enforce(&["bob", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data1", "write")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1051,14 +1055,14 @@ mod tests {
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let e = Enforcer::new(m, adapter).await.unwrap();
 
-        assert_eq!(true, e.enforce(&["alice", "data1", "read"]).unwrap());
-        assert_eq!(false, e.enforce(&["alice", "data1", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data2", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "write"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["guest", "data2", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["alice", "data3", "read"]).unwrap());
-        assert_eq!(true, e.enforce(&["bob", "data3", "read"]).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("guest", "data2", "read")).unwrap());
+        assert_eq!(true, e.enforce(("alice", "data3", "read")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "data3", "read")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1071,6 +1075,8 @@ mod tests {
         tokio::test
     )]
     async fn test_abac() {
+        use serde::Serialize;
+
         let m = DefaultModel::from_file("examples/abac_model.conf")
             .await
             .unwrap();
@@ -1078,13 +1084,18 @@ mod tests {
         let adapter = MemoryAdapter::default();
         let e = Enforcer::new(m, adapter).await.unwrap();
 
+        #[derive(Serialize, Hash)]
+        pub struct Book<'a> {
+            owner: &'a str,
+        }
+
         assert_eq!(
             false,
-            e.enforce(&["alice", r#"{"Owner":"bob"}"#, "read"]).unwrap()
+            e.enforce(("alice", Book { owner: "bob" }, "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.enforce(&["alice", r#"{"Owner":"alice"}"#, "read"])
+            e.enforce(("alice", Book { owner: "alice" }, "read"))
                 .unwrap()
         );
     }

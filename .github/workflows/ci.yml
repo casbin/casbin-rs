@@ -27,6 +27,13 @@ jobs:
           components: rustfmt, clippy
           override: true
 
+      - name: Install wasm32-unknown-unknown for ${{ matrix.rust }}
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain:  ${{ matrix.rust }}
+          target: wasm32-unknown-unknown
+          override: true
+
       - name: Cache cargo registry
         uses: actions/cache@v1
         with:
@@ -73,9 +80,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command:  check
-          target: wasm32-unknown-unknown
-          override: true
-          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
+          args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
 
       - name: Clippy warnings
         uses: actions-rs/cargo@v1

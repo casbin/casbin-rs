@@ -41,9 +41,11 @@ pub use cache::{Cache, DefaultCache};
 pub use cached_api::CachedApi;
 #[cfg(feature = "cached")]
 pub use cached_enforcer::CachedEnforcer;
-pub use convert::{TryIntoAdapter, TryIntoModel};
+pub use convert::{EnforceArgs, TryIntoAdapter, TryIntoModel};
 pub use core_api::{CoreApi, IEnforcer};
-pub use effector::{DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream};
+pub use effector::{
+    DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream,
+};
 pub use emitter::{Event, EventData, EventEmitter, EventKey};
 pub use enforcer::Enforcer;
 pub use error::Error;
@@ -52,7 +54,7 @@ pub use internal_api::InternalApi;
 pub use logger::{DefaultLogger, Logger};
 pub use management_api::MgmtApi;
 pub use model::{function_map, Assertion, DefaultModel, Model};
-pub use rbac::{DefaultRoleManager, RoleManager};
+pub use rbac::{DefaultRoleManager, MatchingFn, RoleManager};
 pub use rbac_api::RbacApi;
 #[cfg(feature = "watcher")]
 pub use watcher::Watcher;

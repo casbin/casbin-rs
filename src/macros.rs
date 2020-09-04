@@ -58,7 +58,7 @@ macro_rules! push_index_if_explain {
     ($this:ident) => {{
         #[cfg(feature = "explain")]
         if $this.cap > 1 {
-            $this.explain.push($this.idx);
+            $this.expl.push($this.idx);
         }
     }};
 }

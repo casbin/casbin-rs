@@ -31,7 +31,11 @@ impl Adapter for MemoryAdapter {
         Ok(())
     }
 
-    async fn load_filtered_policy<'a>(&mut self, m: &mut dyn Model, f: Filter<'a>) -> Result<()> {
+    async fn load_filtered_policy<'a>(
+        &mut self,
+        m: &mut dyn Model,
+        f: Filter<'a>,
+    ) -> Result<()> {
         for line in self.policy.iter() {
             let sec = &line[0];
             let ptype = &line[1];
@@ -191,6 +195,10 @@ impl Adapter for MemoryAdapter {
         field_index: usize,
         field_values: Vec<String>,
     ) -> Result<bool> {
+        if field_values.is_empty() {
+            return Ok(false);
+        }
+
         let mut tmp = IndexSet::new();
         let mut res = false;
         for rule in &self.policy {

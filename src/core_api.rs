@@ -1,6 +1,6 @@
 use crate::{
-    Adapter, Effector, Event, EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
-    TryIntoModel,
+    Adapter, Effector, EnforceArgs, Event, EventEmitter, Filter, Model, Result,
+    RoleManager, TryIntoAdapter, TryIntoModel,
 };
 
 #[cfg(feature = "watcher")]
@@ -19,6 +19,12 @@ use std::sync::{Arc, RwLock};
 
 #[async_trait]
 pub trait CoreApi: Send + Sync {
+    async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self>
+    where
+        Self: Sized;
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(
         m: M,
         a: A,
@@ -49,21 +55,26 @@ pub trait CoreApi: Send + Sync {
     fn get_logger(&self) -> &dyn Logger;
     #[cfg(feature = "logging")]
     fn set_logger(&mut self, logger: Box<dyn Logger>);
-    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>;
-    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>;
+    async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()>
+    where
+        Self: Sized;
+    async fn set_adapter<A: TryIntoAdapter>(&mut self, a: A) -> Result<()>
+    where
+        Self: Sized;
     fn set_effector(&mut self, e: Box<dyn Effector>);
-    fn enforce<S: AsRef<str> + Send + Sync>(&self, rvals: &[S])
-        -> Result<bool>;
-    fn enforce_mut<S: AsRef<str> + Send + Sync>(
-        &mut self,
-        rvals: &[S],
-    ) -> Result<bool>;
+    fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool>
+    where
+        Self: Sized;
+    fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool>
+    where
+        Self: Sized;
     fn build_role_links(&mut self) -> Result<()>;
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
     async fn load_policy(&mut self) -> Result<()>;
     async fn load_filtered_policy<'a>(&mut self, f: Filter<'a>) -> Result<()>;
     fn is_filtered(&self) -> bool;
+    fn is_enabled(&self) -> bool;
     async fn save_policy(&mut self) -> Result<()>;
     async fn clear_policy(&mut self) -> Result<()>;
     #[cfg(feature = "logging")]
