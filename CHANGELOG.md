@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.1...HEAD)
+
+**Closed issues:**
+
+- setup clog-cli CI [\#205](https://github.com/casbin/casbin-rs/issues/205)
+
+**Merged pull requests:**
+
+- Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
+
 ## [v2.0.1](https://github.com/casbin/casbin-rs/tree/v2.0.1) (2020-08-30)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.0...v2.0.1)
