@@ -10,6 +10,7 @@
 
 **Merged pull requests:**
 
+- fix: wasm checking in CI [\#207](https://github.com/casbin/casbin-rs/pull/207) ([GopherJ](https://github.com/GopherJ))
 - Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
 
 ## [v2.0.1](https://github.com/casbin/casbin-rs/tree/v2.0.1) (2020-08-30)
