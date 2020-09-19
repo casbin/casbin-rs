@@ -33,8 +33,8 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = { version = "2.0.1", default-features = false, features = ["runtime-async-std", "logging"] }
-async-std = { version = "1.5.0", features = ["attributes"] }
+casbin = { version = "2.0.2", default-features = false, features = ["runtime-async-std", "logging"] }
+async-std = { version = "1.6.4", features = ["attributes"] }
 ```
 
 ## Get started
