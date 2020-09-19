@@ -115,7 +115,7 @@ pub trait EnforceArgs {
 
 impl EnforceArgs for Vec<String> {
     fn try_into_vec(self) -> Result<Vec<Dynamic>> {
-        Ok(self.into_iter().map(|x| Dynamic::from(x)).collect())
+        Ok(self.into_iter().map(Dynamic::from).collect())
     }
 
     fn cache_key(&self) -> u64 {

@@ -119,7 +119,7 @@ impl Enforcer {
             .into());
         }
 
-        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.into_iter()) {
+        for (rtoken, rval) in r_ast.tokens.iter().zip(rvals.iter()) {
             scope.push_constant_dynamic(rtoken, rval.to_owned());
         }
 
