@@ -61,47 +61,60 @@ impl DefaultRoleManager {
                 }),
         );
 
-        let mut added = false;
         if let (Some(role_matching_fn), Some(roles), true) =
             (self.role_matching_fn, self.all_domains.get(domain), created)
         {
+            let mut added = false;
             for (key, value) in roles {
-                if key != name && role_matching_fn(name, key) {
-                    if role.write().unwrap().add_role(Arc::clone(value)) {
-                        added = true;
-                    }
+                if key != name
+                    && role_matching_fn(name, key)
+                    && role.write().unwrap().add_role(Arc::clone(value))
+                {
+                    added = true;
                 }
             }
-        }
-        if added {
-            #[cfg(feature = "cached")]
-            self.cache.clear();
+            if added {
+                #[cfg(feature = "cached")]
+                self.cache.clear();
+            }
         }
 
         role
+    }
+
+    fn matched_domains(&self, domain: Option<&str>) -> Vec<String> {
+        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+        if let Some(domain_matching_fn) = self.domain_matching_fn {
+            self.all_domains
+                .keys()
+                .filter_map(|key| {
+                    if domain_matching_fn(domain, key) {
+                        Some(key.to_owned())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<String>>()
+        } else {
+            self.all_domains
+                .get(domain)
+                .map_or(vec![], |_| vec![domain.to_owned()])
+        }
     }
 
     fn create_temp_role(&mut self, name: &str, domain: Option<&str>) -> Role {
         let mut cloned_role =
             self.create_role(name, domain).read().unwrap().clone();
 
-        if let Some(domain_matching_fn) = self.domain_matching_fn {
-            let domain = domain.unwrap_or(DEFAULT_DOMAIN);
-            let matched_domains: Vec<String> = {
-                self.all_domains
-                    .keys()
-                    .filter(|&key| {
-                        key != domain && domain_matching_fn(domain, key)
-                    })
-                    .map(|domain| domain.to_owned())
-                    .collect()
-            };
-            for domain in matched_domains {
-                for direct_role in
-                    &self.create_role(name, Some(&domain)).read().unwrap().roles
-                {
-                    cloned_role.add_role(Arc::clone(direct_role));
-                }
+        let matched_domains = self.matched_domains(domain);
+        for domain in matched_domains
+            .iter()
+            .filter(|x| Some(x.as_str()) != domain)
+        {
+            for direct_role in
+                &self.create_role(name, Some(&domain)).read().unwrap().roles
+            {
+                cloned_role.add_role(Arc::clone(direct_role));
             }
         }
 
@@ -109,26 +122,9 @@ impl DefaultRoleManager {
     }
 
     fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
-        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
-        let matched_domains =
-            if let Some(domain_matching_fn) = self.domain_matching_fn {
-                self.all_domains
-                    .keys()
-                    .filter_map(|key| {
-                        if domain_matching_fn(domain, key) {
-                            Some(key.as_str())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<&str>>()
-            } else {
-                self.all_domains
-                    .get(domain)
-                    .map_or(vec![], |_| vec![domain])
-            };
-        return !matched_domains.is_empty()
-            && matched_domains.into_iter().any(|domain| {
+        let matched_domains = self.matched_domains(domain);
+        !matched_domains.is_empty()
+            && matched_domains.iter().any(|domain| {
                 self.all_domains.get(domain).map_or(false, |roles| {
                     if roles.contains_key(name) {
                         return true;
@@ -142,7 +138,7 @@ impl DefaultRoleManager {
 
                     false
                 })
-            });
+            })
     }
 }
 
@@ -248,47 +244,25 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
-        let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+        let matched_domains = self.matched_domains(domain);
 
-        let matched_domains =
-            if let Some(domain_matching_fn) = self.domain_matching_fn {
-                self.all_domains
-                    .keys()
-                    .filter_map(|key| {
-                        if domain_matching_fn(domain, key) {
-                            Some(key.as_str())
+        let res = matched_domains.iter().fold(HashSet::new(), |mut acc, x| {
+            let users = self.all_domains.get(x).map_or(vec![], |roles| {
+                roles
+                    .values()
+                    .filter_map(|role| {
+                        let role = role.read().unwrap();
+                        if role.has_direct_role(name) {
+                            Some(role.name.to_owned())
                         } else {
                             None
                         }
                     })
-                    .collect::<Vec<&str>>()
-            } else {
-                self.all_domains
-                    .get(domain)
-                    .map_or(vec![], |_| vec![domain])
-            };
-
-        let res =
-            matched_domains
-                .into_iter()
-                .fold(HashSet::new(), |mut acc, x| {
-                    let users =
-                        self.all_domains.get(x).map_or(vec![], |roles| {
-                            roles
-                                .values()
-                                .filter_map(|role| {
-                                    let role = role.read().unwrap();
-                                    if role.has_direct_role(name) {
-                                        Some(role.name.to_owned())
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .collect()
-                        });
-                    acc.extend(users);
-                    return acc;
-                });
+                    .collect()
+            });
+            acc.extend(users);
+            acc
+        });
 
         res.into_iter().collect()
     }
@@ -315,19 +289,20 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Arc<RwLock<Role>>) -> bool {
-        if self.roles.iter().any(|role| {
+        let not_exists = !self.roles.iter().any(|role| {
             role.read().unwrap().name == other_role.read().unwrap().name
-        }) {
-            return false;
+        });
+
+        if not_exists {
+            self.roles.push(other_role);
         }
 
-        self.roles.push(other_role);
-
-        true
+        not_exists
     }
 
     fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
         let other_role_locked = other_role.read().unwrap();
+
         self.roles
             .retain(|x| x.read().unwrap().name != other_role_locked.name)
     }
