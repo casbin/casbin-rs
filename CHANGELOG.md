@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+## [v2.0.2](https://github.com/casbin/casbin-rs/tree/v2.0.2) (2020-09-19)
 
-[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.1...HEAD)
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.1...v2.0.2)
 
 **Closed issues:**
 
