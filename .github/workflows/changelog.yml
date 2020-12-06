@@ -1,12 +1,10 @@
 name: Changelog Generator
 
 on:
+  pull_request:
   push:
     branches:
-      - '*'
-      - '!staging.tmp'
-    tags:
-      - '*'
+      - master
 
 jobs:
   generate_changelog_file:
