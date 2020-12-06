@@ -23,6 +23,7 @@
 **Merged pull requests:**
 
 - fix: wasm checking in CI [\#207](https://github.com/casbin/casbin-rs/pull/207) ([GopherJ](https://github.com/GopherJ))
+- Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
 
 ## [v2.0.1](https://github.com/casbin/casbin-rs/tree/v2.0.1) (2020-08-30)
 
@@ -73,6 +74,7 @@
 
 **Merged pull requests:**
 
+- feat: re-exports rhai & add IEnforcer && bump version [\#198](https://github.com/casbin/casbin-rs/pull/198) ([GopherJ](https://github.com/GopherJ))
 - Change Filter definition to support dynamic filter. [\#196](https://github.com/casbin/casbin-rs/pull/196) ([bodymindarts](https://github.com/bodymindarts))
 
 ## [v1.1.1](https://github.com/casbin/casbin-rs/tree/v1.1.1) (2020-07-18)
@@ -100,8 +102,6 @@
 
 **Merged pull requests:**
 
-- Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
-- feat: re-exports rhai & add IEnforcer && bump version [\#198](https://github.com/casbin/casbin-rs/pull/198) ([GopherJ](https://github.com/GopherJ))
 - Cache g [\#183](https://github.com/casbin/casbin-rs/pull/183) ([GopherJ](https://github.com/GopherJ))
 - Update rhai requirement from 0.16.1 to 0.17.0 [\#182](https://github.com/casbin/casbin-rs/pull/182) ([dependabot-preview[bot]](https://github.com/apps/dependabot-preview))
 - Update rhai requirement from 0.15.1 to 0.16.1 [\#179](https://github.com/casbin/casbin-rs/pull/179) ([dependabot-preview[bot]](https://github.com/apps/dependabot-preview))
@@ -140,7 +140,6 @@
 - Change enforce and enforce\_mut to non-async. [\#166](https://github.com/casbin/casbin-rs/pull/166) ([schungx](https://github.com/schungx))
 - remove explain relevant code when feature has been disabled [\#164](https://github.com/casbin/casbin-rs/pull/164) ([GopherJ](https://github.com/GopherJ))
 - Speed improvements [\#163](https://github.com/casbin/casbin-rs/pull/163) ([schungx](https://github.com/schungx))
-- Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
 
 ## [v0.9.2](https://github.com/casbin/casbin-rs/tree/v0.9.2) (2020-05-13)
 
@@ -172,6 +171,7 @@
 
 **Merged pull requests:**
 
+- Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
 - fix: exec module not found [\#155](https://github.com/casbin/casbin-rs/pull/155) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic-release/exec-not-found [\#154](https://github.com/casbin/casbin-rs/pull/154) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic release [\#153](https://github.com/casbin/casbin-rs/pull/153) ([GopherJ](https://github.com/GopherJ))
