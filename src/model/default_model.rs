@@ -116,9 +116,11 @@ impl DefaultModel {
 
 impl Model for DefaultModel {
     fn add_def(&mut self, sec: &str, key: &str, value: &str) -> bool {
-        let mut ast = Assertion::default();
-        ast.key = key.to_owned();
-        ast.value = remove_comment(value);
+        let mut ast = Assertion {
+            key: key.to_owned(),
+            value: remove_comment(value),
+            ..Default::default()
+        };
 
         if ast.value.is_empty() {
             return false;
