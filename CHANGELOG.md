@@ -1,5 +1,17 @@
 # Changelog
 
+## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...HEAD)
+
+**Closed issues:**
+
+- Broken enforce with json string in 2.0 [\#210](https://github.com/casbin/casbin-rs/issues/210)
+
+## [v2.0.3](https://github.com/casbin/casbin-rs/tree/v2.0.3) (2020-10-19)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.2...v2.0.3)
+
 ## [v2.0.2](https://github.com/casbin/casbin-rs/tree/v2.0.2) (2020-09-19)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.1...v2.0.2)
@@ -277,6 +289,7 @@
 **Merged pull requests:**
 
 - add simple quick return [\#126](https://github.com/casbin/casbin-rs/pull/126) ([GopherJ](https://github.com/GopherJ))
+- add get\_all\_policy, get\_all\_grouping\_policy [\#124](https://github.com/casbin/casbin-rs/pull/124) ([GopherJ](https://github.com/GopherJ))
 - POC try scaling abac rules [\#121](https://github.com/casbin/casbin-rs/pull/121) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.6.0](https://github.com/casbin/casbin-rs/tree/v0.6.0) (2020-04-18)
@@ -290,7 +303,6 @@
 
 **Merged pull requests:**
 
-- add get\_all\_policy, get\_all\_grouping\_policy [\#124](https://github.com/casbin/casbin-rs/pull/124) ([GopherJ](https://github.com/GopherJ))
 - Stable filtered adapter [\#120](https://github.com/casbin/casbin-rs/pull/120) ([GopherJ](https://github.com/GopherJ))
 - Share engine [\#117](https://github.com/casbin/casbin-rs/pull/117) ([GopherJ](https://github.com/GopherJ))
 - deactivate script functon, extra i8, i16...i128, and float math [\#116](https://github.com/casbin/casbin-rs/pull/116) ([GopherJ](https://github.com/GopherJ))
