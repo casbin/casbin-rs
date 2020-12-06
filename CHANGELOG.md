@@ -23,7 +23,6 @@
 **Merged pull requests:**
 
 - fix: wasm checking in CI [\#207](https://github.com/casbin/casbin-rs/pull/207) ([GopherJ](https://github.com/GopherJ))
-- Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
 
 ## [v2.0.1](https://github.com/casbin/casbin-rs/tree/v2.0.1) (2020-08-30)
 
@@ -74,7 +73,6 @@
 
 **Merged pull requests:**
 
-- feat: re-exports rhai & add IEnforcer && bump version [\#198](https://github.com/casbin/casbin-rs/pull/198) ([GopherJ](https://github.com/GopherJ))
 - Change Filter definition to support dynamic filter. [\#196](https://github.com/casbin/casbin-rs/pull/196) ([bodymindarts](https://github.com/bodymindarts))
 
 ## [v1.1.1](https://github.com/casbin/casbin-rs/tree/v1.1.1) (2020-07-18)
@@ -102,6 +100,8 @@
 
 **Merged pull requests:**
 
+- Automatic change log generation. [\#206](https://github.com/casbin/casbin-rs/pull/206) ([PsiACE](https://github.com/PsiACE))
+- feat: re-exports rhai & add IEnforcer && bump version [\#198](https://github.com/casbin/casbin-rs/pull/198) ([GopherJ](https://github.com/GopherJ))
 - Cache g [\#183](https://github.com/casbin/casbin-rs/pull/183) ([GopherJ](https://github.com/GopherJ))
 - Update rhai requirement from 0.16.1 to 0.17.0 [\#182](https://github.com/casbin/casbin-rs/pull/182) ([dependabot-preview[bot]](https://github.com/apps/dependabot-preview))
 - Update rhai requirement from 0.15.1 to 0.16.1 [\#179](https://github.com/casbin/casbin-rs/pull/179) ([dependabot-preview[bot]](https://github.com/apps/dependabot-preview))
