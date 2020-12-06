@@ -140,6 +140,7 @@
 - Change enforce and enforce\_mut to non-async. [\#166](https://github.com/casbin/casbin-rs/pull/166) ([schungx](https://github.com/schungx))
 - remove explain relevant code when feature has been disabled [\#164](https://github.com/casbin/casbin-rs/pull/164) ([GopherJ](https://github.com/GopherJ))
 - Speed improvements [\#163](https://github.com/casbin/casbin-rs/pull/163) ([schungx](https://github.com/schungx))
+- Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
 
 ## [v0.9.2](https://github.com/casbin/casbin-rs/tree/v0.9.2) (2020-05-13)
 
@@ -171,7 +172,6 @@
 
 **Merged pull requests:**
 
-- Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
 - fix: exec module not found [\#155](https://github.com/casbin/casbin-rs/pull/155) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic-release/exec-not-found [\#154](https://github.com/casbin/casbin-rs/pull/154) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic release [\#153](https://github.com/casbin/casbin-rs/pull/153) ([GopherJ](https://github.com/GopherJ))
