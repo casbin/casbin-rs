@@ -14,7 +14,7 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 
 [dependencies]
 regex = "1.4.0"
-rhai = { version = "0.19.0", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize", "serde", "unchecked"] }
+rhai = { version = "0.19.7", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize", "no_module", "serde", "unchecked"] }
 ip_network = { version = "0.3.4", optional = true }
 lru-cache = { version = "0.1.2", optional = true }
 lazy_static = "1.4.0"
