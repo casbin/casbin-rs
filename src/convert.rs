@@ -5,7 +5,7 @@ use crate::{Adapter, DefaultModel, Model, NullAdapter, Result};
 use crate::FileAdapter;
 
 use async_trait::async_trait;
-use rhai::{ser::to_dynamic, Dynamic};
+use rhai::{serde::to_dynamic, Dynamic};
 use serde::Serialize;
 
 use std::{

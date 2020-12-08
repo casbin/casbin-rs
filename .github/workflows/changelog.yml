@@ -3,8 +3,7 @@ name: Changelog Generator
 on:
   push:
     branches:
-      - '*'
-      - '!staging.tmp'
+      - master
     tags:
       - '*'
 
