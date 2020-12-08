@@ -8,6 +8,10 @@
 
 - Broken enforce with json string in 2.0 [\#210](https://github.com/casbin/casbin-rs/issues/210)
 
+**Merged pull requests:**
+
+- upgrade versions of rhai & tokio [\#211](https://github.com/casbin/casbin-rs/pull/211) ([PsiACE](https://github.com/PsiACE))
+
 ## [v2.0.3](https://github.com/casbin/casbin-rs/tree/v2.0.3) (2020-10-19)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.2...v2.0.3)
@@ -289,6 +293,7 @@
 **Merged pull requests:**
 
 - add simple quick return [\#126](https://github.com/casbin/casbin-rs/pull/126) ([GopherJ](https://github.com/GopherJ))
+- add get\_all\_policy, get\_all\_grouping\_policy [\#124](https://github.com/casbin/casbin-rs/pull/124) ([GopherJ](https://github.com/GopherJ))
 - POC try scaling abac rules [\#121](https://github.com/casbin/casbin-rs/pull/121) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.6.0](https://github.com/casbin/casbin-rs/tree/v0.6.0) (2020-04-18)
@@ -302,10 +307,8 @@
 
 **Merged pull requests:**
 
-- add get\_all\_policy, get\_all\_grouping\_policy [\#124](https://github.com/casbin/casbin-rs/pull/124) ([GopherJ](https://github.com/GopherJ))
 - Stable filtered adapter [\#120](https://github.com/casbin/casbin-rs/pull/120) ([GopherJ](https://github.com/GopherJ))
 - Share engine [\#117](https://github.com/casbin/casbin-rs/pull/117) ([GopherJ](https://github.com/GopherJ))
-- deactivate script functon, extra i8, i16...i128, and float math [\#116](https://github.com/casbin/casbin-rs/pull/116) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.5.2](https://github.com/casbin/casbin-rs/tree/v0.5.2) (2020-04-15)
 
@@ -317,6 +320,7 @@
 
 **Merged pull requests:**
 
+- deactivate script functon, extra i8, i16...i128, and float math [\#116](https://github.com/casbin/casbin-rs/pull/116) ([GopherJ](https://github.com/GopherJ))
 - use raw engine && bump version [\#115](https://github.com/casbin/casbin-rs/pull/115) ([GopherJ](https://github.com/GopherJ))
 - add remove\_filtered\_policy details && enable\_auto\_notify\_watcher func… [\#113](https://github.com/casbin/casbin-rs/pull/113) ([GopherJ](https://github.com/GopherJ))
 - Update rhai requirement from 0.11.1 to 0.12.0 [\#111](https://github.com/casbin/casbin-rs/pull/111) ([dependabot-preview[bot]](https://github.com/apps/dependabot-preview))
