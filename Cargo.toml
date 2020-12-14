@@ -16,7 +16,7 @@ keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 regex = "1.4.0"
 rhai = { version = "0.19.7", features = ["sync", "only_i32", "no_function", "no_float", "no_optimize", "no_module", "serde", "unchecked"] }
 ip_network = { version = "0.3.4", optional = true }
-lru-cache = { version = "0.1.2", optional = true }
+lru = { version = "0.6.2", optional = true }
 lazy_static = "1.4.0"
 indexmap = "1.6.0"
 async-std = { version = "1.8.0", optional = true }
@@ -37,7 +37,7 @@ runtime-async-std = ["async-std"]
 logging = ["slog", "slog-term", "slog-async"]
 ip = ["ip_network"]
 glob = ["globset"]
-cached = ["lru-cache"]
+cached = ["lru"]
 watcher = []
 incremental = []
 explain = []
