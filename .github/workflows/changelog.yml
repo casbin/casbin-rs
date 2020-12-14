@@ -28,5 +28,5 @@ jobs:
     - name: Commit changes
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
-        commit_message: Update Changelog
+        commit_message: 'changelog: auto update by ci'
         file_pattern: CHANGELOG.md
