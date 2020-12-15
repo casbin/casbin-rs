@@ -1,6 +1,6 @@
 use crate::cache::Cache;
 
-use lru_cache::LruCache;
+use lru::LruCache;
 
 use std::{borrow::Cow, hash::Hash};
 
@@ -30,7 +30,7 @@ where
     V: Send + Sync + Clone + 'static,
 {
     fn set_capacity(&mut self, cap: usize) {
-        self.cache.set_capacity(cap);
+        self.cache.resize(cap);
     }
 
     fn get(&mut self, k: &K) -> Option<Cow<'_, V>> {
@@ -38,14 +38,14 @@ where
     }
 
     fn has(&mut self, k: &K) -> bool {
-        self.cache.contains_key(k)
+        self.cache.contains(k)
     }
 
     fn set(&mut self, k: K, v: V) {
         if self.has(&k) {
-            self.cache.remove(&k);
+            self.cache.pop(&k);
         }
-        self.cache.insert(k, v);
+        self.cache.put(k, v);
     }
 
     fn clear(&mut self) {
