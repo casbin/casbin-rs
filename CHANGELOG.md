@@ -4,14 +4,20 @@
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...HEAD)
 
+**Fixed bugs:**
+
+- CSV loader deletes double quotes [\#214](https://github.com/casbin/casbin-rs/issues/214)
+
 **Closed issues:**
 
 - Broken enforce with json string in 2.0 [\#210](https://github.com/casbin/casbin-rs/issues/210)
 
 **Merged pull requests:**
 
+- fix\(csv\): shouldn't delete inner double quotes [\#216](https://github.com/casbin/casbin-rs/pull/216) ([GopherJ](https://github.com/GopherJ))
 - feat: switch to lru [\#212](https://github.com/casbin/casbin-rs/pull/212) ([PsiACE](https://github.com/PsiACE))
 - upgrade versions of rhai & tokio [\#211](https://github.com/casbin/casbin-rs/pull/211) ([PsiACE](https://github.com/PsiACE))
+- Release v2.0.0 [\#204](https://github.com/casbin/casbin-rs/pull/204) ([GopherJ](https://github.com/GopherJ))
 
 ## [v2.0.3](https://github.com/casbin/casbin-rs/tree/v2.0.3) (2020-10-19)
 
@@ -51,10 +57,6 @@
 **Closed issues:**
 
 - re-exports rhai & add IEnforcer [\#197](https://github.com/casbin/casbin-rs/issues/197)
-
-**Merged pull requests:**
-
-- Release v2.0.0 [\#204](https://github.com/casbin/casbin-rs/pull/204) ([GopherJ](https://github.com/GopherJ))
 
 ## [v1.1.3](https://github.com/casbin/casbin-rs/tree/v1.1.3) (2020-08-26)
 
