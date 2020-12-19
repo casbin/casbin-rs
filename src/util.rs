@@ -38,14 +38,14 @@ pub fn escape_eval(m: &str) -> Cow<str> {
 
 pub fn parse_csv_line<S: AsRef<str>>(line: S) -> Option<Vec<String>> {
     let line = line.as_ref().trim();
-    if line.is_empty() || line.starts_with("#") {
+    if line.is_empty() || line.starts_with('#') {
         return None;
     }
 
     let mut res = vec![];
     for col in ESC_C.find_iter(line).map(|m| m.as_str().trim()) {
         res.push({
-            if col.len() >= 2 && col.starts_with("\"") && col.ends_with("\"") {
+            if col.len() >= 2 && col.starts_with('"') && col.ends_with('"') {
                 col[1..col.len() - 1].to_owned()
             } else {
                 col.to_owned()
