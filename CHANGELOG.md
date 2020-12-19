@@ -80,7 +80,6 @@
 **Merged pull requests:**
 
 - feat: re-exports rhai & add IEnforcer && bump version [\#198](https://github.com/casbin/casbin-rs/pull/198) ([GopherJ](https://github.com/GopherJ))
-- Change Filter definition to support dynamic filter. [\#196](https://github.com/casbin/casbin-rs/pull/196) ([bodymindarts](https://github.com/bodymindarts))
 
 ## [v1.1.1](https://github.com/casbin/casbin-rs/tree/v1.1.1) (2020-07-18)
 
@@ -88,6 +87,7 @@
 
 **Merged pull requests:**
 
+- Change Filter definition to support dynamic filter. [\#196](https://github.com/casbin/casbin-rs/pull/196) ([bodymindarts](https://github.com/bodymindarts))
 - Fix unhandled dquote [\#188](https://github.com/casbin/casbin-rs/pull/188) ([GopherJ](https://github.com/GopherJ))
 - fix: add casbin-cpp to supported languages. [\#185](https://github.com/casbin/casbin-rs/pull/185) ([divy9881](https://github.com/divy9881))
 
@@ -181,6 +181,7 @@
 - fix: semantic-release/exec-not-found [\#154](https://github.com/casbin/casbin-rs/pull/154) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic release [\#153](https://github.com/casbin/casbin-rs/pull/153) ([GopherJ](https://github.com/GopherJ))
 - add status log [\#152](https://github.com/casbin/casbin-rs/pull/152) ([GopherJ](https://github.com/GopherJ))
+- finish effector stream [\#145](https://github.com/casbin/casbin-rs/pull/145) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.8.4](https://github.com/casbin/casbin-rs/tree/v0.8.4) (2020-05-12)
 
@@ -211,7 +212,6 @@
 
 - Revert "Effector stream" [\#147](https://github.com/casbin/casbin-rs/pull/147) ([GopherJ](https://github.com/GopherJ))
 - Revert "Fix: CI" [\#146](https://github.com/casbin/casbin-rs/pull/146) ([GopherJ](https://github.com/GopherJ))
-- finish effector stream [\#145](https://github.com/casbin/casbin-rs/pull/145) ([GopherJ](https://github.com/GopherJ))
 - Fix: CI [\#143](https://github.com/casbin/casbin-rs/pull/143) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.8.0](https://github.com/casbin/casbin-rs/tree/v0.8.0) (2020-05-11)
