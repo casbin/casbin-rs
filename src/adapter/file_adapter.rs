@@ -2,6 +2,7 @@ use crate::{
     adapter::{Adapter, Filter},
     error::ModelError,
     model::Model,
+    util::parse_csv_line,
     Result,
 };
 
@@ -215,7 +216,7 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
         return;
     }
 
-    if let Some(tokens) = csv::parse(line) {
+    if let Some(tokens) = parse_csv_line(line) {
         let key = &tokens[0];
 
         if let Some(ref sec) = key.chars().next().map(|x| x.to_string()) {
@@ -237,7 +238,7 @@ fn load_filtered_policy_line<'a>(
         return false;
     }
 
-    if let Some(tokens) = csv::parse(line) {
+    if let Some(tokens) = parse_csv_line(line) {
         let key = &tokens[0];
 
         let mut is_filtered = false;
@@ -268,147 +269,5 @@ fn load_filtered_policy_line<'a>(
         is_filtered
     } else {
         false
-    }
-}
-
-mod csv {
-    const ESCAPE_SYMBOL: char = '\"';
-    const SEP: char = ',';
-
-    pub fn parse<S: AsRef<str>>(s: S) -> Option<Vec<String>> {
-        let s = s.as_ref().trim();
-
-        if s.is_empty() || s.starts_with('#') {
-            return None;
-        }
-
-        let mut res: Vec<String> = vec![];
-        let mut escape: Vec<char> = Vec::with_capacity(2);
-        let mut tmp: Vec<char> = vec![];
-
-        for (i, ch) in s.chars().enumerate() {
-            match ch {
-                SEP if escape.is_empty() => {
-                    if !tmp.is_empty() {
-                        res.push(self::join_chars(&tmp));
-                        tmp.clear();
-                    } else {
-                        res.push("".to_owned());
-                    }
-
-                    if i == s.len() - 1 {
-                        res.push("".to_owned())
-                    }
-                }
-                ch @ ESCAPE_SYMBOL => {
-                    if escape.is_empty() {
-                        escape.push(ch)
-                    } else {
-                        escape.clear()
-                    }
-                }
-                ch => tmp.push(ch),
-            }
-        }
-
-        if !escape.is_empty() {
-            panic!("unmatched escape character `{}`", ESCAPE_SYMBOL)
-        }
-
-        if !tmp.is_empty() {
-            res.push(self::join_chars(&tmp));
-        }
-
-        if !res.is_empty() {
-            Some(res)
-        } else {
-            None
-        }
-    }
-
-    fn join_chars(chars: &[char]) -> String {
-        chars.iter().collect::<String>().trim().to_string()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_csv_parse_1() {
-        assert_eq!(
-            csv::parse("alice, domain1, data1, action1"),
-            Some(vec![
-                "alice".to_owned(),
-                "domain1".to_owned(),
-                "data1".to_owned(),
-                "action1".to_owned()
-            ])
-        )
-    }
-
-    #[test]
-    fn test_csv_parse_2() {
-        assert_eq!(
-            csv::parse("alice, \"domain1, domain2\", data1 , action1"),
-            Some(vec![
-                "alice".to_owned(),
-                "domain1, domain2".to_owned(),
-                "data1".to_owned(),
-                "action1".to_owned()
-            ])
-        )
-    }
-
-    #[test]
-    fn test_csv_parse_3() {
-        assert_eq!(csv::parse(","), Some(vec!["".to_owned(), "".to_owned(),]))
-    }
-
-    #[test]
-    fn test_csv_parse_4() {
-        assert_eq!(csv::parse(" "), None)
-    }
-
-    #[test]
-    fn test_csv_parse_5() {
-        assert_eq!(
-            csv::parse(
-                "alice, \"domain1, domain2\", \"data1, data2\", action1"
-            ),
-            Some(vec![
-                "alice".to_owned(),
-                "domain1, domain2".to_owned(),
-                "data1, data2".to_owned(),
-                "action1".to_owned()
-            ])
-        )
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_csv_parse_6() {
-        assert_eq!(csv::parse("\" "), Some(vec!["\"".to_owned()]))
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_csv_parse_7() {
-        assert_eq!(csv::parse("\" alice"), Some(vec!["\" alice".to_owned()]))
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_csv_parse_8() {
-        assert_eq!(
-            csv::parse("alice, \"domain1, domain2"),
-            Some(vec!["alice".to_owned(), "\"domain1, domain2".to_owned(),])
-        )
-    }
-
-    #[test]
-    fn test_csv_parse_9() {
-        assert_eq!(csv::parse("\"\""), None)
     }
 }
