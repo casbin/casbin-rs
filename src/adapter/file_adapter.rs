@@ -284,30 +284,54 @@ mod csv {
 
         let mut res: Vec<String> = vec![];
         let mut escape: Vec<char> = Vec::with_capacity(2);
+        let mut double_quotes: Vec<char> = vec![];
         let mut tmp: Vec<char> = vec![];
 
         for (i, ch) in s.chars().enumerate() {
             match ch {
-                SEP if escape.is_empty() => {
-                    if !tmp.is_empty() {
-                        res.push(self::join_chars(&tmp));
-                        tmp.clear();
-                    } else {
-                        res.push("".to_owned());
-                    }
+                SEP => {
+                    if escape.is_empty() {
+                        if !tmp.is_empty() {
+                            res.push(self::join_chars(&tmp));
+                            tmp.clear();
+                        } else {
+                            if double_quotes.is_empty() {
+                                res.push("".to_owned());
+                            }
+                            double_quotes.clear()
+                        }
 
-                    if i == s.len() - 1 {
-                        res.push("".to_owned())
+                        if i == s.len() - 1 {
+                            res.push("".to_owned())
+                        }
+
+                    } else {
+                        tmp.push(ch);
+                        double_quotes.clear();// get SEP means it is not a double quotes
                     }
                 }
                 ch @ ESCAPE_SYMBOL => {
                     if escape.is_empty() {
-                        escape.push(ch)
+                        escape.push(ch);
+                        double_quotes.push(ch)
                     } else {
+                        if !double_quotes.is_empty() {
+                            double_quotes.push(ch);
+                            if double_quotes.len() > 2 {
+                                // means /"/"
+                                res.push(self::join_chars(&double_quotes));
+                                tmp.clear();
+                            }
+                        }
                         escape.clear()
                     }
                 }
-                ch => tmp.push(ch),
+                ch => {
+                    tmp.push(ch);
+                    if !double_quotes.is_empty() {
+                        double_quotes.push(ch)
+                    }
+                }
             }
         }
 
@@ -411,4 +435,16 @@ mod tests {
     fn test_csv_parse_9() {
         assert_eq!(csv::parse("\"\""), None)
     }
+
+    #[test]
+    fn test_csv_parse_10() {
+        assert_eq!(
+            csv::parse(" \"alice\", \"domain1, domain2\""),
+            Some(vec![
+                "\"alice\"".to_owned(),
+                "domain1, domain2".to_owned()
+            ])
+        )
+    }
 }
+
