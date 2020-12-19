@@ -8,6 +8,7 @@
 [![Codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/casbin/lobby)
 [![forum](https://img.shields.io/badge/forum-join-%23cde201)](https://forum.casbin.org/)
+[![Dependency status](https://deps.rs/repo/github/casbin/casbin-rs/status.svg)](https://deps.rs/repo/github/casbin/casbin-rs)
 
 **News**: still worry about how to write the correct Casbin policy? ``Casbin online editor`` is coming to help! Try it at: https://casbin.org/editor/
 
