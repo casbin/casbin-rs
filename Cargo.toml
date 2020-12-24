@@ -36,7 +36,7 @@ slog        = { version = "2.7.0", optional = true }
 slog-async  = { version = "2.5.0", optional = true }
 slog-term   = { version = "2.6.0", optional = true }
 thiserror   = "1.0.20"
-tokio       = { version = "~0.2", optional = true, default-features = false }
+tokio       = { version = "~1.0", optional = true, default-features = false }
 
 [features]
 default = ["runtime-async-std", "incremental"]
@@ -58,7 +58,7 @@ serde     = { version = "1.0.115", features = ["derive"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 async-std = { version = "1.8.0", features = ["attributes"] }
 serde     = { version = "1.0.115", features = ["derive"] }
-tokio     = { version = "~0.2", features = ["full"] }
+tokio     = { version = "~1.0", features = ["full"] }
 
 [profile.release]
 codegen-units = 1
