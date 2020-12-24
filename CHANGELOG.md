@@ -1,8 +1,12 @@
 # Changelog
 
-## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+## [v2.0.5](https://github.com/casbin/casbin-rs/tree/v2.0.5) (2020-12-24)
 
-[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...HEAD)
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...v2.0.5)
+
+**Implemented enhancements:**
+
+- Add actix-casbin-auth to Actix official middleware list [\#92](https://github.com/casbin/casbin-rs/issues/92)
 
 **Fixed bugs:**
 
@@ -14,10 +18,10 @@
 
 **Merged pull requests:**
 
+- revert tokio upgrade [\#223](https://github.com/casbin/casbin-rs/pull/223) ([GopherJ](https://github.com/GopherJ))
 - fix\(csv\): shouldn't delete inner double quotes [\#216](https://github.com/casbin/casbin-rs/pull/216) ([GopherJ](https://github.com/GopherJ))
 - feat: switch to lru [\#212](https://github.com/casbin/casbin-rs/pull/212) ([PsiACE](https://github.com/PsiACE))
 - upgrade versions of rhai & tokio [\#211](https://github.com/casbin/casbin-rs/pull/211) ([PsiACE](https://github.com/PsiACE))
-- Release v2.0.0 [\#204](https://github.com/casbin/casbin-rs/pull/204) ([GopherJ](https://github.com/GopherJ))
 
 ## [v2.0.3](https://github.com/casbin/casbin-rs/tree/v2.0.3) (2020-10-19)
 
@@ -47,16 +51,11 @@
 **Implemented enhancements:**
 
 - support serializable struct to be passed as ABAC parameters [\#199](https://github.com/casbin/casbin-rs/issues/199)
-- clear\_policy in adapter and enforcer [\#193](https://github.com/casbin/casbin-rs/issues/193)
 - pattern support in role manager [\#192](https://github.com/casbin/casbin-rs/issues/192)
-- structured logging [\#190](https://github.com/casbin/casbin-rs/issues/190)
-- add `EnforcerBuilder` type? [\#174](https://github.com/casbin/casbin-rs/issues/174)
-- Improve casbin-rs bench [\#109](https://github.com/casbin/casbin-rs/issues/109)
-- GSOC: Shared Redis TTL cache [\#83](https://github.com/casbin/casbin-rs/issues/83)
 
-**Closed issues:**
+**Merged pull requests:**
 
-- re-exports rhai & add IEnforcer [\#197](https://github.com/casbin/casbin-rs/issues/197)
+- Release v2.0.0 [\#204](https://github.com/casbin/casbin-rs/pull/204) ([GopherJ](https://github.com/GopherJ))
 
 ## [v1.1.3](https://github.com/casbin/casbin-rs/tree/v1.1.3) (2020-08-26)
 
@@ -64,12 +63,20 @@
 
 **Implemented enhancements:**
 
+- structured logging [\#190](https://github.com/casbin/casbin-rs/issues/190)
+- add `EnforcerBuilder` type? [\#174](https://github.com/casbin/casbin-rs/issues/174)
 - casbin cache [\#171](https://github.com/casbin/casbin-rs/issues/171)
 - Make a Casbin middleware for Rocket.rs [\#93](https://github.com/casbin/casbin-rs/issues/93)
+- GSOC: Shared Redis TTL cache [\#83](https://github.com/casbin/casbin-rs/issues/83)
 
 ## [v1.1.2](https://github.com/casbin/casbin-rs/tree/v1.1.2) (2020-07-20)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v1.1.1...v1.1.2)
+
+**Implemented enhancements:**
+
+- clear\_policy in adapter and enforcer [\#193](https://github.com/casbin/casbin-rs/issues/193)
+- Improve casbin-rs bench [\#109](https://github.com/casbin/casbin-rs/issues/109)
 
 **Fixed bugs:**
 
@@ -77,6 +84,7 @@
 
 **Closed issues:**
 
+- re-exports rhai & add IEnforcer [\#197](https://github.com/casbin/casbin-rs/issues/197)
 - Filter should work with dynamic values \(&str instead of &'static str\) [\#195](https://github.com/casbin/casbin-rs/issues/195)
 
 **Merged pull requests:**
