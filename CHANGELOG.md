@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.5...HEAD)
+
+**Implemented enhancements:**
+
+- Support policy.csv comment or YAML file adapter [\#213](https://github.com/casbin/casbin-rs/issues/213)
+
 ## [v2.0.5](https://github.com/casbin/casbin-rs/tree/v2.0.5) (2020-12-24)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...v2.0.5)
@@ -10,6 +18,7 @@
 
 **Fixed bugs:**
 
+- not currently running on the Tokio runtime on tonic [\#221](https://github.com/casbin/casbin-rs/issues/221)
 - CSV loader deletes double quotes [\#214](https://github.com/casbin/casbin-rs/issues/214)
 
 **Closed issues:**

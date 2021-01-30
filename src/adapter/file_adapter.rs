@@ -24,7 +24,6 @@ use std::{
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    stream::StreamExt,
 };
 
 use async_trait::async_trait;
@@ -58,9 +57,14 @@ where
     ) -> Result<()> {
         let f = File::open(&self.file_path).await?;
         let mut lines = BufReader::new(f).lines();
-
+        #[cfg(feature = "runtime-async-std")]
         while let Some(line) = lines.next().await {
-            handler(line?, m);
+            handler(line?, m)
+        }
+
+        #[cfg(feature = "runtime-tokio")]
+        while let Some(line) = lines.next_line().await? {
+            handler(line, m)
         }
 
         Ok(())
@@ -76,8 +80,16 @@ where
         let mut lines = BufReader::new(f).lines();
 
         let mut is_filtered = false;
+        #[cfg(feature = "runtime-async-std")]
         while let Some(line) = lines.next().await {
             if handler(line?, m, &filter) {
+                is_filtered = true;
+            }
+        }
+
+        #[cfg(feature = "runtime-tokio")]
+        while let Some(line) = lines.next_line().await? {
+            if handler(line, m, &filter) {
                 is_filtered = true;
             }
         }
