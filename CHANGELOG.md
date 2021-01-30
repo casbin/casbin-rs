@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.5...HEAD)
+
+**Implemented enhancements:**
+
+- Support policy.csv comment or YAML file adapter [\#213](https://github.com/casbin/casbin-rs/issues/213)
+
 ## [v2.0.5](https://github.com/casbin/casbin-rs/tree/v2.0.5) (2020-12-24)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...v2.0.5)
@@ -10,6 +18,7 @@
 
 **Fixed bugs:**
 
+- not currently running on the Tokio runtime on tonic [\#221](https://github.com/casbin/casbin-rs/issues/221)
 - CSV loader deletes double quotes [\#214](https://github.com/casbin/casbin-rs/issues/214)
 
 **Closed issues:**
@@ -153,7 +162,6 @@
 **Merged pull requests:**
 
 - Change enforce and enforce\_mut to non-async. [\#166](https://github.com/casbin/casbin-rs/pull/166) ([schungx](https://github.com/schungx))
-- remove explain relevant code when feature has been disabled [\#164](https://github.com/casbin/casbin-rs/pull/164) ([GopherJ](https://github.com/GopherJ))
 - Speed improvements [\#163](https://github.com/casbin/casbin-rs/pull/163) ([schungx](https://github.com/schungx))
 - Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
 
@@ -187,6 +195,7 @@
 
 **Merged pull requests:**
 
+- remove explain relevant code when feature has been disabled [\#164](https://github.com/casbin/casbin-rs/pull/164) ([GopherJ](https://github.com/GopherJ))
 - fix: exec module not found [\#155](https://github.com/casbin/casbin-rs/pull/155) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic-release/exec-not-found [\#154](https://github.com/casbin/casbin-rs/pull/154) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic release [\#153](https://github.com/casbin/casbin-rs/pull/153) ([GopherJ](https://github.com/GopherJ))
