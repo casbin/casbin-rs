@@ -630,8 +630,7 @@ mod tests {
 
             #[cfg(feature = "runtime-tokio")]
             {
-                tokio::runtime::Builder::new()
-                    .basic_scheduler()
+                tokio::runtime::Builder::new_multi_thread()
                     .enable_all()
                     .build()
                     .unwrap()
