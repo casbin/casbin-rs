@@ -8,20 +8,20 @@ license     = "Apache-2.0"
 name        = "casbin"
 readme      = "README.md"
 repository  = "https://github.com/casbin/casbin-rs"
-version     = "2.0.5"
+version     = "2.0.6"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-std   = { version = "1.8.0", optional = true }
-async-trait = "0.1.37"
-globset     = { version = "0.4.5", optional = true }
-indexmap    = "1.6.0"
+async-std   = { version = "1.9.0", optional = true }
+async-trait = "0.1.42"
+globset     = { version = "0.4.6", optional = true }
+indexmap    = "1.6.1"
 ip_network  = { version = "0.3.4", optional = true }
 lazy_static = "1.4.0"
-lru         = { version = "0.6.2", optional = true }
-regex       = "1.4.0"
-rhai        = { version = "0.19.7", features = [
+lru         = { version = "0.6.3", optional = true }
+regex       = "1.4.3"
+rhai        = { version = "0.19.10", features = [
     "sync",
     "only_i32",
     "no_function",
@@ -31,12 +31,13 @@ rhai        = { version = "0.19.7", features = [
     "serde",
     "unchecked",
 ] }
-serde       = "1.0.115"
+serde       = "1.0.123"
 slog        = { version = "2.7.0", optional = true }
 slog-async  = { version = "2.5.0", optional = true }
 slog-term   = { version = "2.6.0", optional = true }
-thiserror   = "1.0.20"
-tokio       = { version = "~0.2", optional = true, default-features = false }
+thiserror   = "1.0.23"
+tokio       = { version = "1.1.1", optional = true, default-features = false }
+tokio-stream = { version = "0.1", optional = true, default-features = false }
 
 [features]
 default = ["runtime-async-std", "incremental"]
@@ -52,13 +53,13 @@ runtime-tokio     = ["tokio/fs", "tokio/io-util"]
 watcher           = []
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
-async-std = { version = "1.8.0", features = ["attributes"] }
-serde     = { version = "1.0.115", features = ["derive"] }
+async-std = { version = "1.9.0", features = ["attributes"] }
+serde     = { version = "1.0.123", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-async-std = { version = "1.8.0", features = ["attributes"] }
-serde     = { version = "1.0.115", features = ["derive"] }
-tokio     = { version = "~0.2", features = ["full"] }
+async-std = { version = "1.9.0", features = ["attributes"] }
+serde     = { version = "1.0.123", features = ["derive"] }
+tokio     = { version = "1.1.1", features = ["full"] }
 
 [profile.release]
 codegen-units = 1

@@ -131,9 +131,7 @@ macro_rules! impl_args {
         {
             fn try_into_vec(self) -> Result<Vec<Dynamic>> {
                 let ($($p,)*) = self;
-
-                let mut _v = Vec::new();
-                $(_v.push(to_dynamic($p)?);)*
+                let _v = vec![$(to_dynamic($p)?,)*];
 
                 Ok(_v)
             }

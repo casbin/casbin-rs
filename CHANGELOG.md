@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
+
+[Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.5...HEAD)
+
+**Implemented enhancements:**
+
+- Support policy.csv comment or YAML file adapter [\#213](https://github.com/casbin/casbin-rs/issues/213)
+
 ## [v2.0.5](https://github.com/casbin/casbin-rs/tree/v2.0.5) (2020-12-24)
 
 [Full Changelog](https://github.com/casbin/casbin-rs/compare/v2.0.3...v2.0.5)
@@ -10,6 +18,7 @@
 
 **Fixed bugs:**
 
+- not currently running on the Tokio runtime on tonic [\#221](https://github.com/casbin/casbin-rs/issues/221)
 - CSV loader deletes double quotes [\#214](https://github.com/casbin/casbin-rs/issues/214)
 
 **Closed issues:**
@@ -156,6 +165,7 @@
 - remove explain relevant code when feature has been disabled [\#164](https://github.com/casbin/casbin-rs/pull/164) ([GopherJ](https://github.com/GopherJ))
 - Speed improvements [\#163](https://github.com/casbin/casbin-rs/pull/163) ([schungx](https://github.com/schungx))
 - Use eval\_expression to restrict to expressions only. [\#161](https://github.com/casbin/casbin-rs/pull/161) ([schungx](https://github.com/schungx))
+- add status log [\#152](https://github.com/casbin/casbin-rs/pull/152) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.9.2](https://github.com/casbin/casbin-rs/tree/v0.9.2) (2020-05-13)
 
@@ -190,7 +200,6 @@
 - fix: exec module not found [\#155](https://github.com/casbin/casbin-rs/pull/155) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic-release/exec-not-found [\#154](https://github.com/casbin/casbin-rs/pull/154) ([GopherJ](https://github.com/GopherJ))
 - fix: semantic release [\#153](https://github.com/casbin/casbin-rs/pull/153) ([GopherJ](https://github.com/GopherJ))
-- add status log [\#152](https://github.com/casbin/casbin-rs/pull/152) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.8.4](https://github.com/casbin/casbin-rs/tree/v0.8.4) (2020-05-12)
 
@@ -199,7 +208,6 @@
 **Merged pull requests:**
 
 - fix cached enforcer mgmt event log [\#151](https://github.com/casbin/casbin-rs/pull/151) ([GopherJ](https://github.com/GopherJ))
-- general improving [\#150](https://github.com/casbin/casbin-rs/pull/150) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.8.3](https://github.com/casbin/casbin-rs/tree/v0.8.3) (2020-05-12)
 
@@ -219,6 +227,7 @@
 
 **Merged pull requests:**
 
+- general improving [\#150](https://github.com/casbin/casbin-rs/pull/150) ([GopherJ](https://github.com/GopherJ))
 - Revert "Effector stream" [\#147](https://github.com/casbin/casbin-rs/pull/147) ([GopherJ](https://github.com/GopherJ))
 - Revert "Fix: CI" [\#146](https://github.com/casbin/casbin-rs/pull/146) ([GopherJ](https://github.com/GopherJ))
 - finish effector stream [\#145](https://github.com/casbin/casbin-rs/pull/145) ([GopherJ](https://github.com/GopherJ))
@@ -395,6 +404,7 @@
 - Improve/error handling [\#91](https://github.com/casbin/casbin-rs/pull/91) ([GopherJ](https://github.com/GopherJ))
 - upgrade rhai to 0.11.1 to make Error Send, Sync [\#89](https://github.com/casbin/casbin-rs/pull/89) ([GopherJ](https://github.com/GopherJ))
 - remove clones and string allocs, use macro for model retreval [\#87](https://github.com/casbin/casbin-rs/pull/87) ([DevinR528](https://github.com/DevinR528))
+- add critcmp & insert into adapter before model [\#77](https://github.com/casbin/casbin-rs/pull/77) ([GopherJ](https://github.com/GopherJ))
 
 ## [v0.4.2](https://github.com/casbin/casbin-rs/tree/v0.4.2) (2020-04-05)
 
@@ -443,7 +453,6 @@
 
 **Merged pull requests:**
 
-- add critcmp & insert into adapter before model [\#77](https://github.com/casbin/casbin-rs/pull/77) ([GopherJ](https://github.com/GopherJ))
 - add glob\_match, make enforce function take only reference [\#76](https://github.com/casbin/casbin-rs/pull/76) ([GopherJ](https://github.com/GopherJ))
 - Refactor: modify Vec\<&str\> to Vec\<String\> \(\#73\) [\#75](https://github.com/casbin/casbin-rs/pull/75) ([hackerchai](https://github.com/hackerchai))
 - Benchmark [\#68](https://github.com/casbin/casbin-rs/pull/68) ([DevinR528](https://github.com/DevinR528))

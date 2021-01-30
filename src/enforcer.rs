@@ -226,7 +226,7 @@ impl CoreApi for Enforcer {
 
         let mut engine = Engine::new_raw();
 
-        engine.load_package(CASBIN_PACKAGE.get());
+        engine.register_global_module(CASBIN_PACKAGE.as_shared_module());
 
         for (key, &func) in fm.get_functions() {
             engine.register_fn(key, func);
