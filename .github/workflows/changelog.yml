@@ -1,11 +1,8 @@
 name: Changelog Generator
 
 on:
-  push:
-    branches:
-      - master
-    tags:
-      - '*'
+  release:
+    types: [created, edited]
 
 jobs:
   generate_changelog_file:
