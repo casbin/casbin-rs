@@ -152,11 +152,9 @@ impl RoleManager for DefaultRoleManager {
         let role2 = self.create_role(name2, domain);
 
         if !role1.write().unwrap().add_role(role2) {
-            return;
+            #[cfg(feature = "cached")]
+            self.cache.clear();
         }
-
-        #[cfg(feature = "cached")]
-        self.cache.clear();
     }
 
     fn matching_fn(
