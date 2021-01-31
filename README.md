@@ -37,6 +37,8 @@ casbin = { version = "2.0.6", default-features = false, features = ["runtime-asy
 async-std = { version = "1.9", features = ["attributes"] }
 ```
 
+**Warning**: `tokio v1.0` or later is supported from `casbin v2.0.6`, we recommend that you upgrade the relevant components to ensure that they work properly. The last version that supports `tokio v0.2` is `casbin v2.0.5` , you can choose according to your needs.
+
 ## Get started
 
 1. New a Casbin enforcer with a model file and a policy file:
