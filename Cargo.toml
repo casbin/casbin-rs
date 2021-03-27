@@ -61,6 +61,7 @@ async-std = { version = "1.9.0", features = ["attributes"] }
 serde     = { version = "1.0.123", features = ["derive"] }
 tokio     = { version = "1.1.1", features = ["full"] }
 
+
 [profile.release]
 codegen-units = 1
 lto           = true
@@ -69,3 +70,10 @@ opt-level     = 3
 [profile.bench]
 lto       = true
 opt-level = 3
+
+[[bench]]
+name = "benchmark"
+harness = false
+
+[dev-dependencies]
+criterion = "0.3"
