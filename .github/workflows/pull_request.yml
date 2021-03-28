@@ -1,3 +1,4 @@
+name: Criterion
 on: [pull_request]
 name: benchmark pull requests
 jobs:
