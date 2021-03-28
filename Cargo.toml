@@ -76,4 +76,4 @@ name = "benchmark"
 harness = false
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { version = "0.3", features = ["html_reports"] }
