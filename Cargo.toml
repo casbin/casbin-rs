@@ -67,9 +67,7 @@ codegen-units = 1
 lto           = true
 opt-level     = 3
 
-[profile.bench]
-lto       = true
-opt-level = 3
+
 
 [[bench]]
 name = "benchmark"
