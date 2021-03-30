@@ -8,4 +8,5 @@ jobs:
       - uses: actions/checkout@master
       - uses: jasonwilliams/criterion-compare-action@move_to_actions
         with:
+          ref: master
           cwd: "benches/benchmark.rs"         
