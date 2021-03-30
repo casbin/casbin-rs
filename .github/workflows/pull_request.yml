@@ -11,4 +11,4 @@ jobs:
         with:
           cwd: "benches/benchmark.rs"
           benchName: "example-bench-target" # Optional. Compare only this benchmark target
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
