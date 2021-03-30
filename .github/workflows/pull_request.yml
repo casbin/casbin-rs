@@ -1,3 +1,4 @@
+name: Criterion
 on: [pull_request]
 name: benchmark pull requests
 jobs:
@@ -8,6 +9,6 @@ jobs:
       - uses: actions/checkout@master
       - uses: jasonwilliams/criterion-compare-action@move_to_actions
         with:
-          benchName: "bench" # Optional. Compare only this benchmark target
-          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
-
+          cwd: "benches/benchmark.rs"
+          benchName: "example-bench-target" # Optional. Compare only this benchmark target
+         
