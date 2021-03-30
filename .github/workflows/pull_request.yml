@@ -1,0 +1,11 @@
+name: Criterion
+on: [pull_request]
+jobs:
+  runBenchmark:
+    name: run benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: jasonwilliams/criterion-compare-action@move_to_actions
+        with:
+          cwd: "benches/benchmark.rs"         
