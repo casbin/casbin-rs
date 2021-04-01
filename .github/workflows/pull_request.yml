@@ -5,9 +5,22 @@ jobs:
     name: run benchmark
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
-      - uses: jasonwilliams/criterion-compare-action@move_to_actions
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
         with:
-          fetch-depth: 0
-          cwd: "benches/benchmark.rs"         
-
+          toolchain: stable
+          override: true
+          profile: minimal
+      - name: Cache cargo
+        uses: actions/cache@v2.1.4
+        with:
+          path: |
+            target
+            ~/.cargo/git
+            ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: run benchmark
+        uses: boa-dev/criterion-compare-action@master
+        with:
+          token: ${{ secrets.PERSONAL_GITHUB_TOKEN }}
+          cwd: benches   
