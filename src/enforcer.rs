@@ -31,7 +31,7 @@ use rhai::{
         ArithmeticPackage, BasicArrayPackage, BasicMapPackage, LogicPackage,
         Package,
     },
-    Dynamic, Engine, EvalAltResult, ImmutableString, RegisterFn, Scope,
+    Dynamic, Engine, EvalAltResult, ImmutableString, Scope,
 };
 
 def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
@@ -40,7 +40,7 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     BasicArrayPackage::init(lib);
     BasicMapPackage::init(lib);
 
-    lib.set_fn_1("escape_assertion", |s: ImmutableString| {
+    lib.set_native_fn("escape_assertion", |s: ImmutableString| {
         Ok(escape_assertion(&s))
     });
 });

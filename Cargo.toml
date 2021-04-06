@@ -21,7 +21,7 @@ ip_network  = { version = "0.3.4", optional = true }
 lazy_static = "1.4.0"
 lru         = { version = "0.6.3", optional = true }
 regex       = "1.4.3"
-rhai        = { version = "0.19.10", features = [
+rhai        = { version = "0.19.15", features = [
     "sync",
     "only_i32",
     "no_function",
