@@ -47,7 +47,7 @@ tokio = { version = "1.4.0", features = ["fs", "io-util"] }
 
 use casbin::prelude::*;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<()> {
     let mut e = Enforcer::new("examples/rbac_with_domains_model.conf", "examples/rbac_with_domains_policy.csv").await?;
     e.enable_log(true);
