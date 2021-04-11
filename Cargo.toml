@@ -65,3 +65,17 @@ tokio     = { version = "1.4.0", features = ["full"] }
 codegen-units = 1
 lto           = true
 opt-level     = 3
+
+[profile.bench]
+lto       = true
+opt-level = 3
+
+[[bench]]
+name = "benchmark"
+harness = false
+
+[dev-dependencies]
+criterion = { version = "0.3", features = ["html_reports"] }
+
+[lib]
+bench = false
