@@ -65,7 +65,3 @@ tokio     = { version = "1.4.0", features = ["full"] }
 codegen-units = 1
 lto           = true
 opt-level     = 3
-
-[profile.bench]
-lto       = true
-opt-level = 3
