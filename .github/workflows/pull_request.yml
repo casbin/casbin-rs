@@ -22,3 +22,4 @@ jobs:
       - uses: boa-dev/criterion-compare-action@move_to_actions
         with:
           cwd: benches
+          token: ${{ secrets.BENCH_GITHUB_TOKEN }}
