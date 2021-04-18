@@ -19,9 +19,9 @@ globset     = { version = "0.4.6", optional = true }
 indexmap    = "1.6.2"
 ip_network  = { version = "0.3.4", optional = true }
 lazy_static = "1.4.0"
-lru         = { version = "0.6.3", optional = true }
+lru         = { version = "0.6.5", optional = true }
 regex       = "1.4.5"
-rhai        = { version = "0.19.15", features = [
+rhai        = { version = "0.20.0", features = [
     "sync",
     "only_i32",
     "no_function",
@@ -65,6 +65,9 @@ tokio     = { version = "1.4.0", features = ["full"] }
 codegen-units = 1
 lto           = true
 opt-level     = 3
+
+[profile.dev]
+split-debuginfo = "unpacked"
 
 [profile.bench]
 lto       = true
