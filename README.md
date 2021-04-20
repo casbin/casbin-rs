@@ -33,8 +33,8 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = { version = "2.0.7", default-features = false, features = ["runtime-async-std", "logging", "incremental"] }
-tokio = { version = "1.4.0", features = ["fs", "io-util"] }
+casbin = { version = "2.0.8", default-features = false, features = ["runtime-async-std", "logging", "incremental"] }
+tokio = { version = "1.5.0", features = ["fs", "io-util"] }
 ```
 
 **Warning**: `tokio v1.0` or later is supported from `casbin v2.0.6`, we recommend that you upgrade the relevant components to ensure that they work properly. The last version that supports `tokio v0.2` is `casbin v2.0.5` , you can choose according to your needs.
