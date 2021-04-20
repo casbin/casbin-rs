@@ -19,7 +19,8 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: boa-dev/criterion-compare-action@move_to_actions
+      - uses: smrpn/criterion-compare-action@move_to_actions 
         with:
           cwd: benches
-          token: ${{ secrets.BENCH_GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
