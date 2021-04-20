@@ -22,5 +22,5 @@ jobs:
       - uses: smrpn/criterion-compare-action@move_to_actions 
         with:
           cwd: benches
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.BENCH_GITHUB_TOKEN }}
 
