@@ -25,12 +25,10 @@ use crate::logger::Logger;
 use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
+use parking_lot::RwLock;
 use rhai::{Dynamic, ImmutableString};
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 
 type EventCallback = fn(&mut CachedEnforcer, EventData);
 

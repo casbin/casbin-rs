@@ -219,7 +219,7 @@ where
         let mut roles = vec![];
         if let Some(t1) = self.get_mut_model().get_mut_model().get_mut("g") {
             if let Some(t2) = t1.get_mut("g") {
-                roles = t2.rm.write().unwrap().get_roles(name, domain);
+                roles = t2.rm.write().get_roles(name, domain);
             }
         }
 
@@ -233,7 +233,7 @@ where
     ) -> Vec<String> {
         if let Some(t1) = self.get_model().get_model().get("g") {
             if let Some(t2) = t1.get("g") {
-                return t2.rm.read().unwrap().get_users(name, domain);
+                return t2.rm.read().get_users(name, domain);
             }
         }
         return vec![];
@@ -317,11 +317,8 @@ where
         let mut q: Vec<String> = vec![name.to_owned()];
         while !q.is_empty() {
             let name = q.swap_remove(0);
-            let roles = self
-                .get_role_manager()
-                .write()
-                .unwrap()
-                .get_roles(&name, domain);
+            let roles =
+                self.get_role_manager().write().get_roles(&name, domain);
             for r in roles.into_iter() {
                 if res.insert(r.to_owned()) {
                     q.push(r);
@@ -359,10 +356,7 @@ where
             roles
                 .iter()
                 .map(|role| {
-                    self.get_role_manager()
-                        .read()
-                        .unwrap()
-                        .get_users(role, None)
+                    self.get_role_manager().read().get_users(role, None)
                 })
                 .flatten(),
         );
@@ -521,7 +515,9 @@ mod tests {
         tokio::test
     )]
     async fn test_role_api_threads() {
-        use std::sync::{Arc, RwLock};
+        use parking_lot::RwLock;
+
+        use std::sync::Arc;
         use std::thread;
 
         #[cfg(feature = "runtime-async-std")]
@@ -537,32 +533,28 @@ mod tests {
 
         assert_eq!(
             vec!["data2_admin"],
-            e.write().unwrap().get_roles_for_user("alice", None)
+            e.write().get_roles_for_user("alice", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
+            e.write().get_roles_for_user("bob", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
+            e.write().get_roles_for_user("data2_admin", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("non_exists", None)
+            e.write().get_roles_for_user("non_exists", None)
         );
 
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .has_role_for_user("alice", "data1_admin", None)
+            e.write().has_role_for_user("alice", "data1_admin", None)
         );
         assert_eq!(
             true,
-            e.write()
-                .unwrap()
-                .has_role_for_user("alice", "data2_admin", None)
+            e.write().has_role_for_user("alice", "data2_admin", None)
         );
 
         thread::spawn(move || {
@@ -570,7 +562,6 @@ mod tests {
             {
                 task::block_on(async move {
                     ee.write()
-                        .unwrap()
                         .add_role_for_user("alice", "data1_admin", None)
                         .await
                         .unwrap();
@@ -578,24 +569,19 @@ mod tests {
                     assert_eq!(
                         vec!["data1_admin", "data2_admin"],
                         sort_unstable(
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("alice", None)
+                            ee.write().get_roles_for_user("alice", None)
                         )
                     );
                     assert_eq!(
                         vec![String::new(); 0],
-                        ee.write().unwrap().get_roles_for_user("bob", None)
+                        ee.write().get_roles_for_user("bob", None)
                     );
                     assert_eq!(
                         vec![String::new(); 0],
-                        ee.write()
-                            .unwrap()
-                            .get_roles_for_user("data2_admin", None)
+                        ee.write().get_roles_for_user("data2_admin", None)
                     );
 
                     ee.write()
-                        .unwrap()
                         .add_roles_for_user(
                             "bob",
                             vec!["data2_admin"]
@@ -610,20 +596,16 @@ mod tests {
                     assert_eq!(
                         vec!["data1_admin", "data2_admin"],
                         sort_unstable(
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("alice", None)
+                            ee.write().get_roles_for_user("alice", None)
                         )
                     );
                     assert_eq!(
                         vec!["data2_admin"],
-                        ee.write().unwrap().get_roles_for_user("bob", None)
+                        ee.write().get_roles_for_user("bob", None)
                     );
                     assert_eq!(
                         vec![String::new(); 0],
-                        ee.write()
-                            .unwrap()
-                            .get_roles_for_user("data2_admin", None)
+                        ee.write().get_roles_for_user("data2_admin", None)
                     );
                 });
             }
@@ -636,30 +618,24 @@ mod tests {
                     .unwrap()
                     .block_on(async move {
                         ee.write()
-                            .unwrap()
                             .add_role_for_user("alice", "data1_admin", None)
                             .await
                             .unwrap();
 
                         assert_eq!(
                             vec!["data2_admin", "data1_admin"],
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("alice", None)
+                            ee.write().get_roles_for_user("alice", None)
                         );
                         assert_eq!(
                             vec![String::new(); 0],
-                            ee.write().unwrap().get_roles_for_user("bob", None)
+                            ee.write().get_roles_for_user("bob", None)
                         );
                         assert_eq!(
                             vec![String::new(); 0],
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("data2_admin", None)
+                            ee.write().get_roles_for_user("data2_admin", None)
                         );
 
                         ee.write()
-                            .unwrap()
                             .add_roles_for_user(
                                 "bob",
                                 vec!["data2_admin".to_owned()],
@@ -670,19 +646,15 @@ mod tests {
 
                         assert_eq!(
                             vec!["data2_admin", "data1_admin"],
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("alice", None)
+                            ee.write().get_roles_for_user("alice", None)
                         );
                         assert_eq!(
                             vec!["data2_admin"],
-                            ee.write().unwrap().get_roles_for_user("bob", None)
+                            ee.write().get_roles_for_user("bob", None)
                         );
                         assert_eq!(
                             vec![String::new(); 0],
-                            ee.write()
-                                .unwrap()
-                                .get_roles_for_user("data2_admin", None)
+                            ee.write().get_roles_for_user("data2_admin", None)
                         );
                     });
             }
@@ -691,184 +663,110 @@ mod tests {
         .unwrap();
 
         e.write()
-            .unwrap()
             .delete_role_for_user("alice", "data1_admin", None)
             .await
             .unwrap();
-        e.write()
-            .unwrap()
-            .delete_roles_for_user("bob", None)
-            .await
-            .unwrap();
+        e.write().delete_roles_for_user("bob", None).await.unwrap();
         assert_eq!(
             vec!["data2_admin"],
-            e.write().unwrap().get_roles_for_user("alice", None)
+            e.write().get_roles_for_user("alice", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
+            e.write().get_roles_for_user("bob", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
+            e.write().get_roles_for_user("data2_admin", None)
         );
 
         e.write()
-            .unwrap()
             .delete_roles_for_user("alice", None)
             .await
             .unwrap();
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("alice", None)
+            e.write().get_roles_for_user("alice", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
+            e.write().get_roles_for_user("bob", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
+            e.write().get_roles_for_user("data2_admin", None)
         );
 
         e.write()
-            .unwrap()
             .add_role_for_user("alice", "data1_admin", None)
             .await
             .unwrap();
-        e.write().unwrap().delete_user("alice").await.unwrap();
+        e.write().delete_user("alice").await.unwrap();
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("alice", None)
+            e.write().get_roles_for_user("alice", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("bob", None)
+            e.write().get_roles_for_user("bob", None)
         );
         assert_eq!(
             vec![String::new(); 0],
-            e.write().unwrap().get_roles_for_user("data2_admin", None)
+            e.write().get_roles_for_user("data2_admin", None)
         );
 
         e.write()
-            .unwrap()
             .add_role_for_user("alice", "data2_admin", None)
             .await
             .unwrap();
         assert_eq!(
             true,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data1", "read"))
-                .unwrap()
+            e.write().enforce(("alice", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data1", "write"))
-                .unwrap()
+            e.write().enforce(("alice", "data1", "write")).unwrap()
         );
         assert_eq!(
             true,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data2", "read"))
-                .unwrap()
+            e.write().enforce(("alice", "data2", "read")).unwrap()
         );
         assert_eq!(
             true,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data2", "write"))
-                .unwrap()
+            e.write().enforce(("alice", "data2", "write")).unwrap()
         );
+        assert_eq!(false, e.write().enforce(("bob", "data1", "read")).unwrap());
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data1", "read"))
-                .unwrap()
+            e.write().enforce(("bob", "data1", "write")).unwrap()
         );
-        assert_eq!(
-            false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data1", "write"))
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data2", "read"))
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data2", "write"))
-                .unwrap()
-        );
+        assert_eq!(false, e.write().enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.write().enforce(("bob", "data2", "write")).unwrap());
 
-        e.write().unwrap().delete_role("data2_admin").await.unwrap();
+        e.write().delete_role("data2_admin").await.unwrap();
         assert_eq!(
             true,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data1", "read"))
-                .unwrap()
+            e.write().enforce(("alice", "data1", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data1", "write"))
-                .unwrap()
+            e.write().enforce(("alice", "data1", "write")).unwrap()
         );
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data2", "read"))
-                .unwrap()
+            e.write().enforce(("alice", "data2", "read")).unwrap()
         );
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("alice", "data2", "write"))
-                .unwrap()
+            e.write().enforce(("alice", "data2", "write")).unwrap()
         );
+        assert_eq!(false, e.write().enforce(("bob", "data1", "read")).unwrap());
         assert_eq!(
             false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data1", "read"))
-                .unwrap()
+            e.write().enforce(("bob", "data1", "write")).unwrap()
         );
-        assert_eq!(
-            false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data1", "write"))
-                .unwrap()
-        );
-        assert_eq!(
-            false,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data2", "read"))
-                .unwrap()
-        );
-        assert_eq!(
-            true,
-            e.write()
-                .unwrap()
-                .enforce(("bob", "data2", "write"))
-                .unwrap()
-        );
+        assert_eq!(false, e.write().enforce(("bob", "data2", "read")).unwrap());
+        assert_eq!(true, e.write().enforce(("bob", "data2", "write")).unwrap());
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -1188,7 +1086,6 @@ mod tests {
 
         e.get_role_manager()
             .write()
-            .unwrap()
             .matching_fn(Some(key_match2), None);
 
         assert!(e.enforce(("alice", "/pen/1", "GET")).unwrap());
@@ -1234,7 +1131,6 @@ mod tests {
 
         e.get_role_manager()
             .write()
-            .unwrap()
             .matching_fn(None, Some(key_match));
 
         assert!(e.enforce(("alice", "domain1", "data1", "read")).unwrap());
@@ -1279,7 +1175,6 @@ mod tests {
 
         e.get_role_manager()
             .write()
-            .unwrap()
             .matching_fn(Some(key_match), None);
 
         assert!(e.enforce(("alice", "/pen/1", "GET")).unwrap());

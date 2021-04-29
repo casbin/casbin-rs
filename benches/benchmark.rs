@@ -142,11 +142,7 @@ fn b_benchmark_role_manager_small(c: &mut Criterion) {
     c.bench_function("benchmark_role_manager_small", |b| {
         b.iter(|| {
             (0..100_u64).for_each(|i| {
-                rm.write().unwrap().has_link(
-                    "user501",
-                    &format!("group{}", i),
-                    None,
-                );
+                rm.write().has_link("user501", &format!("group{}", i), None);
             })
         })
     });
@@ -268,11 +264,8 @@ fn b_benchmark_role_manager_medium(c: &mut Criterion) {
     c.bench_function("benchmark_role_manager_medium", |b| {
         b.iter(|| {
             (0..1000_u64).for_each(|i| {
-                rm.write().unwrap().has_link(
-                    "user5001",
-                    &format!("group{}", i),
-                    None,
-                );
+                rm.write()
+                    .has_link("user5001", &format!("group{}", i), None);
             })
         })
     });
@@ -394,11 +387,8 @@ fn b_benchmark_role_manager_large(c: &mut Criterion) {
     c.bench_function("benchmark_role_manager_large", |b| {
         b.iter(|| {
             (0..10000_u64).for_each(|i| {
-                rm.write().unwrap().has_link(
-                    "user50001",
-                    &format!("group{}", i),
-                    None,
-                );
+                rm.write()
+                    .has_link("user50001", &format!("group{}", i), None);
             })
         })
     });
