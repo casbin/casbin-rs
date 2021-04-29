@@ -3,10 +3,9 @@ use crate::{rbac::RoleManager, Result};
 #[cfg(feature = "incremental")]
 use crate::emitter::EventData;
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use parking_lot::RwLock;
+
+use std::{collections::HashMap, sync::Arc};
 
 mod assertion;
 mod default_model;

@@ -13,9 +13,10 @@ use crate::Logger;
 use crate::emitter::EventData;
 
 use async_trait::async_trait;
+use parking_lot::RwLock;
 use rhai::ImmutableString;
 
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[async_trait]
 pub trait CoreApi: Send + Sync {

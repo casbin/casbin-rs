@@ -25,6 +25,7 @@ use crate::{DefaultLogger, Logger};
 
 use async_trait::async_trait;
 use lazy_static::lazy_static;
+use parking_lot::RwLock;
 use rhai::{
     def_package,
     packages::{
@@ -49,11 +50,7 @@ lazy_static! {
     static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
 }
 
-use std::{
-    cmp::max,
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{cmp::max, collections::HashMap, sync::Arc};
 
 type EventCallback = fn(&mut Enforcer, EventData);
 
@@ -434,7 +431,7 @@ impl CoreApi for Enforcer {
     }
 
     fn build_role_links(&mut self) -> Result<()> {
-        self.rm.write().unwrap().clear();
+        self.rm.write().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
 
         Ok(())

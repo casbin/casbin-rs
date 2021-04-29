@@ -11,6 +11,7 @@ use crate::{
 use crate::emitter::EventData;
 
 use indexmap::{IndexMap, IndexSet};
+use parking_lot::RwLock;
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::path::Path;
@@ -18,10 +19,7 @@ use async_std::path::Path;
 #[cfg(feature = "runtime-tokio")]
 use std::path::Path;
 
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Default)]
 pub struct DefaultModel {

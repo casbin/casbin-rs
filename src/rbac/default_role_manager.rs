@@ -7,9 +7,11 @@ use crate::{
 #[cfg(feature = "cached")]
 use crate::cache::{Cache, DefaultCache};
 
+use parking_lot::RwLock;
+
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 #[cfg(feature = "cached")]
@@ -68,7 +70,7 @@ impl DefaultRoleManager {
             for (key, value) in roles {
                 if key != name
                     && role_matching_fn(name, key)
-                    && role.write().unwrap().add_role(Arc::clone(value))
+                    && role.write().add_role(Arc::clone(value))
                 {
                     added = true;
                 }
@@ -103,8 +105,7 @@ impl DefaultRoleManager {
     }
 
     fn create_temp_role(&mut self, name: &str, domain: Option<&str>) -> Role {
-        let mut cloned_role =
-            self.create_role(name, domain).read().unwrap().clone();
+        let mut cloned_role = self.create_role(name, domain).read().clone();
 
         let matched_domains = self.matched_domains(domain);
         for domain in matched_domains
@@ -112,7 +113,7 @@ impl DefaultRoleManager {
             .filter(|x| Some(x.as_str()) != domain)
         {
             for direct_role in
-                &self.create_role(name, Some(&domain)).read().unwrap().roles
+                &self.create_role(name, Some(&domain)).read().roles
             {
                 cloned_role.add_role(Arc::clone(direct_role));
             }
@@ -151,7 +152,7 @@ impl RoleManager for DefaultRoleManager {
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
-        if !role1.write().unwrap().add_role(role2) {
+        if !role1.write().add_role(role2) {
             #[cfg(feature = "cached")]
             self.cache.clear();
         }
@@ -181,7 +182,7 @@ impl RoleManager for DefaultRoleManager {
         let role1 = self.create_role(name1, domain);
         let role2 = self.create_role(name2, domain);
 
-        role1.write().unwrap().delete_role(role2);
+        role1.write().delete_role(role2);
 
         #[cfg(feature = "cached")]
         self.cache.clear();
@@ -223,7 +224,6 @@ impl RoleManager for DefaultRoleManager {
             } else {
                 self.create_role(name1, domain)
                     .read()
-                    .unwrap()
                     .has_role(name2, self.max_hierarchy_level)
             };
 
@@ -249,7 +249,7 @@ impl RoleManager for DefaultRoleManager {
                 roles
                     .values()
                     .filter_map(|role| {
-                        let role = role.read().unwrap();
+                        let role = role.read();
                         if role.has_direct_role(name) {
                             Some(role.name.to_owned())
                         } else {
@@ -300,10 +300,10 @@ impl Role {
     }
 
     fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
-        let other_role_locked = other_role.read().unwrap();
+        let other_role_locked = other_role.read();
 
         self.roles
-            .retain(|x| x.read().unwrap().name != other_role_locked.name)
+            .retain(|x| x.read().name != other_role_locked.name)
     }
 
     fn has_role(&self, name: &str, hierarchy_level: usize) -> bool {
@@ -316,7 +316,7 @@ impl Role {
         }
 
         for role in self.roles.iter() {
-            if role.read().unwrap().has_role(name, hierarchy_level - 1) {
+            if role.read().has_role(name, hierarchy_level - 1) {
                 return true;
             }
         }
@@ -327,14 +327,12 @@ impl Role {
     fn get_roles(&self) -> Vec<String> {
         self.roles
             .iter()
-            .map(|role| role.read().unwrap().name.to_owned())
+            .map(|role| role.read().name.to_owned())
             .collect()
     }
 
     fn has_direct_role(&self, name: &str) -> bool {
-        self.roles
-            .iter()
-            .any(|role| role.read().unwrap().name == name)
+        self.roles.iter().any(|role| role.read().name == name)
     }
 }
 

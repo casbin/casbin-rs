@@ -8,8 +8,9 @@ use crate::{
 use crate::emitter::EventData;
 
 use indexmap::{IndexMap, IndexSet};
+use parking_lot::RwLock;
 
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub type AssertionMap = IndexMap<String, Assertion>;
 
@@ -66,13 +67,9 @@ impl Assertion {
                 .into());
             }
             if count == 2 {
-                rm.write().unwrap().add_link(&rule[0], &rule[1], None);
+                rm.write().add_link(&rule[0], &rule[1], None);
             } else if count == 3 {
-                rm.write().unwrap().add_link(
-                    &rule[0],
-                    &rule[1],
-                    Some(&rule[2]),
-                );
+                rm.write().add_link(&rule[0], &rule[1], Some(&rule[2]));
             } else if count >= 4 {
                 return Err(ModelError::P(
                     "Multiple domains are not supported".to_owned(),
@@ -119,21 +116,15 @@ impl Assertion {
                 }
                 if count == 2 {
                     if insert {
-                        rm.write().unwrap().add_link(&rule[0], &rule[1], None);
+                        rm.write().add_link(&rule[0], &rule[1], None);
                     } else {
-                        rm.write()
-                            .unwrap()
-                            .delete_link(&rule[0], &rule[1], None)?;
+                        rm.write().delete_link(&rule[0], &rule[1], None)?;
                     }
                 } else if count == 3 {
                     if insert {
-                        rm.write().unwrap().add_link(
-                            &rule[0],
-                            &rule[1],
-                            Some(&rule[2]),
-                        );
+                        rm.write().add_link(&rule[0], &rule[1], Some(&rule[2]));
                     } else {
-                        rm.write().unwrap().delete_link(
+                        rm.write().delete_link(
                             &rule[0],
                             &rule[1],
                             Some(&rule[2]),

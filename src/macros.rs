@@ -31,7 +31,7 @@ macro_rules! register_g_function {
             $enforcer.engine.register_fn(
                 $fname,
                 move |arg1: ImmutableString, arg2: ImmutableString| {
-                    rm.write().unwrap().has_link(&arg1, &arg2, None)
+                    rm.write().has_link(&arg1, &arg2, None)
                 },
             );
         } else if count == 3 {
@@ -40,7 +40,7 @@ macro_rules! register_g_function {
                 move |arg1: ImmutableString,
                       arg2: ImmutableString,
                       arg3: ImmutableString| {
-                    rm.write().unwrap().has_link(&arg1, &arg2, Some(&arg3))
+                    rm.write().has_link(&arg1, &arg2, Some(&arg3))
                 },
             );
         } else {

@@ -219,7 +219,7 @@ where
         let mut roles = vec![];
         if let Some(t1) = self.get_mut_model().get_mut_model().get_mut("g") {
             if let Some(t2) = t1.get_mut("g") {
-                roles = t2.rm.write().unwrap().get_roles(name, domain);
+                roles = t2.rm.write().get_roles(name, domain);
             }
         }
 
@@ -233,7 +233,7 @@ where
     ) -> Vec<String> {
         if let Some(t1) = self.get_model().get_model().get("g") {
             if let Some(t2) = t1.get("g") {
-                return t2.rm.read().unwrap().get_users(name, domain);
+                return t2.rm.read().get_users(name, domain);
             }
         }
         return vec![];
@@ -317,11 +317,8 @@ where
         let mut q: Vec<String> = vec![name.to_owned()];
         while !q.is_empty() {
             let name = q.swap_remove(0);
-            let roles = self
-                .get_role_manager()
-                .write()
-                .unwrap()
-                .get_roles(&name, domain);
+            let roles =
+                self.get_role_manager().write().get_roles(&name, domain);
             for r in roles.into_iter() {
                 if res.insert(r.to_owned()) {
                     q.push(r);
@@ -359,10 +356,7 @@ where
             roles
                 .iter()
                 .map(|role| {
-                    self.get_role_manager()
-                        .read()
-                        .unwrap()
-                        .get_users(role, None)
+                    self.get_role_manager().read().get_users(role, None)
                 })
                 .flatten(),
         );
@@ -521,7 +515,9 @@ mod tests {
         tokio::test
     )]
     async fn test_role_api_threads() {
-        use std::sync::{Arc, RwLock};
+        use parking_lot::RwLock;
+
+        use std::sync::Arc;
         use std::thread;
 
         #[cfg(feature = "runtime-async-std")]
