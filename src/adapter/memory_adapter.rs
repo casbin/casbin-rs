@@ -5,11 +5,11 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use indexmap::IndexSet;
+use ritelinked::LinkedHashSet;
 
 #[derive(Default)]
 pub struct MemoryAdapter {
-    policy: IndexSet<Vec<String>>,
+    policy: LinkedHashSet<Vec<String>>,
     is_filtered: bool,
 }
 
@@ -199,7 +199,7 @@ impl Adapter for MemoryAdapter {
             return Ok(false);
         }
 
-        let mut tmp = IndexSet::new();
+        let mut tmp = LinkedHashSet::new();
         let mut res = false;
         for rule in &self.policy {
             if sec == rule[0] && ptype == rule[1] {

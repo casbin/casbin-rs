@@ -7,19 +7,19 @@ use crate::{
 #[cfg(feature = "incremental")]
 use crate::emitter::EventData;
 
-use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
+use ritelinked::{LinkedHashMap, LinkedHashSet};
 
 use std::sync::Arc;
 
-pub type AssertionMap = IndexMap<String, Assertion>;
+pub type AssertionMap = LinkedHashMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {
     pub(crate) key: String,
     pub(crate) value: String,
     pub(crate) tokens: Vec<String>,
-    pub(crate) policy: IndexSet<Vec<String>>,
+    pub(crate) policy: LinkedHashSet<Vec<String>>,
     pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
 }
 
@@ -29,7 +29,7 @@ impl Default for Assertion {
             key: String::new(),
             value: String::new(),
             tokens: vec![],
-            policy: IndexSet::new(),
+            policy: LinkedHashSet::new(),
             rm: Arc::new(RwLock::new(DefaultRoleManager::new(0))),
         }
     }
@@ -37,12 +37,12 @@ impl Default for Assertion {
 
 impl Assertion {
     #[inline]
-    pub fn get_policy(&self) -> &IndexSet<Vec<String>> {
+    pub fn get_policy(&self) -> &LinkedHashSet<Vec<String>> {
         &self.policy
     }
 
     #[inline]
-    pub fn get_mut_policy(&mut self) -> &mut IndexSet<Vec<String>> {
+    pub fn get_mut_policy(&mut self) -> &mut LinkedHashSet<Vec<String>> {
         &mut self.policy
     }
 
