@@ -10,8 +10,8 @@ use crate::{
 #[cfg(feature = "incremental")]
 use crate::emitter::EventData;
 
-use indexmap::{IndexMap, IndexSet};
 use parking_lot::RwLock;
+use ritelinked::{LinkedHashMap, LinkedHashSet};
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::path::Path;
@@ -137,7 +137,7 @@ impl Model for DefaultModel {
         if let Some(new_model) = self.model.get_mut(sec) {
             new_model.insert(key.to_owned(), ast);
         } else {
-            let mut new_ast_map = IndexMap::new();
+            let mut new_ast_map = LinkedHashMap::new();
             new_ast_map.insert(key.to_owned(), ast);
             self.model.insert(sec.to_owned(), new_ast_map);
         }
@@ -286,7 +286,7 @@ impl Model for DefaultModel {
     ) -> Vec<String> {
         self.get_policy(sec, ptype)
             .into_iter()
-            .fold(IndexSet::new(), |mut acc, x| {
+            .fold(LinkedHashSet::new(), |mut acc, x| {
                 acc.insert(x[field_index].clone());
                 acc
             })

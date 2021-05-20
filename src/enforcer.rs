@@ -415,7 +415,7 @@ impl CoreApi for Enforcer {
                 let rules: Vec<String> = indices
                     .into_iter()
                     .filter_map(|y| {
-                        all_rules.get_index(y).map(|x| x.join(", "))
+                        all_rules.iter().nth(y).map(|x| x.join(", "))
                     })
                     .collect();
 
