@@ -1,4 +1,6 @@
-on: [pull_request, push]
+on: 
+    pull_request_target:
+        types: [assigned, opened, synchronize, reopened]
 name: Benchmarks
 jobs:
   runBenchmark:
