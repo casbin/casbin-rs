@@ -1,6 +1,5 @@
 on: 
-    pull_request_target:
-        types: [assigned, opened, synchronize, reopened]
+    pull_request, push
 name: Benchmarks
 jobs:
   runBenchmark:
@@ -21,7 +20,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: smrpn/criterion-compare-action@move_to_actions 
+      - uses: smrpn/criterion-compare-action@master
         with:
           cwd: benches
           token: ${{ secrets.BENCHMARK_TOKEN }}
