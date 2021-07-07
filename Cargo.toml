@@ -22,7 +22,7 @@ lazy_static = "1.4.0"
 lru         = { version = "0.6.5", optional = true }
 parking_lot = "0.11"
 regex       = "1.4.5"
-rhai        = { version = "0.20.0", features = [
+rhai        = { version = "1.0.0", features = [
     "sync",
     "only_i32",
     "no_function",
