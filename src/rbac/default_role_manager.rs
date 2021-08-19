@@ -113,7 +113,7 @@ impl DefaultRoleManager {
             .filter(|x| Some(x.as_str()) != domain)
         {
             for direct_role in
-                &self.create_role(name, Some(&domain)).read().roles
+                &self.create_role(name, Some(domain)).read().roles
             {
                 cloned_role.add_role(Arc::clone(direct_role));
             }
@@ -290,7 +290,7 @@ impl Role {
         let not_exists = !self
             .roles
             .iter()
-            .any(|role| Arc::ptr_eq(&role, &other_role));
+            .any(|role| Arc::ptr_eq(role, &other_role));
 
         if not_exists {
             self.roles.push(other_role);
