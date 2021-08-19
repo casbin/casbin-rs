@@ -287,10 +287,8 @@ impl Role {
     }
 
     fn add_role(&mut self, other_role: Arc<RwLock<Role>>) -> bool {
-        let not_exists = !self
-            .roles
-            .iter()
-            .any(|role| Arc::ptr_eq(role, &other_role));
+        let not_exists =
+            !self.roles.iter().any(|role| Arc::ptr_eq(role, &other_role));
 
         if not_exists {
             self.roles.push(other_role);
