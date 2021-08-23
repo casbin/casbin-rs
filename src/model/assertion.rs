@@ -16,11 +16,11 @@ pub type AssertionMap = LinkedHashMap<String, Assertion>;
 
 #[derive(Clone)]
 pub struct Assertion {
-    pub(crate) key: String,
-    pub(crate) value: String,
-    pub(crate) tokens: Vec<String>,
-    pub(crate) policy: LinkedHashSet<Vec<String>>,
-    pub(crate) rm: Arc<RwLock<dyn RoleManager>>,
+    pub key: String,
+    pub value: String,
+    pub tokens: Vec<String>,
+    pub policy: LinkedHashSet<Vec<String>>,
+    pub rm: Arc<RwLock<dyn RoleManager>>,
 }
 
 impl Default for Assertion {

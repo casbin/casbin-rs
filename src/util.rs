@@ -19,7 +19,7 @@ lazy_static! {
 }
 
 pub fn escape_assertion(s: &str) -> String {
-    ESC_A.replace_all(&s, "${1}_").to_string()
+    ESC_A.replace_all(s, "${1}_").to_string()
 }
 
 pub fn remove_comment(s: &str) -> String {
