@@ -186,9 +186,7 @@ impl Config {
 
     #[allow(dead_code)]
     pub(crate) fn set(&mut self, key: &str, value: &str) {
-        if key.is_empty() {
-            panic!("key can't be empty");
-        }
+        assert!(!key.is_empty(), "key can't be empty");
         let keys: Vec<String> =
             key.to_lowercase().split("::").map(String::from).collect();
         if keys.len() >= 2 {

@@ -480,9 +480,7 @@ impl CoreApi for Enforcer {
     }
 
     async fn save_policy(&mut self) -> Result<()> {
-        if self.is_filtered() {
-            panic!("cannot save filtered policy");
-        }
+        assert!(!self.is_filtered(), "cannot save filtered policy");
 
         self.adapter.save_policy(&mut *self.model).await?;
 
