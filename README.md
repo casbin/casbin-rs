@@ -74,6 +74,9 @@ async fn main() -> Result<()> {
         // error occurs
     }
     ```
+💡 Please note that the Enforcer instance is not thread-safe, so in order to use it
+in a environment where multiple threads might access it, you have to protect it
+using an RwLock like so: `let e = Arc::new(RwLock::new(e));`.
 
 ## Table of contents
 
