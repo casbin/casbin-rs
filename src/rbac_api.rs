@@ -352,14 +352,9 @@ where
         let mut subjects = self.get_all_subjects();
         let roles = self.get_all_roles();
 
-        subjects.extend(
-            roles
-                .iter()
-                .map(|role| {
-                    self.get_role_manager().read().get_users(role, None)
-                })
-                .flatten(),
-        );
+        subjects.extend(roles.iter().flat_map(|role| {
+            self.get_role_manager().read().get_users(role, None)
+        }));
 
         let users: Vec<String> = subjects
             .into_iter()
