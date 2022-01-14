@@ -35,7 +35,8 @@ use rhai::{
     Dynamic, Engine, EvalAltResult, ImmutableString, Scope,
 };
 
-def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
+def_package! {
+    rhai::CasbinPackage => |lib| {
     ArithmeticPackage::init(lib);
     LogicPackage::init(lib);
     BasicArrayPackage::init(lib);
@@ -44,7 +45,8 @@ def_package!(rhai:CasbinPackage:"Package for Casbin", lib, {
     lib.set_native_fn("escape_assertion", |s: ImmutableString| {
         Ok(escape_assertion(&s))
     });
-});
+  }
+}
 
 lazy_static! {
     static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
