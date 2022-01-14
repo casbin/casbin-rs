@@ -189,7 +189,8 @@ We also provide a web-based UI for model management and policy management:
 
 ## Policy persistence
 
-https://casbin.org/docs/en/adapters
+* https://casbin.org/docs/en/adapters
+* There also is [example code on how to preload an existing policy into an adapter](https://github.com/casbin-rs/examples/blob/master/actix-middleware-example/src/main.rs#L73). 
 
 ## Role manager
 
