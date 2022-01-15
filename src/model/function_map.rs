@@ -13,8 +13,8 @@ use regex::Regex;
 use rhai::ImmutableString;
 
 lazy_static! {
-    static ref MAT_B: Regex = Regex::new(r":[^/]+").unwrap();
-    static ref MAT_P: Regex = Regex::new(r"\{[^/]+\}").unwrap();
+    static ref MAT_B: Regex = Regex::new(r":[^/]*").unwrap();
+    static ref MAT_P: Regex = Regex::new(r"\{[^/]*\}").unwrap();
 }
 
 use std::{borrow::Cow, collections::HashMap};
@@ -104,12 +104,8 @@ pub fn key_match2(key1: &str, key2: &str) -> bool {
         key2.into()
     };
 
-    loop {
-        if !key2.contains("/:") {
-            break;
-        }
-        key2 = MAT_B.replace(&key2, "[^/]+").to_string().into();
-    }
+    key2 = MAT_B.replace_all(&key2, "[^/]+").to_string().into();
+
     regex_match(key1, &format!("^{}$", key2))
 }
 
@@ -122,12 +118,8 @@ pub fn key_match3(key1: &str, key2: &str) -> bool {
         key2.into()
     };
 
-    loop {
-        if !key2.contains("/{") {
-            break;
-        }
-        key2 = MAT_P.replace(&key2, "[^/]+").to_string().into();
-    }
+    key2 = MAT_P.replace_all(&key2, "[^/]+").to_string().into();
+
     regex_match(key1, &format!("^{}$", key2))
 }
 
@@ -197,10 +189,17 @@ mod tests {
     #[test]
     fn test_key_match2() {
         assert!(key_match2("/foo/bar", "/foo/*"));
+        assert!(key_match2("/foo/bar/baz", "/foo/*"));
         assert!(key_match2("/foo/baz", "/foo/:bar"));
         assert!(key_match2("/foo/baz", "/:foo/:bar"));
         assert!(key_match2("/foo/baz/foo", "/foo/:bar/foo"));
         assert!(!key_match2("/baz", "/foo"));
+
+        // GH Issue #282
+        assert!(key_match2("/foo/bar", "/foo/:"));
+        assert!(!key_match2("/foo/bar/baz", "/foo/:"));
+        assert!(key_match2("/foo/bar/baz", "/foo/:/baz"));
+        assert!(!key_match2("/foo/bar", "/foo/:/baz"));
     }
 
     #[test]
@@ -212,9 +211,17 @@ mod tests {
     #[test]
     fn test_key_match3() {
         assert!(key_match3("/foo/bar", "/foo/*"));
+        assert!(key_match3("/foo/bar/baz", "/foo/*"));
         assert!(key_match3("/foo/baz", "/foo/{bar}"));
         assert!(key_match3("/foo/baz/foo", "/foo/{bar}/foo"));
         assert!(!key_match3("/baz", "/foo"));
+
+        // GH Issue #282
+        assert!(key_match3("/foo/bar", "/foo/{}"));
+        assert!(key_match3("/foo/{}", "/foo/{}"));
+        assert!(!key_match3("/foo/bar/baz", "/foo/{}"));
+        assert!(!key_match3("/foo/bar", "/foo/{}/baz"));
+        assert!(key_match3("/foo/bar/baz", "/foo/{}/baz"));
     }
 
     #[cfg(feature = "ip")]
