@@ -24,7 +24,7 @@ use crate::watcher::Watcher;
 use crate::{DefaultLogger, Logger};
 
 use async_trait::async_trait;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use rhai::{
     def_package,
@@ -48,9 +48,7 @@ def_package! {
     }
 }
 
-lazy_static! {
-    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
-}
+static CASBIN_PACKAGE: Lazy<CasbinPackage> = Lazy::new(CasbinPackage::new);
 
 use std::{cmp::max, collections::HashMap, sync::Arc};
 

@@ -1,4 +1,4 @@
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 
 use std::borrow::Cow;
@@ -9,14 +9,14 @@ macro_rules! regex {
     };
 }
 
-lazy_static! {
-    static ref ESC_A: Regex = regex!(r"\b(r\d*|p\d*)\.");
-    static ref ESC_G: Regex = regex!(
-        r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)"
-    );
-    static ref ESC_C: Regex = regex!(r#"(\s*"[^"]*"?|\s*[^,]*)"#);
-    pub(crate) static ref ESC_E: Regex = regex!(r"\beval\(([^)]*)\)");
-}
+static ESC_A: Lazy<Regex> = Lazy::new(|| regex!(r"\b(r\d*|p\d*)\."));
+#[allow(dead_code)]
+static ESC_G: Lazy<Regex> = Lazy::new(|| {
+    regex!(r"\b(g\d*)\(((?:\s*[r|p]\d*\.\w+\s*,\s*){1,2}\s*[r|p]\d*\.\w+\s*)\)")
+});
+static ESC_C: Lazy<Regex> = Lazy::new(|| regex!(r#"(\s*"[^"]*"?|\s*[^,]*)"#));
+pub(crate) static ESC_E: Lazy<Regex> =
+    Lazy::new(|| regex!(r"\beval\(([^)]*)\)"));
 
 pub fn escape_assertion(s: &str) -> String {
     ESC_A.replace_all(s, "${1}_").to_string()
