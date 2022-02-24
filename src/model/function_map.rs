@@ -8,14 +8,12 @@ use std::net::IpAddr;
 use globset::GlobBuilder;
 #[cfg(feature = "ip")]
 use ip_network::IpNetwork;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use rhai::ImmutableString;
 
-lazy_static! {
-    static ref MAT_B: Regex = Regex::new(r":[^/]*").unwrap();
-    static ref MAT_P: Regex = Regex::new(r"\{[^/]*\}").unwrap();
-}
+static MAT_B: Lazy<Regex> = Lazy::new(|| Regex::new(r":[^/]*").unwrap());
+static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 
 use std::{borrow::Cow, collections::HashMap};
 
