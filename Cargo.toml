@@ -9,14 +9,7 @@ name        = "casbin"
 readme      = "README.md"
 repository  = "https://github.com/casbin/casbin-rs"
 version     = "2.0.9"
-edition = "2018"
-homepage = "https://casbin.org/"
-keywords = ["auth", "authorization", "rbac", "acl", "abac"]
-license = "Apache-2.0"
-name = "casbin"
-readme = "README.md"
-repository = "https://github.com/casbin/casbin-rs"
-version = "2.0.9"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
