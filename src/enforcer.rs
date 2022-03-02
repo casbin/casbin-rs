@@ -24,7 +24,7 @@ use crate::watcher::Watcher;
 use crate::{DefaultLogger, Logger};
 
 use async_trait::async_trait;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use rhai::{
     def_package,
@@ -36,21 +36,19 @@ use rhai::{
 };
 
 def_package! {
-    rhai::CasbinPackage => |lib| {
-    ArithmeticPackage::init(lib);
-    LogicPackage::init(lib);
-    BasicArrayPackage::init(lib);
-    BasicMapPackage::init(lib);
+    pub CasbinPackage(lib) {
+        ArithmeticPackage::init(lib);
+        LogicPackage::init(lib);
+        BasicArrayPackage::init(lib);
+        BasicMapPackage::init(lib);
 
-    lib.set_native_fn("escape_assertion", |s: ImmutableString| {
-        Ok(escape_assertion(&s))
-    });
-  }
+        lib.set_native_fn("escape_assertion", |s: ImmutableString| {
+            Ok(escape_assertion(&s))
+        });
+    }
 }
 
-lazy_static! {
-    static ref CASBIN_PACKAGE: CasbinPackage = CasbinPackage::new();
-}
+static CASBIN_PACKAGE: Lazy<CasbinPackage> = Lazy::new(CasbinPackage::new);
 
 use std::{cmp::max, collections::HashMap, sync::Arc};
 
