@@ -1,7 +1,7 @@
 [package]
 authors = ["Joey <joey.xf@gmail.com>", "Cheng JIANG <jiang.cheng@vip.163.com>"]
 description = "An authorization library that supports access control models like ACL, RBAC, ABAC."
-edition = "2018"
+edition = "2021"
 homepage = "https://casbin.org/"
 keywords = ["auth", "authorization", "rbac", "acl", "abac"]
 license = "Apache-2.0"
@@ -10,21 +10,23 @@ readme = "README.md"
 repository = "https://github.com/casbin/casbin-rs"
 version = "2.0.9"
 
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-async-std = { version = "1.9.0", optional = true }
 
-async-trait = "0.1.51"
+[dependencies]
+async-std = { version = "1.10.0", optional = true }
+
+async-trait = "0.1.52"
 globset = { version = "0.4.8", optional = true }
-ritelinked = { version = "0.3.1", default-features = false, features = [
+ritelinked = { version = "0.3.2", default-features = false, features = [
   "ahash",
   "inline-more",
 ] }
-ip_network = { version = "0.4.0", optional = true }
+ip_network = { version = "0.4.1", optional = true }
 once_cell = "1.9.0"
-lru = { version = "0.7.0", optional = true }
-parking_lot = "0.11"
+lru = { version = "0.7.3", optional = true }
+parking_lot = "0.12.0"
 regex = "1.5.4"
 rhai = { version = "1.5.0", features = [
   "sync",
@@ -36,13 +38,13 @@ rhai = { version = "1.5.0", features = [
   "serde",
   "unchecked",
 ] }
-serde = "1.0.127"
+serde = "1.0.136"
 slog = { version = "2.7.0", optional = true }
-slog-async = { version = "2.6.0", optional = true }
-slog-term = { version = "2.8.0", optional = true }
-thiserror = "1.0.26"
-tokio = { version = "1.10.0", optional = true, default-features = false }
-tokio-stream = { version = "0.1", optional = true, default-features = false }
+slog-async = { version = "2.7.0", optional = true }
+slog-term = { version = "2.9.0", optional = true }
+thiserror = "1.0.30"
+tokio = { version = "1.17.0", optional = true, default-features = false }
+tokio-stream = { version = "0.1.8", optional = true, default-features = false }
 
 [features]
 default = ["runtime-tokio", "incremental"]
@@ -60,12 +62,12 @@ watcher = []
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 async-std = { version = "1.9.0", features = ["attributes"] }
-serde = { version = "1.0.127", features = ["derive"] }
+serde = { version = "1.0.136", features = ["derive"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
-async-std = { version = "1.9.0", features = ["attributes"] }
-serde = { version = "1.0.127", features = ["derive"] }
-tokio = { version = "1.10.0", features = ["full"] }
+async-std = { version = "1.10.0", features = ["attributes"] }
+serde = { version = "1.0.136", features = ["derive"] }
+tokio = { version = "1.17.0", features = ["full"] }
 
 [profile.release]
 codegen-units = 1
@@ -84,7 +86,7 @@ name = "benchmark"
 harness = false
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["html_reports"] }
+criterion = { version = "0.3.5", features = ["html_reports"] }
 
 [lib]
 bench = false
