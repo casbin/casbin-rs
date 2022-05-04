@@ -257,8 +257,13 @@ where
     }
 
     async fn delete_user(&mut self, name: &str) -> Result<bool> {
-        self.remove_filtered_grouping_policy(0, vec![name.to_string()])
-            .await
+        let res1 = self
+            .remove_filtered_grouping_policy(0, vec![name.to_string()])
+            .await?;
+        let res2 = self
+            .remove_filtered_policy(0, vec![name.to_string()])
+            .await?;
+        Ok(res1 || res2)
     }
 
     async fn delete_role(&mut self, name: &str) -> Result<bool> {
@@ -480,7 +485,7 @@ mod tests {
         e.add_role_for_user("alice", "data2_admin", None)
             .await
             .unwrap();
-        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
         assert_eq!(true, e.enforce(("alice", "data2", "read")).unwrap());
         assert_eq!(true, e.enforce(("alice", "data2", "write")).unwrap());
@@ -490,7 +495,7 @@ mod tests {
         assert_eq!(true, e.enforce(("bob", "data2", "write")).unwrap());
 
         e.delete_role("data2_admin").await.unwrap();
-        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+        assert_eq!(false, e.enforce(("alice", "data1", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data2", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data2", "write")).unwrap());
@@ -715,7 +720,7 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(
-            true,
+            false,
             e.write().enforce(("alice", "data1", "read")).unwrap()
         );
         assert_eq!(
@@ -740,7 +745,7 @@ mod tests {
 
         e.write().delete_role("data2_admin").await.unwrap();
         assert_eq!(
-            true,
+            false,
             e.write().enforce(("alice", "data1", "read")).unwrap()
         );
         assert_eq!(
