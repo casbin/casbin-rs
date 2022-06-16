@@ -1,6 +1,6 @@
 use crate::{
     adapter::{Adapter, Filter},
-    error::ModelError,
+    error::{AdapterError, ModelError},
     model::Model,
     util::parse_csv_line,
     Result,
@@ -29,6 +29,7 @@ use tokio::{
 use async_trait::async_trait;
 
 use std::convert::AsRef;
+use std::fmt::Write;
 
 pub struct FileAdapter<P> {
     file_path: P,
@@ -142,18 +143,16 @@ where
 
         for (ptype, ast) in ast_map {
             for rule in ast.get_policy() {
-                policies.push_str(&format!("{}, {}\n", ptype, rule.join(",")));
+                writeln!(policies, "{}, {}", ptype, rule.join(","))
+                    .map_err(|e| AdapterError(e.into()))?;
             }
         }
 
         if let Some(ast_map) = m.get_model().get("g") {
             for (ptype, ast) in ast_map {
                 for rule in ast.get_policy() {
-                    policies.push_str(&format!(
-                        "{}, {}\n",
-                        ptype,
-                        rule.join(",")
-                    ));
+                    writeln!(policies, "{}, {}", ptype, rule.join(","))
+                        .map_err(|e| AdapterError(e.into()))?;
                 }
             }
         }

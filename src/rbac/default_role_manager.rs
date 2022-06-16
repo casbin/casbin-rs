@@ -3,16 +3,11 @@ use crate::{
     rbac::{MatchingFn, RoleManager},
     Result,
 };
+use petgraph::stable_graph::{NodeIndex, StableDiGraph};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 #[cfg(feature = "cached")]
 use crate::cache::{Cache, DefaultCache};
-
-use parking_lot::RwLock;
-
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
 
 #[cfg(feature = "cached")]
 use std::{
@@ -23,7 +18,8 @@ use std::{
 const DEFAULT_DOMAIN: &str = "DEFAULT";
 
 pub struct DefaultRoleManager {
-    all_domains: HashMap<String, HashMap<String, Arc<RwLock<Role>>>>,
+    all_domains: HashMap<String, StableDiGraph<String, EdgeVariant>>,
+    all_domains_indices: HashMap<String, HashMap<String, NodeIndex<u32>>>,
     #[cfg(feature = "cached")]
     cache: DefaultCache<u64, bool>,
     max_hierarchy_level: usize,
@@ -31,10 +27,17 @@ pub struct DefaultRoleManager {
     domain_matching_fn: Option<MatchingFn>,
 }
 
+#[derive(Debug)]
+enum EdgeVariant {
+    Link,
+    Match,
+}
+
 impl DefaultRoleManager {
     pub fn new(max_hierarchy_level: usize) -> Self {
         DefaultRoleManager {
             all_domains: HashMap::new(),
+            all_domains_indices: HashMap::new(),
             max_hierarchy_level,
             #[cfg(feature = "cached")]
             cache: DefaultCache::new(50),
@@ -43,45 +46,61 @@ impl DefaultRoleManager {
         }
     }
 
-    fn create_role(
+    fn get_or_create_role(
         &mut self,
         name: &str,
         domain: Option<&str>,
-    ) -> Arc<RwLock<Role>> {
+    ) -> NodeIndex<u32> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
-        let mut created = false;
+        let graph = self
+            .all_domains
+            .entry(domain.into())
+            .or_insert_with(StableDiGraph::new);
 
-        let role = Arc::clone(
-            self.all_domains
-                .entry(domain.into())
-                .or_insert_with(HashMap::new)
-                .entry(name.into())
-                .or_insert_with(|| {
-                    created = true;
-                    Arc::new(RwLock::new(Role::new(name)))
-                }),
-        );
+        let role_entry = self
+            .all_domains_indices
+            .entry(domain.into())
+            .or_insert_with(HashMap::new)
+            .entry(name.into());
 
-        if let (Some(role_matching_fn), Some(roles), true) =
-            (self.role_matching_fn, self.all_domains.get(domain), created)
-        {
+        let vacant_entry = match role_entry {
+            Entry::Occupied(e) => return *e.get(),
+            Entry::Vacant(e) => e,
+        };
+
+        let new_role_id = graph.add_node(name.into());
+        vacant_entry.insert(new_role_id);
+
+        if let Some(role_matching_fn) = self.role_matching_fn {
             let mut added = false;
-            for (key, value) in roles {
-                if key != name
-                    && role_matching_fn(name, key)
-                    && role.write().add_role(Arc::clone(value))
-                {
-                    added = true;
-                }
+
+            let node_ids: Vec<_> =
+                graph.node_indices().filter(|&i| graph[i] != name).collect();
+
+            for existing_role_id in node_ids {
+                added |= link_if_matches(
+                    graph,
+                    role_matching_fn,
+                    new_role_id,
+                    existing_role_id,
+                );
+
+                added |= link_if_matches(
+                    graph,
+                    role_matching_fn,
+                    existing_role_id,
+                    new_role_id,
+                );
             }
+
             if added {
                 #[cfg(feature = "cached")]
                 self.cache.clear();
             }
         }
 
-        role
+        new_role_id
     }
 
     fn matched_domains(&self, domain: Option<&str>) -> Vec<String> {
@@ -104,57 +123,91 @@ impl DefaultRoleManager {
         }
     }
 
-    fn create_temp_role(&mut self, name: &str, domain: Option<&str>) -> Role {
-        let mut cloned_role = self.create_role(name, domain).read().clone();
-
+    fn domain_has_role(&self, name: &str, domain: Option<&str>) -> bool {
         let matched_domains = self.matched_domains(domain);
-        for domain in matched_domains
-            .iter()
-            .filter(|x| Some(x.as_str()) != domain)
-        {
-            for direct_role in
-                &self.create_role(name, Some(domain)).read().roles
-            {
-                cloned_role.add_role(Arc::clone(direct_role));
-            }
-        }
 
-        cloned_role
+        matched_domains.iter().any(|domain| {
+            // try to find direct match of role
+            if self.all_domains_indices[domain].contains_key(name) {
+                true
+            } else if let Some(role_matching_fn) = self.role_matching_fn {
+                // else if role_matching_fn is set, iterate all graph nodes and try to find matching role
+                let graph = &self.all_domains[domain];
+
+                graph
+                    .node_weights()
+                    .any(|role| role_matching_fn(name, role))
+            } else {
+                false
+            }
+        })
+    }
+}
+
+/// link node of `not_pattern_id` to `maybe_pattern_id` if
+/// `not_pattern` matches `maybe_pattern`'s pattern and
+/// there doesn't exist a match edge yet
+fn link_if_matches(
+    graph: &mut StableDiGraph<String, EdgeVariant>,
+    role_matching_fn: fn(&str, &str) -> bool,
+    not_pattern_id: NodeIndex<u32>,
+    maybe_pattern_id: NodeIndex<u32>,
+) -> bool {
+    let not_pattern = &graph[not_pattern_id];
+    let maybe_pattern = &graph[maybe_pattern_id];
+
+    if !role_matching_fn(maybe_pattern, not_pattern) {
+        return false;
     }
 
-    fn has_role(&self, name: &str, domain: Option<&str>) -> bool {
-        let matched_domains = self.matched_domains(domain);
-        !matched_domains.is_empty()
-            && matched_domains.iter().any(|domain| {
-                self.all_domains.get(domain).map_or(false, |roles| {
-                    if roles.contains_key(name) {
-                        return true;
-                    }
+    let add_edge =
+        if let Some(idx) = graph.find_edge(not_pattern_id, maybe_pattern_id) {
+            !matches!(graph[idx], EdgeVariant::Match)
+        } else {
+            true
+        };
 
-                    if let Some(role_matching_fn) = self.role_matching_fn {
-                        return roles
-                            .keys()
-                            .any(|key| role_matching_fn(name, key));
-                    }
+    if add_edge {
+        graph.add_edge(not_pattern_id, maybe_pattern_id, EdgeVariant::Match);
 
-                    false
-                })
-            })
+        true
+    } else {
+        false
     }
 }
 
 impl RoleManager for DefaultRoleManager {
+    fn clear(&mut self) {
+        self.all_domains_indices.clear();
+        self.all_domains.clear();
+        #[cfg(feature = "cached")]
+        self.cache.clear();
+    }
+
     fn add_link(&mut self, name1: &str, name2: &str, domain: Option<&str>) {
         if name1 == name2 {
             return;
         }
 
-        let role1 = self.create_role(name1, domain);
-        let role2 = self.create_role(name2, domain);
+        let role1 = self.get_or_create_role(name1, domain);
+        let role2 = self.get_or_create_role(name2, domain);
 
-        if !role1.write().add_role(role2) {
+        let graph = self
+            .all_domains
+            .get_mut(domain.unwrap_or(DEFAULT_DOMAIN))
+            .unwrap();
+
+        let add_link = if let Some(edge) = graph.find_edge(role1, role2) {
+            !matches!(graph[edge], EdgeVariant::Link)
+        } else {
+            true
+        };
+
+        if add_link {
+            graph.add_edge(role1, role2, EdgeVariant::Link);
+
             #[cfg(feature = "cached")]
-            self.cache.clear();
+            self.cache.clear()
         }
     }
 
@@ -173,19 +226,28 @@ impl RoleManager for DefaultRoleManager {
         name2: &str,
         domain: Option<&str>,
     ) -> Result<()> {
-        if !self.has_role(name1, domain) || !self.has_role(name2, domain) {
+        if !self.domain_has_role(name1, domain)
+            || !self.domain_has_role(name2, domain)
+        {
             return Err(
                 RbacError::NotFound(format!("{} OR {}", name1, name2)).into()
             );
         }
 
-        let role1 = self.create_role(name1, domain);
-        let role2 = self.create_role(name2, domain);
+        let role1 = self.get_or_create_role(name1, domain);
+        let role2 = self.get_or_create_role(name2, domain);
 
-        role1.write().delete_role(role2);
+        let graph = self
+            .all_domains
+            .get_mut(domain.unwrap_or(DEFAULT_DOMAIN))
+            .unwrap();
 
-        #[cfg(feature = "cached")]
-        self.cache.clear();
+        if let Some(edge_index) = graph.find_edge(role1, role2) {
+            graph.remove_edge(edge_index).unwrap();
+
+            #[cfg(feature = "cached")]
+            self.cache.clear();
+        }
 
         Ok(())
     }
@@ -214,18 +276,55 @@ impl RoleManager for DefaultRoleManager {
             return res.into_owned();
         }
 
-        let has_roles =
-            self.has_role(name1, domain) && self.has_role(name2, domain);
+        let matched_domains = self.matched_domains(domain);
 
-        let res = has_roles
-            && if self.domain_matching_fn.is_some() {
-                self.create_temp_role(name1, domain)
-                    .has_role(name2, self.max_hierarchy_level)
+        let mut res = false;
+
+        for domain in matched_domains {
+            let graph = self.all_domains.get(&domain).unwrap();
+            let indices = self.all_domains_indices.get(&domain).unwrap();
+
+            let role1 = if let Some(role1) = indices.get(name1) {
+                Some(*role1)
             } else {
-                self.create_role(name1, domain)
-                    .read()
-                    .has_role(name2, self.max_hierarchy_level)
+                graph.node_indices().find(|&i| {
+                    let role_name = &graph[i];
+
+                    role_name == name1
+                        || self
+                            .role_matching_fn
+                            .map(|f| f(name1, role_name))
+                            .unwrap_or_default()
+                })
             };
+
+            let role1 = if let Some(role1) = role1 {
+                role1
+            } else {
+                continue;
+            };
+
+            let mut bfs = matching_bfs::Bfs::new(
+                graph,
+                role1,
+                self.max_hierarchy_level,
+                self.role_matching_fn.is_some(),
+            );
+
+            while let Some(node) = bfs.next(graph) {
+                let role_name = &graph[node];
+
+                if role_name == name2
+                    || self
+                        .role_matching_fn
+                        .map(|f| f(role_name, name2))
+                        .unwrap_or_default()
+                {
+                    res = true;
+                    break;
+                }
+            }
+        }
 
         #[cfg(feature = "cached")]
         self.cache.set(cache_key, res);
@@ -234,103 +333,277 @@ impl RoleManager for DefaultRoleManager {
     }
 
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
-        if !self.has_role(name, domain) {
-            return vec![];
-        }
+        let matched_domains = self.matched_domains(domain);
 
-        self.create_temp_role(name, domain).get_roles()
+        let res = if let Some(role_matching_fn) = self.role_matching_fn {
+            matched_domains.into_iter().fold(
+                HashSet::new(),
+                |mut set, domain| {
+                    let graph = &self.all_domains[&domain];
+
+                    if let Some(role_node) = graph.node_indices().find(|&i| {
+                        graph[i] == name || role_matching_fn(name, &graph[i])
+                    }) {
+                        let neighbors =
+                            matching_bfs::bfs_iterator(graph, role_node)
+                                .map(|i| graph[i].clone());
+
+                        set.extend(neighbors);
+                    }
+
+                    set
+                },
+            )
+        } else {
+            matched_domains.into_iter().fold(
+                HashSet::new(),
+                |mut set, domain| {
+                    let graph = &self.all_domains[&domain];
+
+                    if let Some(role_node) =
+                        graph.node_indices().find(|&i| graph[i] == name)
+                    {
+                        let neighbors = matching_bfs::bfs_iterator_no_matches(
+                            graph, role_node,
+                        )
+                        .map(|i| graph[i].clone());
+
+                        set.extend(neighbors);
+                    }
+
+                    set
+                },
+            )
+        };
+        res.into_iter().collect()
     }
 
     fn get_users(&self, name: &str, domain: Option<&str>) -> Vec<String> {
         let matched_domains = self.matched_domains(domain);
 
-        let res = matched_domains.iter().fold(HashSet::new(), |mut acc, x| {
-            let users = self.all_domains.get(x).map_or(vec![], |roles| {
-                roles
-                    .values()
-                    .filter_map(|role| {
-                        let role = role.read();
-                        if role.has_direct_role(name) {
-                            Some(role.name.to_owned())
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            });
-            acc.extend(users);
-            acc
-        });
+        let res = matched_domains.into_iter().fold(
+            HashSet::new(),
+            |mut set, domain| {
+                let graph = &self.all_domains[&domain];
+
+                if let Some(role_node) = graph.node_indices().find(|&i| {
+                    graph[i] == name
+                        || self
+                            .role_matching_fn
+                            .map(|f| f(name, &graph[i]))
+                            .unwrap_or_default()
+                }) {
+                    let neighbors = graph
+                        .neighbors_directed(
+                            role_node,
+                            petgraph::Direction::Incoming,
+                        )
+                        .map(|i| graph[i].clone());
+
+                    set.extend(neighbors);
+                }
+
+                set
+            },
+        );
 
         res.into_iter().collect()
     }
-
-    fn clear(&mut self) {
-        self.all_domains.clear();
-        #[cfg(feature = "cached")]
-        self.cache.clear();
-    }
 }
 
-#[derive(Clone, Debug)]
-pub struct Role {
-    name: String,
-    roles: Vec<Arc<RwLock<Role>>>,
-}
+mod matching_bfs {
+    use super::EdgeVariant;
+    use fixedbitset::FixedBitSet;
+    use petgraph::graph::NodeIndex;
+    use petgraph::stable_graph::StableDiGraph;
+    use petgraph::visit::{EdgeRef, VisitMap, Visitable};
+    use std::collections::VecDeque;
 
-impl Role {
-    fn new<N: Into<String>>(name: N) -> Self {
-        Role {
-            name: name.into(),
-            roles: vec![],
-        }
+    #[derive(Clone)]
+    pub(super) struct Bfs {
+        /// The queue of nodes to visit
+        pub queue: VecDeque<NodeIndex<u32>>,
+        /// The map of discovered nodes
+        pub discovered: FixedBitSet,
+        /// Maximum depth
+        pub max_depth: usize,
+        /// Consider `Match` edges
+        pub with_pattern_matching: bool,
+
+        /// Current depth
+        depth: usize,
+        /// Number of elements until next depth is reached
+        depth_elements_remaining: usize,
     }
 
-    fn add_role(&mut self, other_role: Arc<RwLock<Role>>) -> bool {
-        let not_exists =
-            !self.roles.iter().any(|role| Arc::ptr_eq(role, &other_role));
+    impl Bfs {
+        /// Create a new **Bfs**, using the graph's visitor map, and put **start**
+        /// in the stack of nodes to visit.
+        pub fn new(
+            graph: &StableDiGraph<String, EdgeVariant>,
+            start: NodeIndex<u32>,
+            max_depth: usize,
+            with_pattern_matching: bool,
+        ) -> Self {
+            let mut discovered = graph.visit_map();
+            discovered.visit(start);
 
-        if not_exists {
-            self.roles.push(other_role);
-        }
+            let mut queue = VecDeque::new();
+            queue.push_front(start);
 
-        not_exists
-    }
-
-    fn delete_role(&mut self, other_role: Arc<RwLock<Role>>) {
-        let other_role_locked = other_role.read();
-
-        self.roles
-            .retain(|x| x.read().name != other_role_locked.name)
-    }
-
-    fn has_role(&self, name: &str, hierarchy_level: usize) -> bool {
-        if self.name == name {
-            return true;
-        }
-
-        if hierarchy_level == 0 {
-            return false;
-        }
-
-        for role in self.roles.iter() {
-            if role.read().has_role(name, hierarchy_level - 1) {
-                return true;
+            Bfs {
+                queue,
+                discovered,
+                max_depth,
+                with_pattern_matching,
+                depth: 0,
+                depth_elements_remaining: 1,
             }
         }
 
-        false
+        /// Return the next node in the bfs, or **None** if the traversal is done.
+        pub fn next(
+            &mut self,
+            graph: &StableDiGraph<String, EdgeVariant>,
+        ) -> Option<NodeIndex<u32>> {
+            if self.max_depth <= self.depth {
+                return None;
+            }
+
+            if let Some(node) = self.queue.pop_front() {
+                self.update_depth();
+
+                let mut counter = 0;
+
+                if self.with_pattern_matching {
+                    for succ in bfs_iterator(graph, node) {
+                        if self.discovered.visit(succ) {
+                            self.queue.push_back(succ);
+                            counter += 1;
+                        }
+                    }
+                } else {
+                    for succ in bfs_iterator_no_matches(graph, node) {
+                        if self.discovered.visit(succ) {
+                            self.queue.push_back(succ);
+                            counter += 1;
+                        }
+                    }
+                }
+
+                self.depth_elements_remaining += counter;
+
+                Some(node)
+            } else {
+                None
+            }
+        }
+
+        fn update_depth(&mut self) {
+            self.depth_elements_remaining -= 1;
+            if self.depth_elements_remaining == 0 {
+                self.depth += 1
+            }
+        }
     }
 
-    fn get_roles(&self) -> Vec<String> {
-        self.roles
-            .iter()
-            .map(|role| role.read().name.to_owned())
-            .collect()
+    pub(super) fn bfs_iterator(
+        graph: &StableDiGraph<String, EdgeVariant>,
+        node: NodeIndex<u32>,
+    ) -> impl Iterator<Item = NodeIndex<u32>> + '_ {
+        // outgoing LINK edges of node
+        let outgoing_direct_edge = graph
+            .edges_directed(node, petgraph::Direction::Outgoing)
+            .filter_map(|edge| match *edge.weight() {
+                EdgeVariant::Link => Some(edge.target()),
+                EdgeVariant::Match => None,
+            });
+
+        // x := outgoing LINK edges of node
+        // outgoing_match_edge : outgoing MATCH edges of x FOR ALL x
+        let outgoing_match_edge = graph
+            .edges_directed(node, petgraph::Direction::Outgoing)
+            .filter(|edge| matches!(*edge.weight(), EdgeVariant::Link))
+            .flat_map(move |edge| {
+                graph
+                    .edges_directed(
+                        edge.target(),
+                        petgraph::Direction::Outgoing,
+                    )
+                    .filter_map(|edge| match *edge.weight() {
+                        EdgeVariant::Match => Some(edge.target()),
+                        EdgeVariant::Link => None,
+                    })
+            });
+
+        // x := incoming MATCH edges of node
+        // sibling_matched_by := outgoing LINK edges of x FOR ALL x
+        let sibling_matched_by = graph
+            .edges_directed(node, petgraph::Direction::Incoming)
+            .filter(|edge| matches!(*edge.weight(), EdgeVariant::Match))
+            .flat_map(move |edge| {
+                graph
+                    .edges_directed(
+                        edge.source(),
+                        petgraph::Direction::Outgoing,
+                    )
+                    .filter_map(|edge| match *edge.weight() {
+                        EdgeVariant::Link => Some(edge.target()),
+                        EdgeVariant::Match => None,
+                    })
+            });
+
+        outgoing_direct_edge
+            .chain(outgoing_match_edge)
+            .chain(sibling_matched_by)
     }
 
-    fn has_direct_role(&self, name: &str) -> bool {
-        self.roles.iter().any(|role| role.read().name == name)
+    pub(super) fn bfs_iterator_no_matches(
+        graph: &StableDiGraph<String, EdgeVariant>,
+        node: NodeIndex<u32>,
+    ) -> impl Iterator<Item = NodeIndex<u32>> + '_ {
+        // outgoing LINK edges of node
+        graph
+            .edges_directed(node, petgraph::Direction::Outgoing)
+            .filter_map(|edge| match *edge.weight() {
+                EdgeVariant::Link => Some(edge.target()),
+                EdgeVariant::Match => None,
+            })
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+        use petgraph::stable_graph::StableDiGraph;
+
+        #[test]
+        fn test_max_depth() {
+            let mut deps = StableDiGraph::<String, EdgeVariant>::new();
+            let pg = deps.add_node("petgraph".into());
+            let fb = deps.add_node("fixedbitset".into());
+            let qc = deps.add_node("quickcheck".into());
+            let rand = deps.add_node("rand".into());
+            let libc = deps.add_node("libc".into());
+
+            deps.extend_with_edges([
+                (pg, fb, EdgeVariant::Link),
+                (pg, qc, EdgeVariant::Link),
+                (qc, rand, EdgeVariant::Link),
+                (rand, libc, EdgeVariant::Link),
+            ]);
+
+            let mut bfs = Bfs::new(&deps, pg, 2, false);
+
+            let mut nodes = vec![];
+            while let Some(x) = bfs.next(&deps) {
+                nodes.push(x);
+            }
+
+            assert!(nodes.contains(&fb));
+            assert!(nodes.contains(&qc));
+            assert!(nodes.contains(&rand));
+            assert!(!nodes.contains(&libc));
+        }
     }
 }
 
@@ -508,6 +781,48 @@ mod tests {
         rm.matching_fn(None, Some(key_match));
         rm.add_link("u1", "g1", Some("*"));
 
-        assert!(rm.has_role("u1", Some("domain2")));
+        assert!(rm.domain_has_role("u1", Some("domain2")));
+    }
+
+    #[test]
+    fn test_basic_role_matching() {
+        use crate::model::key_match;
+        let mut rm = DefaultRoleManager::new(10);
+        rm.matching_fn(Some(key_match), None);
+        rm.add_link("bob", "book_group", None);
+        rm.add_link("*", "book_group", None);
+        rm.add_link("*", "pen_group", None);
+        rm.add_link("eve", "pen_group", None);
+
+        assert!(rm.has_link("alice", "book_group", None));
+        assert!(rm.has_link("eve", "book_group", None));
+        assert!(rm.has_link("bob", "book_group", None));
+
+        assert_eq!(
+            vec!["book_group", "pen_group"],
+            sort_unstable(rm.get_roles("alice", None))
+        );
+    }
+
+    #[test]
+    fn test_basic_role_matching2() {
+        use crate::model::key_match;
+        let mut rm = DefaultRoleManager::new(10);
+        rm.matching_fn(Some(key_match), None);
+        rm.add_link("alice", "book_group", None);
+        rm.add_link("alice", "*", None);
+        rm.add_link("bob", "pen_group", None);
+
+        assert!(rm.has_link("alice", "book_group", None));
+        assert!(rm.has_link("alice", "pen_group", None));
+        assert!(rm.has_link("bob", "pen_group", None));
+        assert!(!rm.has_link("bob", "book_group", None));
+
+        assert_eq!(
+            vec!["*", "alice", "bob", "book_group", "pen_group"],
+            sort_unstable(rm.get_roles("alice", None))
+        );
+
+        assert_eq!(vec!["alice"], sort_unstable(rm.get_users("*", None)));
     }
 }

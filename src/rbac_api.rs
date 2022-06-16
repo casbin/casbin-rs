@@ -623,8 +623,10 @@ mod tests {
                             .unwrap();
 
                         assert_eq!(
-                            vec!["data2_admin", "data1_admin"],
-                            ee.write().get_roles_for_user("alice", None)
+                            vec!["data1_admin", "data2_admin"],
+                            sort_unstable(
+                                ee.write().get_roles_for_user("alice", None)
+                            )
                         );
                         assert_eq!(
                             vec![String::new(); 0],
@@ -645,8 +647,10 @@ mod tests {
                             .unwrap();
 
                         assert_eq!(
-                            vec!["data2_admin", "data1_admin"],
-                            ee.write().get_roles_for_user("alice", None)
+                            vec!["data1_admin", "data2_admin"],
+                            sort_unstable(
+                                ee.write().get_roles_for_user("alice", None)
+                            )
                         );
                         assert_eq!(
                             vec!["data2_admin"],
@@ -1100,12 +1104,12 @@ mod tests {
         assert!(e.enforce(("bob", "/pen/2", "GET")).unwrap());
 
         assert_eq!(
-            vec!["/book/:id", "book_group"],
+            vec!["book_group"],
             sort_unstable(e.get_implicit_roles_for_user("/book/1", None))
         );
 
         assert_eq!(
-            vec!["/pen/:id", "pen_group"],
+            vec!["pen_group"],
             sort_unstable(e.get_implicit_roles_for_user("/pen/1", None))
         );
     }
@@ -1188,11 +1192,11 @@ mod tests {
         assert!(!e.enforce(("bob", "/book/2", "GET")).unwrap());
 
         assert_eq!(
-            vec!["*", "book_admin", "pen_admin"],
+            vec!["book_admin", "pen_admin"],
             sort_unstable(e.get_implicit_roles_for_user("alice", None))
         );
         assert_eq!(
-            vec!["*", "book_admin", "pen_admin"],
+            vec!["book_admin", "pen_admin"],
             sort_unstable(e.get_implicit_roles_for_user("bob", None))
         );
     }
