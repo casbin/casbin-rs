@@ -335,46 +335,30 @@ impl RoleManager for DefaultRoleManager {
     fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
         let matched_domains = self.matched_domains(domain);
 
-        let res = if let Some(role_matching_fn) = self.role_matching_fn {
-            matched_domains.into_iter().fold(
-                HashSet::new(),
-                |mut set, domain| {
-                    let graph = &self.all_domains[&domain];
+        let res = matched_domains.into_iter().fold(
+            HashSet::new(),
+            |mut set, domain| {
+                let graph = &self.all_domains[&domain];
 
-                    if let Some(role_node) = graph.node_indices().find(|&i| {
-                        graph[i] == name || role_matching_fn(name, &graph[i])
-                    }) {
-                        let neighbors =
-                            matching_bfs::bfs_iterator(graph, role_node)
-                                .map(|i| graph[i].clone());
-
-                        set.extend(neighbors);
-                    }
-
-                    set
-                },
-            )
-        } else {
-            matched_domains.into_iter().fold(
-                HashSet::new(),
-                |mut set, domain| {
-                    let graph = &self.all_domains[&domain];
-
-                    if let Some(role_node) =
-                        graph.node_indices().find(|&i| graph[i] == name)
-                    {
-                        let neighbors = matching_bfs::bfs_iterator_no_matches(
-                            graph, role_node,
+                if let Some(role_node) = graph.node_indices().find(|&i| {
+                    graph[i] == name
+                        || self.role_matching_fn.unwrap_or(|_, _| false)(
+                            name, &graph[i],
                         )
-                        .map(|i| graph[i].clone());
+                }) {
+                    let neighbors = matching_bfs::bfs_iterator(
+                        graph,
+                        role_node,
+                        self.role_matching_fn.is_some(),
+                    )
+                    .map(|i| graph[i].clone());
 
-                        set.extend(neighbors);
-                    }
+                    set.extend(neighbors);
+                }
 
-                    set
-                },
-            )
-        };
+                set
+            },
+        );
         res.into_iter().collect()
     }
 
@@ -474,20 +458,12 @@ mod matching_bfs {
                 self.update_depth();
 
                 let mut counter = 0;
-
-                if self.with_pattern_matching {
-                    for succ in bfs_iterator(graph, node) {
-                        if self.discovered.visit(succ) {
-                            self.queue.push_back(succ);
-                            counter += 1;
-                        }
-                    }
-                } else {
-                    for succ in bfs_iterator_no_matches(graph, node) {
-                        if self.discovered.visit(succ) {
-                            self.queue.push_back(succ);
-                            counter += 1;
-                        }
+                for succ in
+                    bfs_iterator(graph, node, self.with_pattern_matching)
+                {
+                    if self.discovered.visit(succ) {
+                        self.queue.push_back(succ);
+                        counter += 1;
                     }
                 }
 
@@ -510,7 +486,8 @@ mod matching_bfs {
     pub(super) fn bfs_iterator(
         graph: &StableDiGraph<String, EdgeVariant>,
         node: NodeIndex<u32>,
-    ) -> impl Iterator<Item = NodeIndex<u32>> + '_ {
+        with_matches: bool,
+    ) -> Box<dyn Iterator<Item = NodeIndex<u32>> + '_> {
         // outgoing LINK edges of node
         let outgoing_direct_edge = graph
             .edges_directed(node, petgraph::Direction::Outgoing)
@@ -518,6 +495,10 @@ mod matching_bfs {
                 EdgeVariant::Link => Some(edge.target()),
                 EdgeVariant::Match => None,
             });
+
+        if !with_matches {
+            return Box::new(outgoing_direct_edge);
+        }
 
         // x := outgoing LINK edges of node
         // outgoing_match_edge : outgoing MATCH edges of x FOR ALL x
@@ -553,22 +534,11 @@ mod matching_bfs {
                     })
             });
 
-        outgoing_direct_edge
-            .chain(outgoing_match_edge)
-            .chain(sibling_matched_by)
-    }
-
-    pub(super) fn bfs_iterator_no_matches(
-        graph: &StableDiGraph<String, EdgeVariant>,
-        node: NodeIndex<u32>,
-    ) -> impl Iterator<Item = NodeIndex<u32>> + '_ {
-        // outgoing LINK edges of node
-        graph
-            .edges_directed(node, petgraph::Direction::Outgoing)
-            .filter_map(|edge| match *edge.weight() {
-                EdgeVariant::Link => Some(edge.target()),
-                EdgeVariant::Match => None,
-            })
+        Box::new(
+            outgoing_direct_edge
+                .chain(outgoing_match_edge)
+                .chain(sibling_matched_by),
+        )
     }
 
     #[cfg(test)]
