@@ -1,6 +1,6 @@
 use crate::push_index_if_explain;
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum EffectKind {
     Allow = 0,
     Indeterminate = 1,
@@ -36,7 +36,7 @@ impl Effector for DefaultEffector {
     fn new_stream(&self, expr: &str, cap: usize) -> Box<dyn EffectorStream> {
         assert!(cap > 0);
 
-        let res = match &*expr {
+        let res = match expr {
             "some(where (p_eft == allow))"
             | "some(where (p_eft == allow)) && !some(where (p_eft == deny))"
             | "priority(p_eft) || deny" => false,
