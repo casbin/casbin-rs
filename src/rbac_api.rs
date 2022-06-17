@@ -236,7 +236,7 @@ where
                 return t2.rm.read().get_users(name, domain);
             }
         }
-        return vec![];
+        vec![]
     }
 
     fn has_role_for_user(
