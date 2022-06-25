@@ -1,4 +1,6 @@
-on: [pull_request]
+on:
+  pull_request_target:
+    branches: [ master ]
 name: Benchmarks
 jobs:
   runBenchmark:
@@ -6,6 +8,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+        with:
+          ref: ${{github.event.pull_request.head.ref}}
+          repository: ${{github.event.pull_request.head.repo.full_name}}
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
