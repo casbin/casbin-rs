@@ -273,7 +273,7 @@ impl RoleManager for DefaultRoleManager {
 
         #[cfg(feature = "cached")]
         if let Some(res) = self.cache.get(&cache_key) {
-            return res.into_owned();
+            return res;
         }
 
         let matched_domains = self.matched_domains(domain);
