@@ -252,12 +252,7 @@ impl RoleManager for DefaultRoleManager {
         Ok(())
     }
 
-    fn has_link(
-        &mut self,
-        name1: &str,
-        name2: &str,
-        domain: Option<&str>,
-    ) -> bool {
+    fn has_link(&self, name1: &str, name2: &str, domain: Option<&str>) -> bool {
         if name1 == name2 {
             return true;
         }
@@ -332,7 +327,7 @@ impl RoleManager for DefaultRoleManager {
         res
     }
 
-    fn get_roles(&mut self, name: &str, domain: Option<&str>) -> Vec<String> {
+    fn get_roles(&self, name: &str, domain: Option<&str>) -> Vec<String> {
         let matched_domains = self.matched_domains(domain);
 
         let res = matched_domains.into_iter().fold(
