@@ -240,10 +240,10 @@ fn load_policy_line(line: String, m: &mut dyn Model) {
     }
 }
 
-fn load_filtered_policy_line<'a>(
+fn load_filtered_policy_line(
     line: String,
     m: &mut dyn Model,
-    f: &Filter<'a>,
+    f: &Filter<'_>,
 ) -> bool {
     if line.is_empty() || line.starts_with('#') {
         return false;

@@ -211,6 +211,7 @@ impl Enforcer {
 
 #[async_trait]
 impl CoreApi for Enforcer {
+    #[allow(clippy::box_default)]
     async fn new_raw<M: TryIntoModel, A: TryIntoAdapter>(
         m: M,
         a: A,

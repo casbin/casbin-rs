@@ -42,6 +42,7 @@ impl<T> TryIntoModel for Option<T>
 where
     T: TryIntoModel,
 {
+    #[allow(clippy::box_default)]
     async fn try_into_model(self) -> Result<Box<dyn Model>> {
         if let Some(m) = self {
             m.try_into_model().await
