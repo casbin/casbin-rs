@@ -9,5 +9,4 @@ where
 {
     fn get_mut_cache(&mut self) -> &mut dyn Cache<K, V>;
     fn set_cache(&mut self, cache: Box<dyn Cache<K, V>>);
-    fn set_capacity(&mut self, cap: usize);
 }
