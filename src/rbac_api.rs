@@ -405,6 +405,7 @@ mod tests {
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
         assert_eq!(vec![String::new(); 0], e.get_roles_for_user("bob", None));
@@ -528,7 +529,9 @@ mod tests {
             .unwrap();
 
         let adapter = FileAdapter::new("examples/rbac_policy.csv");
-        let e = Arc::new(RwLock::new(Enforcer::new(m, adapter).await.unwrap()));
+        let mut e_entity = Enforcer::new(m, adapter).await.unwrap();
+        e_entity.load_policy().await.unwrap();
+        let e = Arc::new(RwLock::new(e_entity));
         let ee = e.clone();
 
         assert_eq!(
@@ -792,6 +795,7 @@ mod tests {
         let adapter =
             FileAdapter::new("examples/basic_without_resources_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(true, e.enforce(("alice", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "write")).unwrap());
@@ -912,6 +916,7 @@ mod tests {
         let adapter =
             FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -949,6 +954,7 @@ mod tests {
         let adapter =
             FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
         let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -991,7 +997,8 @@ mod tests {
 
         let adapter =
             FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let e = Enforcer::new(m, adapter).await.unwrap();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(
             vec!["alice"],
@@ -1056,6 +1063,7 @@ mod tests {
             "examples/rbac_with_hierarchy_with_domains_policy.csv",
         );
         let mut e = Enforcer::new(m, adapter).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert_eq!(
             vec![
@@ -1085,6 +1093,7 @@ mod tests {
         )
         .await
         .unwrap();
+        e.load_policy().await.unwrap();
 
         use crate::model::key_match2;
 
@@ -1130,6 +1139,7 @@ mod tests {
         )
         .await
         .unwrap();
+        e.load_policy().await.unwrap();
 
         use crate::function_map::key_match;
 
@@ -1174,6 +1184,7 @@ mod tests {
         )
         .await
         .unwrap();
+        e.load_policy().await.unwrap();
 
         use crate::model::key_match;
 
@@ -1225,6 +1236,7 @@ mod tests {
         let a = MemoryAdapter::default();
 
         let mut e = Enforcer::new(m, a).await.unwrap();
+        e.load_policy().await.unwrap();
 
         assert!(e
             .add_policy(vec![
