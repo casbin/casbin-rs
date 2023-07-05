@@ -6,7 +6,7 @@
 [![Docs](https://docs.rs/casbin/badge.svg)](https://docs.rs/casbin)
 [![CI](https://github.com/casbin/casbin-rs/workflows/CI/badge.svg)](https://github.com/casbin/casbin-rs/actions)
 [![Codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
-[![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/casbin/lobby)
+[![Discord](https://img.shields.io/discord/1022748306096537660?logo=discord&label=discord&color=5865F2)](https://discord.gg/S5UjpzGZjN)
 [![forum](https://img.shields.io/badge/forum-join-%23cde201)](https://forum.casbin.org/)
 
 💖 [**Looking for an open-source identity and access management solution like Okta, Auth0, Keycloak ? Learn more about: Casdoor**](https://casdoor.org/)
