@@ -105,11 +105,7 @@ impl EffectorStream for DefaultEffectStream {
         } else if self.expr == "priority(p_eft) || deny"
             && eft != EffectKind::Indeterminate
         {
-            if eft == EffectKind::Allow {
-                self.res = true;
-            } else {
-                self.res = false;
-            }
+            self.res = eft == EffectKind::Allow;
 
             self.done = true;
         }

@@ -219,7 +219,7 @@ impl CoreApi for Enforcer {
         let model = m.try_into_model().await?;
         let adapter = a.try_into_adapter().await?;
         let fm = FunctionMap::default();
-        let eft = Box::new(DefaultEffector::default());
+        let eft = Box::new(DefaultEffector);
         let rm = Arc::new(RwLock::new(DefaultRoleManager::new(10)));
 
         let mut engine = Engine::new_raw();

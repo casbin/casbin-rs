@@ -60,7 +60,7 @@ pub trait RbacApi: MgmtApi {
     ) -> Result<bool> {
         self.remove_filtered_policy(
             0,
-            vec![user].iter().map(|s| (*s).to_string()).collect(),
+            [user].iter().map(|s| (*s).to_string()).collect(),
         )
         .await
     }
@@ -144,12 +144,12 @@ where
         domain: Option<&str>,
     ) -> Result<bool> {
         self.add_grouping_policy(if let Some(domain) = domain {
-            vec![user, role, domain]
+            [user, role, domain]
                 .iter()
                 .map(|s| (*s).to_string())
                 .collect()
         } else {
-            vec![user, role].iter().map(|s| (*s).to_string()).collect()
+            [user, role].iter().map(|s| (*s).to_string()).collect()
         })
         .await
     }
@@ -182,12 +182,12 @@ where
         domain: Option<&str>,
     ) -> Result<bool> {
         self.remove_grouping_policy(if let Some(domain) = domain {
-            vec![user, role, domain]
+            [user, role, domain]
                 .iter()
                 .map(|s| (*s).to_string())
                 .collect()
         } else {
-            vec![user, role].iter().map(|s| (*s).to_string()).collect()
+            [user, role].iter().map(|s| (*s).to_string()).collect()
         })
         .await
     }
@@ -200,12 +200,12 @@ where
         self.remove_filtered_grouping_policy(
             0,
             if let Some(domain) = domain {
-                vec![user, "", domain]
+                [user, "", domain]
                     .iter()
                     .map(|s| (*s).to_string())
                     .collect()
             } else {
-                vec![user].iter().map(|s| (*s).to_string()).collect()
+                [user].iter().map(|s| (*s).to_string()).collect()
             },
         )
         .await
@@ -293,12 +293,12 @@ where
     ) -> Vec<Vec<String>> {
         self.get_filtered_policy(0, {
             if let Some(domain) = domain {
-                vec![user, domain]
+                [user, domain]
                     .iter()
                     .map(|s| (*s).to_string())
                     .collect()
             } else {
-                vec![user].iter().map(|s| (*s).to_string()).collect()
+                [user].iter().map(|s| (*s).to_string()).collect()
             }
         })
     }
