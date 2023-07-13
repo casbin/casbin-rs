@@ -293,10 +293,7 @@ where
     ) -> Vec<Vec<String>> {
         self.get_filtered_policy(0, {
             if let Some(domain) = domain {
-                [user, domain]
-                    .iter()
-                    .map(|s| (*s).to_string())
-                    .collect()
+                [user, domain].iter().map(|s| (*s).to_string()).collect()
             } else {
                 [user].iter().map(|s| (*s).to_string()).collect()
             }
