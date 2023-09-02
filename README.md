@@ -7,7 +7,7 @@
 [![CI](https://github.com/casbin/casbin-rs/workflows/CI/badge.svg)](https://github.com/casbin/casbin-rs/actions)
 [![Codecov](https://codecov.io/gh/casbin/casbin-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/casbin/casbin-rs)
 [![Discord](https://img.shields.io/discord/1022748306096537660?logo=discord&label=discord&color=5865F2)](https://discord.gg/S5UjpzGZjN)
-[![forum](https://img.shields.io/badge/forum-join-%23cde201)](https://forum.casbin.org/)
+[![forum](https://img.shields.io/badge/forum-join-%23cde201)](https://forum.casbin.com/)
 
 💖 [**Looking for an open-source identity and access management solution like Okta, Auth0, Keycloak ? Learn more about: Casdoor**](https://casdoor.org/)
 
@@ -164,7 +164,7 @@ What casbin-rs does NOT do:
 
 ## Documentation
 
-https://casbin.org/docs/en/overview
+https://casbin.org/docs/overview
 
 ## Online editor
 
@@ -172,7 +172,7 @@ You can also use the online editor (http://casbin.org/editor/) to write your cas
 
 ## Tutorials
 
-https://casbin.org/docs/en/tutorials
+https://casbin.org/docs/tutorials
 
 ## Policy management
 
@@ -189,12 +189,12 @@ We also provide a web-based UI for model management and policy management:
 
 ## Policy persistence
 
-* https://casbin.org/docs/en/adapters
+* https://casbin.org/docs/adapters
 * There also is [example code on how to preload an existing policy into an adapter](https://github.com/casbin-rs/examples/blob/master/actix-middleware-example/src/main.rs#L73). 
 
 ## Role manager
 
-https://casbin.org/docs/en/role-managers
+https://casbin.org/docs/role-managers
 
 ## Examples
 
@@ -214,11 +214,11 @@ Priority | [priority_model.conf](https://github.com/casbin/casbin-rs/blob/master
 
 ## Middlewares
 
-Authz middlewares for web frameworks: https://casbin.org/docs/en/middlewares
+Authz middlewares for web frameworks: https://casbin.org/docs/middlewares
 
 ## Our adopters
 
-https://casbin.org/docs/en/adopters
+https://casbin.org/docs/adopters
 
 ## Contributors
 
