@@ -56,12 +56,12 @@ impl DefaultRoleManager {
         let graph = self
             .all_domains
             .entry(domain.into())
-            .or_insert_with(StableDiGraph::new);
+            .or_default();
 
         let role_entry = self
             .all_domains_indices
             .entry(domain.into())
-            .or_insert_with(HashMap::new)
+            .or_default()
             .entry(name.into());
 
         let vacant_entry = match role_entry {

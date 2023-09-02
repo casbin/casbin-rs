@@ -40,7 +40,7 @@ pub struct CachedEnforcer {
 
 impl EventEmitter<Event> for CachedEnforcer {
     fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
-        self.events.entry(e).or_insert_with(Vec::new).push(f)
+        self.events.entry(e).or_default().push(f)
     }
 
     fn off(&mut self, e: Event) {
