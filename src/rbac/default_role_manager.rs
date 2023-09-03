@@ -53,10 +53,7 @@ impl DefaultRoleManager {
     ) -> NodeIndex<u32> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
 
-        let graph = self
-            .all_domains
-            .entry(domain.into())
-            .or_default();
+        let graph = self.all_domains.entry(domain.into()).or_default();
 
         let role_entry = self
             .all_domains_indices
