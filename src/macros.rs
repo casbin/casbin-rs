@@ -34,7 +34,7 @@ macro_rules! get_or_err_with_context {
                     $msg
                 )))
             })?
-            .get(&format!("{}{}", $key, $ctx))
+            .get($ctx)
             .ok_or_else(|| {
                 $crate::error::Error::from($err(format!(
                     "Missing {} section in conf file",

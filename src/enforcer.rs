@@ -235,28 +235,28 @@ impl Enforcer {
         let r_ast = get_or_err_with_context!(
             self,
             "r",
-            ctx.r_type,
+            &ctx.r_type,
             ModelError::R,
             "request"
         );
         let p_ast = get_or_err_with_context!(
             self,
             "p",
-            ctx.p_type,
+            &ctx.p_type,
             ModelError::P,
             "policy"
         );
         let m_ast = get_or_err_with_context!(
             self,
             "m",
-            ctx.m_type,
+            &ctx.m_type,
             ModelError::M,
             "matcher"
         );
         let e_ast = get_or_err_with_context!(
             self,
             "e",
-            ctx.e_type,
+            &ctx.e_type,
             ModelError::E,
             "effector"
         );
