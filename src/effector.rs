@@ -18,7 +18,6 @@ pub trait EffectorStream: Send + Sync {
     fn push_effect(&mut self, eft: EffectKind) -> bool;
 }
 
-#[derive(Clone)]
 pub struct DefaultEffectStream {
     done: bool,
     res: bool,
@@ -27,6 +26,18 @@ pub struct DefaultEffectStream {
     cap: usize,
     #[cfg(feature = "explain")]
     expl: Vec<usize>,
+}
+
+impl Clone for DefaultEffectStream {
+    fn clone(&self) -> Self {
+        Self {
+            done: self.done.clone(),
+            res: self.res.clone(),
+            expr: self.expr.clone(),
+            idx: self.idx.clone(),
+            cap: self.cap.clone(),
+        }
+    }
 }
 
 #[derive(Default)]
