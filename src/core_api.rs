@@ -1,6 +1,7 @@
 use crate::{
-    Adapter, Effector, EnforceArgs, Event, EventEmitter, Filter, Model, Result,
-    RoleManager, TryIntoAdapter, TryIntoModel,
+    enforcer::EnforceContext, Adapter, Effector, EnforceArgs, Event,
+    EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
+    TryIntoModel,
 };
 
 #[cfg(feature = "watcher")]
@@ -64,6 +65,13 @@ pub trait CoreApi: Send + Sync {
         Self: Sized;
     fn set_effector(&mut self, e: Box<dyn Effector>);
     fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool>
+    where
+        Self: Sized;
+    fn enforce_with_context<ARGS: EnforceArgs>(
+        &self,
+        ctx: EnforceContext,
+        rvals: ARGS,
+    ) -> Result<bool>
     where
         Self: Sized;
     fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool>
