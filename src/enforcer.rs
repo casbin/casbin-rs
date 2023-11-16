@@ -586,19 +586,25 @@ impl CoreApi for Enforcer {
     /// # Examples
     /// ```
     /// use casbin::prelude::*;
+    /// use casbin::EnforceContext;
+    ///
     /// #[cfg(feature = "runtime-async-std")]
     /// #[async_std::main]
     /// async fn main() -> Result<()> {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce_with_index(2, ("alice", "data1", "read"))?);
+    ///     let mut e = Enforcer::new("examples/multi_section_model.conf", "examples/multi_section_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(("alice", "read", "project1"))?);
+    ///     let ctx = EnforceContext::new("2");
+    ///     assert_eq!(true, e.enforce_with_context(ctx, ("james", "execute"))?);
     ///     Ok(())
     /// }
     ///
     /// #[cfg(feature = "runtime-tokio")]
     /// #[tokio::main]
     /// async fn main() -> Result<()> {
-    ///     let mut e = Enforcer::new("examples/basic_model.conf", "examples/basic_policy.csv").await?;
-    ///     assert_eq!(true, e.enforce_with_index(2, ("alice", "data1", "read"))?);
+    ///     let mut e = Enforcer::new("examples/multi_section_model.conf", "examples/multi_section_policy.csv").await?;
+    ///     assert_eq!(true, e.enforce(("alice", "read", "project1"))?);
+    ///     let ctx = EnforceContext::new("2");
+    ///     assert_eq!(true, e.enforce_with_context(ctx, ("james", "execute"))?);
     ///
     ///     Ok(())
     /// }

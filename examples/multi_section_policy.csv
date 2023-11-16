@@ -1,0 +1,7 @@
+p, alice , admin, project1
+p, bob , user, project2
+p2, james, execute
+
+g, admin, read 
+g, admin, write 
+g, user, read
