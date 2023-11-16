@@ -100,7 +100,7 @@ impl EnforceContext {
 
 impl EventEmitter<Event> for Enforcer {
     fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
-        self.events.entry(e).or_insert_with(Vec::new).push(f)
+        self.events.entry(e).or_default().push(f)
     }
 
     fn off(&mut self, e: Event) {
@@ -151,7 +151,7 @@ impl Enforcer {
             self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self
             .engine
-            .compile_expression(&escape_eval(&m_ast.value))
+            .compile_expression(escape_eval(&m_ast.value))
             .map_err(Into::<Box<EvalAltResult>>::into)?;
 
         if policy_len == 0 {
@@ -280,7 +280,7 @@ impl Enforcer {
             self.eft.new_stream(&e_ast.value, max(policy_len, 1));
         let m_ast_compiled = self
             .engine
-            .compile_expression(&escape_eval(&m_ast.value))
+            .compile_expression(escape_eval(&m_ast.value))
             .map_err(Into::<Box<EvalAltResult>>::into)?;
 
         if policy_len == 0 {

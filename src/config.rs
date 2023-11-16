@@ -151,8 +151,7 @@ impl Config {
         if section.is_empty() {
             section = DEFAULT_SECTION.to_owned();
         }
-        let section_value =
-            self.data.entry(section).or_insert_with(HashMap::new);
+        let section_value = self.data.entry(section).or_default();
 
         // if key not exists then insert, else update
         let key_value = section_value.get_mut(&option);
