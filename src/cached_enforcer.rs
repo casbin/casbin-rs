@@ -6,6 +6,7 @@ use crate::{
     core_api::CoreApi,
     effector::Effector,
     emitter::{clear_cache, Event, EventData, EventEmitter},
+    enforcer::EnforceContext,
     enforcer::Enforcer,
     model::Model,
     rbac::RoleManager,
@@ -67,6 +68,21 @@ impl CachedEnforcer {
         } else {
             let (authorized, indices) =
                 self.enforcer.private_enforce(&rvals)?;
+            self.cache.set(cache_key, authorized);
+            (authorized, false, indices)
+        })
+    }
+    pub(crate) fn private_enforce_with_context(
+        &self,
+        ctx: EnforceContext,
+        rvals: &[Dynamic],
+        cache_key: u64,
+    ) -> Result<(bool, bool, Option<Vec<usize>>)> {
+        Ok(if let Some(authorized) = self.cache.get(&cache_key) {
+            (authorized, true, None)
+        } else {
+            let (authorized, indices) =
+                self.enforcer.private_enforce_with_context(ctx, &rvals)?;
             self.cache.set(cache_key, authorized);
             (authorized, false, indices)
         })
@@ -198,6 +214,44 @@ impl CoreApi for CachedEnforcer {
         #[allow(unused_variables)]
         let (authorized, cached, indices) =
             self.private_enforce(&rvals, cache_key)?;
+
+        #[cfg(feature = "logging")]
+        {
+            self.enforcer.get_logger().print_enforce_log(
+                rvals.iter().map(|x| x.to_string()).collect(),
+                authorized,
+                cached,
+            );
+
+            #[cfg(feature = "explain")]
+            if let Some(indices) = indices {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
+                    .get_policy();
+
+                let rules: Vec<String> = indices
+                    .into_iter()
+                    .filter_map(|y| {
+                        all_rules.iter().nth(y).map(|x| x.join(", "))
+                    })
+                    .collect();
+
+                self.enforcer.get_logger().print_explain_log(rules);
+            }
+        }
+
+        Ok(authorized)
+    }
+
+    fn enforce_with_context<ARGS: EnforceArgs>(
+        &self,
+        ctx: EnforceContext,
+        rvals: ARGS,
+    ) -> Result<bool> {
+        let cache_key = rvals.cache_key();
+        let rvals = rvals.try_into_vec()?;
+        #[allow(unused_variables)]
+        let (authorized, cached, indices) =
+            self.private_enforce_with_context(ctx, &rvals, cache_key)?;
 
         #[cfg(feature = "logging")]
         {

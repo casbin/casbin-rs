@@ -47,6 +47,7 @@ pub use effector::{
     DefaultEffectStream, DefaultEffector, EffectKind, Effector, EffectorStream,
 };
 pub use emitter::{Event, EventData, EventEmitter, EventKey};
+pub use enforcer::EnforceContext;
 pub use enforcer::Enforcer;
 pub use error::Error;
 pub use internal_api::InternalApi;
