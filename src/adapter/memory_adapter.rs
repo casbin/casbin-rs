@@ -15,7 +15,8 @@ pub struct MemoryAdapter {
 
 #[async_trait]
 impl Adapter for MemoryAdapter {
-    async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
+    async fn load_policy(&mut self, m: &mut dyn Model) -> Result<()> {
+        self.is_filtered = false;
         for line in self.policy.iter() {
             let sec = &line[0];
             let ptype = &line[1];
