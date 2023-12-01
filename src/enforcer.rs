@@ -416,7 +416,7 @@ impl CoreApi for Enforcer {
         a: A,
     ) -> Result<Self> {
         let mut e = Self::new_raw(m, a).await?;
-        
+
         // Do not initialize the full policy when using a filtered adapter
         if !e.adapter.is_filtered() {
             e.load_policy().await?;
@@ -1377,13 +1377,13 @@ mod tests {
         tokio::test
     )]
     async fn test_filtered_file_adapter() {
-        let adapter = FileAdapter::new_filtered_adapter("examples/rbac_with_domains_policy.csv");
-        let mut e = Enforcer::new(
-            "examples/rbac_with_domains_model.conf",
-            adapter
-        )
-        .await
-        .unwrap();
+        let adapter = FileAdapter::new_filtered_adapter(
+            "examples/rbac_with_domains_policy.csv",
+        );
+        let mut e =
+            Enforcer::new("examples/rbac_with_domains_model.conf", adapter)
+                .await
+                .unwrap();
 
         let filter = Filter {
             p: vec!["", "domain1"],
