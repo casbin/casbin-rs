@@ -51,8 +51,15 @@ where
         }
     }
 
+    pub fn new_filtered_adapter(p: P) -> FileAdapter<P> {
+        FileAdapter {
+            file_path: p,
+            is_filtered: true,
+        }
+    }
+
     async fn load_policy_file(
-        &self,
+        &mut self,
         m: &mut dyn Model,
         handler: LoadPolicyFileHandler,
     ) -> Result<()> {
@@ -110,7 +117,8 @@ impl<P> Adapter for FileAdapter<P>
 where
     P: AsRef<Path> + Send + Sync,
 {
-    async fn load_policy(&self, m: &mut dyn Model) -> Result<()> {
+    async fn load_policy(&mut self, m: &mut dyn Model) -> Result<()> {
+        self.is_filtered = false;
         self.load_policy_file(m, load_policy_line).await?;
         Ok(())
     }

@@ -20,7 +20,7 @@ pub struct Filter<'a> {
 
 #[async_trait]
 pub trait Adapter: Send + Sync {
-    async fn load_policy(&self, m: &mut dyn Model) -> Result<()>;
+    async fn load_policy(&mut self, m: &mut dyn Model) -> Result<()>;
     async fn load_filtered_policy<'a>(
         &mut self,
         m: &mut dyn Model,

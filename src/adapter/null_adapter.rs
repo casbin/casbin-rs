@@ -10,7 +10,7 @@ pub struct NullAdapter;
 
 #[async_trait]
 impl Adapter for NullAdapter {
-    async fn load_policy(&self, _m: &mut dyn Model) -> Result<()> {
+    async fn load_policy(&mut self, _m: &mut dyn Model) -> Result<()> {
         Ok(())
     }
 
