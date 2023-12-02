@@ -26,7 +26,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: login
-          args: -- ${{ secrets.CARGO_TOKEN }}
+          args: ${{ secrets.CARGO_TOKEN }}
 
       - name: Cargo Publish
         uses: actions-rs/cargo@v1
