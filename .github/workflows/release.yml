@@ -9,7 +9,7 @@ on:
 jobs:
   release:
     name: Auto Release by Tags
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
