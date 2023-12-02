@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
-        rust: [nightly, beta, stable]
+        rust: [beta, stable]
 
     steps:
       - name: Checkout Repository
