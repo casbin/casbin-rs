@@ -3,14 +3,14 @@ use crate::Result;
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
     io::prelude::*,
-    io::{BufReader as ioBufReader, Cursor, Error as ioError, ioErrorKind},
+    io::{BufReader as ioBufReader, Cursor as ioCursor, Error as ioError, ErrorKind as ioErrorKind},
 };
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::{fs::File as file, path::Path as ioPath};
 
 #[cfg(feature = "runtime-tokio")]
-use std::{io::Cursor as tokioCursor, path::Path as ioPath};
+use std::{io::Cursor as ioCursor, path::Path as ioPath};
 #[cfg(feature = "runtime-tokio")]
 use tokio::io::{
     AsyncBufReadExt, AsyncReadExt, BufReader as ioBufReader, Error as ioError, ErrorKind as ioErrorKind,
@@ -46,7 +46,7 @@ impl Config {
             data: HashMap::new(),
         };
 
-        c.parse_buffer(&mut ioBufReader::new(tokioCursor::new(s.as_ref().as_bytes())))
+        c.parse_buffer(&mut ioBufReader::new(ioCursor::new(s.as_ref().as_bytes())))
             .await?;
         Ok(c)
     }
@@ -57,14 +57,14 @@ impl Config {
         let mut c = Vec::new();
         f.read_to_end(&mut c).await?;
 
-        let mut reader: ioBufReader<tokioCursor<&[u8]>> =
-            ioBufReader::new(tokioCursor::new(&c));
+        let mut reader: ioBufReader<ioCursor<&[u8]>> =
+            ioBufReader::new(ioCursor::new(&c));
         self.parse_buffer(&mut reader).await
     }
 
     async fn parse_buffer(
         &mut self,
-        reader: &mut ioBufReader<tokioCursor<&[u8]>>,
+        reader: &mut ioBufReader<ioCursor<&[u8]>>,
     ) -> Result<()> {
         let mut section = String::new();
 
