@@ -10,14 +10,14 @@ use async_std::{
 use async_std::{fs::File, path::Path};
 
 #[cfg(feature = "runtime-tokio")]
-use std::{io::Cursor, path::Path};
+use std::{io::Cursor as tokioCursor, path::Path as tokioPath};
 #[cfg(feature = "runtime-tokio")]
 use tokio::io::{
-    AsyncBufReadExt, AsyncReadExt, BufReader, Error as IoError, ErrorKind,
+    AsyncBufReadExt, AsyncReadExt, BufReader as tokioBufReader, Error as tokioIoError, ErrorKind as tokioErrorKind,
 };
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-use tokio::fs::File;
+use tokio::fs::File as tokioFile;
 
 use std::collections::HashMap;
 
@@ -32,7 +32,7 @@ pub(crate) struct Config {
 
 impl Config {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) async fn from_file<P: AsRef<Path>>(p: P) -> Result<Self> {
+    pub(crate) async fn from_file<P: AsRef<tokioPath>>(p: P) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
@@ -46,25 +46,25 @@ impl Config {
             data: HashMap::new(),
         };
 
-        c.parse_buffer(&mut BufReader::new(Cursor::new(s.as_ref().as_bytes())))
+        c.parse_buffer(&mut tokioBufReader::new(tokioCursor::new(s.as_ref().as_bytes())))
             .await?;
         Ok(c)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    async fn parse<P: AsRef<Path>>(&mut self, p: P) -> Result<()> {
-        let mut f = File::open(p).await?;
+    async fn parse<P: AsRef<tokioPath>>(&mut self, p: P) -> Result<()> {
+        let mut f = tokioFile::open(p).await?;
         let mut c = Vec::new();
         f.read_to_end(&mut c).await?;
 
-        let mut reader: BufReader<Cursor<&[u8]>> =
-            BufReader::new(Cursor::new(&c));
+        let mut reader: tokioBufReader<tokioCursor<&[u8]>> =
+            tokioBufReader::new(tokioCursor::new(&c));
         self.parse_buffer(&mut reader).await
     }
 
     async fn parse_buffer(
         &mut self,
-        reader: &mut BufReader<Cursor<&[u8]>>,
+        reader: &mut tokioBufReader<tokioCursor<&[u8]>>,
     ) -> Result<()> {
         let mut section = String::new();
 
@@ -122,8 +122,8 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    return Err(IoError::new(
-                        ErrorKind::Other,
+                    return Err(tokioIoError::new(
+                        tokioErrorKind::Other,
                         format!("parse content error, line={}", line),
                     )
                     .into());

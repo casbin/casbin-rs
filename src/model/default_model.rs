@@ -17,7 +17,7 @@ use ritelinked::{LinkedHashMap, LinkedHashSet};
 use async_std::path::Path;
 
 #[cfg(feature = "runtime-tokio")]
-use std::path::Path;
+use std::path::Path as tokioPath;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -28,7 +28,7 @@ pub struct DefaultModel {
 
 impl DefaultModel {
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn from_file<P: AsRef<Path>>(p: P) -> Result<DefaultModel> {
+    pub async fn from_file<P: AsRef<tokioPath>>(p: P) -> Result<DefaultModel> {
         let cfg = Config::from_file(p).await?;
 
         let mut model = DefaultModel::default();
