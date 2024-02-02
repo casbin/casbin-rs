@@ -3,21 +3,21 @@ use crate::Result;
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
     io::prelude::*,
-    io::{BufReader, Cursor, Error as IoError, ErrorKind},
+    io::{BufReader as ioBufReader, Cursor, Error as ioError, ioErrorKind},
 };
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
-use async_std::{fs::File, path::Path};
+use async_std::{fs::File as file, path::Path as ioPath};
 
 #[cfg(feature = "runtime-tokio")]
-use std::{io::Cursor as tokioCursor, path::Path as tokioPath};
+use std::{io::Cursor as tokioCursor, path::Path as ioPath};
 #[cfg(feature = "runtime-tokio")]
 use tokio::io::{
-    AsyncBufReadExt, AsyncReadExt, BufReader as tokioBufReader, Error as tokioIoError, ErrorKind as tokioErrorKind,
+    AsyncBufReadExt, AsyncReadExt, BufReader as ioBufReader, Error as ioError, ErrorKind as ioErrorKind,
 };
 
 #[cfg(all(feature = "runtime-tokio", not(target_arch = "wasm32")))]
-use tokio::fs::File as tokioFile;
+use tokio::fs::File as file;
 
 use std::collections::HashMap;
 
@@ -32,7 +32,7 @@ pub(crate) struct Config {
 
 impl Config {
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) async fn from_file<P: AsRef<tokioPath>>(p: P) -> Result<Self> {
+    pub(crate) async fn from_file<P: AsRef<ioPath>>(p: P) -> Result<Self> {
         let mut c = Config {
             data: HashMap::new(),
         };
@@ -46,25 +46,25 @@ impl Config {
             data: HashMap::new(),
         };
 
-        c.parse_buffer(&mut tokioBufReader::new(tokioCursor::new(s.as_ref().as_bytes())))
+        c.parse_buffer(&mut ioBufReader::new(tokioCursor::new(s.as_ref().as_bytes())))
             .await?;
         Ok(c)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    async fn parse<P: AsRef<tokioPath>>(&mut self, p: P) -> Result<()> {
-        let mut f = tokioFile::open(p).await?;
+    async fn parse<P: AsRef<ioPath>>(&mut self, p: P) -> Result<()> {
+        let mut f = file::open(p).await?;
         let mut c = Vec::new();
         f.read_to_end(&mut c).await?;
 
-        let mut reader: tokioBufReader<tokioCursor<&[u8]>> =
-            tokioBufReader::new(tokioCursor::new(&c));
+        let mut reader: ioBufReader<tokioCursor<&[u8]>> =
+            ioBufReader::new(tokioCursor::new(&c));
         self.parse_buffer(&mut reader).await
     }
 
     async fn parse_buffer(
         &mut self,
-        reader: &mut tokioBufReader<tokioCursor<&[u8]>>,
+        reader: &mut ioBufReader<tokioCursor<&[u8]>>,
     ) -> Result<()> {
         let mut section = String::new();
 
@@ -122,8 +122,8 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    return Err(tokioIoError::new(
-                        tokioErrorKind::Other,
+                    return Err(ioError::new(
+                        ioErrorKind::Other,
                         format!("parse content error, line={}", line),
                     )
                     .into());

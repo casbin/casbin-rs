@@ -4,32 +4,33 @@ use crate::{
     model::Model,
     util::parse_csv_line,
     Result,
+
 };
 
 
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
-    fs::File as asyncFile,
+    fs::File as file,
     io::prelude::*,
-    io::{BufReader as asyncBufReader, Error as asyncIoError, ErrorKind as asyncErrorKind},
-    path::Path as asyncPath,
+    io::{BufReader as ioBufReader, Error as ioError, ErrorKind as ioErrorKind},
+    path::Path as ioPath,
     prelude::*,
 };
 
+
 #[cfg(feature = "runtime-tokio")]
 use std::{
-    io::{Error as tokioIoError, ErrorKind as tokioErrorKind},
-    path::Path as tokioPath,
+    io::{Error as ioError, ErrorKind as ioErrorKind},
+    path::Path as ioPath,
 };
 #[cfg(feature = "runtime-tokio")]
 use tokio::{
-    fs::File as tokioFile,
-    io::{AsyncBufReadExt, AsyncWriteExt, BufReader as tokioBufReader},
+    fs::File as file,
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader as ioBufReader},
 };
 
-use async_trait::async_trait;
 
-use std::convert::AsRef;
+use async_trait::async_trait;
 use std::fmt::Write;
 
 pub struct FileAdapter<P> {
@@ -43,7 +44,7 @@ type LoadFilteredPolicyFileHandler<'a> =
 
 impl<P> FileAdapter<P>
 where
-    P: AsRef<tokioPath> + Send + Sync,
+    P: AsRef<ioPath> + Send + Sync,
 {
     pub fn new(p: P) -> FileAdapter<P> {
         FileAdapter {
@@ -64,8 +65,8 @@ where
         m: &mut dyn Model,
         handler: LoadPolicyFileHandler,
     ) -> Result<()> {
-        let f = tokioFile::open(&self.file_path).await?;
-        let mut lines = tokioBufReader::new(f).lines();
+        let f = file::open(&self.file_path).await?;
+        let mut lines = ioBufReader::new(f).lines();
         #[cfg(feature = "runtime-async-std")]
         while let Some(line) = lines.next().await {
             handler(line?, m)
@@ -85,8 +86,8 @@ where
         filter: Filter<'a>,
         handler: LoadFilteredPolicyFileHandler<'a>,
     ) -> Result<bool> {
-        let f = tokioFile::open(&self.file_path).await?;
-        let mut lines = tokioBufReader::new(f).lines();
+        let f = file::open(&self.file_path).await?;
+        let mut lines = ioBufReader::new(f).lines();
 
         let mut is_filtered = false;
         #[cfg(feature = "runtime-async-std")]
@@ -107,7 +108,7 @@ where
     }
 
     async fn save_policy_file(&self, text: String) -> Result<()> {
-        let mut file = tokioFile::create(&self.file_path).await?;
+        let mut file = file::create(&self.file_path).await?;
         file.write_all(text.as_bytes()).await?;
         Ok(())
     }
@@ -116,7 +117,7 @@ where
 #[async_trait]
 impl<P> Adapter for FileAdapter<P>
 where
-    P: AsRef<tokioPath> + Send + Sync,
+    P: AsRef<ioPath> + Send + Sync,
 {
     async fn load_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         self.is_filtered = false;
@@ -138,8 +139,8 @@ where
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(tokioIoError::new(
-                tokioErrorKind::Other,
+            return Err(ioError::new(
+                ioErrorKind::Other,
                 "save policy failed, file path is empty",
             )
             .into());
