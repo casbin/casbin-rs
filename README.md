@@ -37,7 +37,7 @@ Add this package to `Cargo.toml` of your project. (Check https://crates.io/crate
 
 ```toml
 [dependencies]
-casbin = { version = "2.1.0", default-features = false, features = ["runtime-async-std", "logging", "incremental"] }
+casbin = { version = "2.2.0", default-features = false, features = ["runtime-async-std", "logging", "incremental"] }
 tokio = { version = "1.10.0", features = ["fs", "io-util"] }
 ```
 
