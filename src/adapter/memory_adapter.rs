@@ -5,7 +5,7 @@ use crate::{
 };
 
 use async_trait::async_trait;
-use ritelinked::LinkedHashSet;
+use hashlink::LinkedHashSet;
 
 #[derive(Default)]
 pub struct MemoryAdapter {

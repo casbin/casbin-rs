@@ -7,8 +7,8 @@ use crate::{
 #[cfg(feature = "incremental")]
 use crate::emitter::EventData;
 
+use hashlink::{LinkedHashMap, LinkedHashSet};
 use parking_lot::RwLock;
-use ritelinked::{LinkedHashMap, LinkedHashSet};
 
 use std::sync::Arc;
 
