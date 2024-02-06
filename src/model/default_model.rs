@@ -10,8 +10,8 @@ use crate::{
 #[cfg(feature = "incremental")]
 use crate::emitter::EventData;
 
-use parking_lot::RwLock;
 use hashlink::{LinkedHashMap, LinkedHashSet};
+use parking_lot::RwLock;
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::path::Path as ioPath;
