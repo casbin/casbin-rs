@@ -11,7 +11,7 @@ use crate::{
 use crate::emitter::EventData;
 
 use parking_lot::RwLock;
-use ritelinked::{LinkedHashMap, LinkedHashSet};
+use hashlink::{LinkedHashMap, LinkedHashSet};
 
 #[cfg(all(feature = "runtime-async-std", not(target_arch = "wasm32")))]
 use async_std::path::Path as ioPath;
