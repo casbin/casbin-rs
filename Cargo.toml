@@ -26,7 +26,7 @@ mini-moka = { version = "0.10", optional = true }
 parking_lot = "0.12.0"
 regex = "1.5.4"
 petgraph = "0.6"
-fixedbitset = "0.4"
+fixedbitset = "0.5"
 rhai = { version = "1.5.0", features = [
   "sync",
   "only_i32",
