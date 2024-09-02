@@ -15,86 +15,37 @@ use rhai::{Dynamic, ImmutableString};
 static MAT_B: Lazy<Regex> = Lazy::new(|| Regex::new(r":[^/]*").unwrap());
 static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 
-use std::any::Any;
 use std::{borrow::Cow, collections::HashMap};
 
+#[derive(Clone, Copy)]
+pub enum OperatorFunction {
+    Arg0(fn() -> Dynamic),
+    Arg1(fn(ImmutableString) -> Dynamic),
+    Arg2(fn(ImmutableString, ImmutableString) -> Dynamic),
+    Arg3(fn(ImmutableString, ImmutableString, ImmutableString) -> Dynamic),
+}
+
 pub struct FunctionMap {
-    pub(crate) fm: HashMap<String, fn(&[ImmutableString]) -> Dynamic>,
+    pub(crate) fm: HashMap<String, OperatorFunction>,
 }
 
 impl Default for FunctionMap {
     fn default() -> FunctionMap {
-        let mut fm: HashMap<String, fn(&[ImmutableString]) -> Dynamic> =
+        let mut fm: HashMap<String, OperatorFunction> =
             HashMap::new();
-        fm.insert("keyMatch".to_owned(), |args: &[ImmutableString]| {
-            key_match(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("keyGet".to_owned(), |args: &[ImmutableString]| {
-            key_get(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("keyMatch2".to_owned(), |args: &[ImmutableString]| {
-            key_match2(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("keyGet2".to_owned(), |args: &[ImmutableString]| {
-            key_get2(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-                args.get(2).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("keyMatch3".to_owned(), |args: &[ImmutableString]| {
-            key_match3(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("keyGet3".to_owned(), |args: &[ImmutableString]| {
-            key_get3(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-                args.get(2).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
-        fm.insert("regexMatch".to_owned(), |args: &[ImmutableString]| {
-            regex_match(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
+        fm.insert("keyMatch".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { key_match(&s1, &s2).into() }));
+        fm.insert("keyGet".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { key_get(&s1, &s2).into() }));
+        fm.insert("keyMatch2".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { key_match2(&s1, &s2).into() }));
+        fm.insert("keyGet2".to_owned(), OperatorFunction::Arg3(|s1: ImmutableString, s2: ImmutableString, s3: ImmutableString| { key_get2(&s1, &s2, &s3).into() }));
+        fm.insert("keyMatch3".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { key_match3(&s1, &s2).into() }));
+        fm.insert("keyGet3".to_owned(), OperatorFunction::Arg3(|s1: ImmutableString, s2: ImmutableString, s3: ImmutableString| { key_get3(&s1, &s2, &s3).into() }));
+        fm.insert("regexMatch".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { regex_match(&s1, &s2).into() }));
 
         #[cfg(feature = "glob")]
-        fm.insert("globMatch".to_owned(), |args: &[ImmutableString]| {
-            glob_match(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
+        fm.insert("globMatch".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { glob_match(&s1, &s2).into() }));
 
         #[cfg(feature = "ip")]
-        fm.insert("ipMatch".to_owned(), |args: &[ImmutableString]| {
-            ip_match(
-                args.get(0).unwrap_or(&ImmutableString::from("")),
-                args.get(1).unwrap_or(&ImmutableString::from("")),
-            )
-            .into()
-        });
+        fm.insert("ipMatch".to_owned(), OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| { ip_match(&s1, &s2).into() }));
 
         FunctionMap { fm }
     }
@@ -105,7 +56,7 @@ impl FunctionMap {
     pub fn add_function(
         &mut self,
         fname: &str,
-        f: fn(&[ImmutableString]) -> Dynamic,
+        f: OperatorFunction,
     ) {
         self.fm.insert(fname.to_owned(), f);
     }
@@ -113,7 +64,7 @@ impl FunctionMap {
     #[inline]
     pub fn get_functions(
         &self,
-    ) -> impl Iterator<Item = (&String, &fn(&[ImmutableString]) -> Dynamic)>
+    ) -> impl Iterator<Item = (&String, &OperatorFunction)>
     {
         self.fm.iter()
     }
@@ -137,10 +88,8 @@ pub fn key_match(key1: &str, key2: &str) -> bool {
 // "bar/foo" will be returned.
 pub fn key_get(key1: &str, key2: &str) -> String {
     if let Some(i) = key2.find('*') {
-        if key1.len() > i {
-            if key1[..i] == key2[..i] {
-                return key1[i..].to_string();
-            }
+        if key1.len() > i && key1[..i] == key2[..i] {
+            return key1[i..].to_string();
         }
     }
     "".to_string()

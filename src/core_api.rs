@@ -1,4 +1,5 @@
 use crate::{
+    model::OperatorFunction,
     enforcer::EnforceContext, Adapter, Effector, EnforceArgs, Event,
     EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
     TryIntoModel,
@@ -15,7 +16,6 @@ use crate::emitter::EventData;
 
 use async_trait::async_trait;
 use parking_lot::RwLock;
-use rhai::{Dynamic, ImmutableString};
 
 use std::sync::Arc;
 
@@ -36,7 +36,7 @@ pub trait CoreApi: Send + Sync {
     fn add_function(
         &mut self,
         fname: &str,
-        f: fn(&[ImmutableString]) -> Dynamic,
+        f: OperatorFunction,
     );
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;
