@@ -7,7 +7,7 @@ use crate::{
     error::{ModelError, PolicyError, RequestError},
     get_or_err, get_or_err_with_context,
     management_api::MgmtApi,
-    model::{FunctionMap, Model},
+    model::{FunctionMap, Model, OperatorFunction},
     rbac::{DefaultRoleManager, RoleManager},
     register_g_function,
     util::{escape_assertion, escape_eval},
@@ -351,6 +351,23 @@ impl Enforcer {
         }))
     }
 
+    fn register_function(engine: &mut Engine, key: &str, f: OperatorFunction) {
+        match f {
+            OperatorFunction::Arg0(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg1(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg2(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg3(func) => {
+                engine.register_fn(key, func);
+            }
+        }
+    }
+
     pub(crate) fn register_g_functions(&mut self) -> Result<()> {
         if let Some(ast_map) = self.model.get_model().get("g") {
             for (fname, ast) in ast_map {
@@ -380,7 +397,7 @@ impl CoreApi for Enforcer {
         engine.register_global_module(CASBIN_PACKAGE.as_shared_module());
 
         for (key, &func) in fm.get_functions() {
-            engine.register_fn(key, func);
+            Self::register_function(&mut engine, key, func);
         }
 
         let mut e = Self {
@@ -425,13 +442,9 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn add_function(
-        &mut self,
-        fname: &str,
-        f: fn(ImmutableString, ImmutableString) -> bool,
-    ) {
+    fn add_function(&mut self, fname: &str, f: OperatorFunction) {
         self.fm.add_function(fname, f);
-        self.engine.register_fn(fname, f);
+        Self::register_function(&mut self.engine, fname, f);
     }
 
     #[inline]
@@ -1340,7 +1353,11 @@ mod tests {
 
         e.add_function(
             "keyMatchCustom",
-            |s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match(&s1, &s2).into()
+                },
+            ),
         );
 
         assert_eq!(

@@ -8,7 +8,7 @@ use crate::{
     emitter::{clear_cache, Event, EventData, EventEmitter},
     enforcer::EnforceContext,
     enforcer::Enforcer,
-    model::Model,
+    model::{Model, OperatorFunction},
     rbac::RoleManager,
     Result,
 };
@@ -27,7 +27,7 @@ use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
 use parking_lot::RwLock;
-use rhai::{Dynamic, ImmutableString};
+use rhai::Dynamic;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -123,11 +123,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_function(
-        &mut self,
-        fname: &str,
-        f: fn(ImmutableString, ImmutableString) -> bool,
-    ) {
+    fn add_function(&mut self, fname: &str, f: OperatorFunction) {
         self.enforcer.add_function(fname, f);
     }
 
