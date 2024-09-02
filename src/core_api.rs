@@ -1,8 +1,7 @@
 use crate::{
-    model::OperatorFunction,
-    enforcer::EnforceContext, Adapter, Effector, EnforceArgs, Event,
-    EventEmitter, Filter, Model, Result, RoleManager, TryIntoAdapter,
-    TryIntoModel,
+    enforcer::EnforceContext, model::OperatorFunction, Adapter, Effector,
+    EnforceArgs, Event, EventEmitter, Filter, Model, Result, RoleManager,
+    TryIntoAdapter, TryIntoModel,
 };
 
 #[cfg(feature = "watcher")]
@@ -33,11 +32,7 @@ pub trait CoreApi: Send + Sync {
     ) -> Result<Self>
     where
         Self: Sized;
-    fn add_function(
-        &mut self,
-        fname: &str,
-        f: OperatorFunction,
-    );
+    fn add_function(&mut self, fname: &str, f: OperatorFunction);
     fn get_model(&self) -> &dyn Model;
     fn get_mut_model(&mut self) -> &mut dyn Model;
     fn get_adapter(&self) -> &dyn Adapter;

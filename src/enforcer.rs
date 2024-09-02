@@ -350,17 +350,21 @@ impl Enforcer {
             }
         }))
     }
-    
-    fn register_function(
-        engine: &mut Engine,
-        key: &str,
-        f: OperatorFunction,
-    ) {
+
+    fn register_function(engine: &mut Engine, key: &str, f: OperatorFunction) {
         match f {
-            OperatorFunction::Arg0(func) => {engine.register_fn(key, func);}
-            OperatorFunction::Arg1(func) => {engine.register_fn(key, func);}
-            OperatorFunction::Arg2(func) => {engine.register_fn(key, func);}
-            OperatorFunction::Arg3(func) => {engine.register_fn(key, func);}
+            OperatorFunction::Arg0(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg1(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg2(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg3(func) => {
+                engine.register_fn(key, func);
+            }
         }
     }
 
@@ -438,11 +442,7 @@ impl CoreApi for Enforcer {
     }
 
     #[inline]
-    fn add_function(
-        &mut self,
-        fname: &str,
-        f: OperatorFunction,
-    ) {
+    fn add_function(&mut self, fname: &str, f: OperatorFunction) {
         self.fm.add_function(fname, f);
         Self::register_function(&mut self.engine, fname, f);
     }
@@ -1353,7 +1353,11 @@ mod tests {
 
         e.add_function(
             "keyMatchCustom",
-            OperatorFunction::Arg2(|s1: ImmutableString, s2: ImmutableString| key_match(&s1, &s2).into()),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match(&s1, &s2).into()
+                },
+            ),
         );
 
         assert_eq!(

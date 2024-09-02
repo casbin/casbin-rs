@@ -27,7 +27,7 @@ use crate::{error::ModelError, get_or_err};
 
 use async_trait::async_trait;
 use parking_lot::RwLock;
-use rhai::{Dynamic};
+use rhai::Dynamic;
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -123,11 +123,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[inline]
-    fn add_function(
-        &mut self,
-        fname: &str,
-        f: OperatorFunction,
-    ) {
+    fn add_function(&mut self, fname: &str, f: OperatorFunction) {
         self.enforcer.add_function(fname, f);
     }
 
