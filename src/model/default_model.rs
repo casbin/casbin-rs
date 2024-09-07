@@ -393,7 +393,7 @@ impl Model for DefaultModel {
         for ptype in ["r", "p"] {
             if let Some(assertion) = self.model.get(ptype) {
                 for token in &assertion[ptype].tokens {
-                    let new_token = p_pattern.replace_all(&token, "p.");
+                    let new_token = p_pattern.replace_all(token, "p.");
                     let new_token = r_pattern.replace_all(&new_token, "r.");
                     token_patterns.insert(token.clone(), new_token.to_string());
                 }
@@ -403,7 +403,8 @@ impl Model for DefaultModel {
         if let Some(assertions) = self.model.get("e") {
             if let Some(assertion) = assertions.get("e") {
                 if assertion.value.contains("p_eft") {
-                    token_patterns.insert("p_eft".to_string(), "p.eft".to_string());
+                    token_patterns
+                        .insert("p_eft".to_string(), "p.eft".to_string());
                 }
             }
         }
@@ -412,7 +413,7 @@ impl Model for DefaultModel {
 
         let write_string = |sec: &str, s: &mut String| {
             if let Some(assertions) = self.model.get(sec) {
-                for (ptype, assertion) in assertions {
+                for (_ptype, assertion) in assertions {
                     let mut value = assertion.value.clone();
                     for (token_pattern, new_token) in &token_patterns {
                         value = value.replace(token_pattern, new_token);

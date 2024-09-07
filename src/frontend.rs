@@ -1,7 +1,10 @@
-use std::collections::HashMap;
 use crate::{CoreApi, Enforcer};
+use std::collections::HashMap;
 
-pub fn casbin_js_get_permission_for_user(e: &Enforcer, user: &str) -> Result<String, Box<dyn std::error::Error>> {
+pub fn casbin_js_get_permission_for_user(
+    e: &Enforcer,
+    _user: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     let model = e.get_model();
     let mut m = HashMap::new();
 
@@ -9,8 +12,8 @@ pub fn casbin_js_get_permission_for_user(e: &Enforcer, user: &str) -> Result<Str
 
     let mut p_rules = Vec::new();
     if let Some(assertions) = model.get_model().get("p") {
-        for (ptype, assertion) in assertions {
-            let policies = model.get_policy("p", &ptype);
+        for (ptype, _assertion) in assertions {
+            let policies = model.get_policy("p", ptype);
             for rules in policies {
                 let mut rule = vec![ptype.to_string()];
                 rule.extend(rules);
@@ -22,8 +25,8 @@ pub fn casbin_js_get_permission_for_user(e: &Enforcer, user: &str) -> Result<Str
 
     let mut g_rules = Vec::new();
     if let Some(assertions) = model.get_model().get("g") {
-        for (ptype, assertion) in assertions {
-            let policies = model.get_policy("g", &ptype);
+        for (ptype, _assertion) in assertions {
+            let policies = model.get_policy("g", ptype);
             for rules in policies {
                 let mut rule = vec![ptype.to_string()];
                 rule.extend(rules);
@@ -39,8 +42,8 @@ pub fn casbin_js_get_permission_for_user(e: &Enforcer, user: &str) -> Result<Str
 
 #[cfg(test)]
 mod tests {
-    use crate::prelude::*;
     use crate::frontend::casbin_js_get_permission_for_user;
+    use crate::prelude::*;
 
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
@@ -60,7 +63,8 @@ mod tests {
         let policy_path = "examples/rbac_with_hierarchy_policy.csv";
         let e = Enforcer::new(model_path, ()).await.unwrap();
 
-        let received_string = casbin_js_get_permission_for_user(&e, "alice").unwrap();
+        let received_string =
+            casbin_js_get_permission_for_user(&e, "alice").unwrap();
         let received: Value = serde_json::from_str(&received_string).unwrap();
 
         let mut expected_model = String::new();
@@ -70,14 +74,18 @@ mod tests {
             .unwrap();
         let expected_model_str = expected_model.replace("\n\n", "\n");
 
-        assert_eq!(received["m"].as_str().unwrap().trim(), expected_model_str.trim());
+        assert_eq!(
+            received["m"].as_str().unwrap().trim(),
+            expected_model_str.trim()
+        );
 
         let mut expected_policies = String::new();
         fs::File::open(policy_path)
             .unwrap()
             .read_to_string(&mut expected_policies)
             .unwrap();
-        let expected_policies_items: Vec<&str> = expected_policies.split(&[',', '\n'][..]).collect();
+        let expected_policies_items: Vec<&str> =
+            expected_policies.split(&[',', '\n'][..]).collect();
 
         let mut i = 0;
         for s_arr in received["p"].as_array().unwrap() {
