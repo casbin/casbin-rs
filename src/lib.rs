@@ -30,6 +30,7 @@ mod watcher;
 
 pub mod error;
 pub mod prelude;
+pub mod frontend;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use adapter::FileAdapter;

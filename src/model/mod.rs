@@ -72,4 +72,5 @@ pub trait Model: Send + Sync {
         field_index: usize,
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>);
+    fn to_text(&self) -> String;
 }
