@@ -8,7 +8,7 @@ pub fn casbin_js_get_permission_for_user(
     let model = e.get_model();
     let mut m = HashMap::new();
 
-    m.insert("m", model.to_text());
+    m.insert("m", serde_json::Value::from(model.to_text()));
 
     let mut p_rules = Vec::new();
     if let Some(assertions) = model.get_model().get("p") {
@@ -21,7 +21,7 @@ pub fn casbin_js_get_permission_for_user(
             }
         }
     }
-    m.insert("p", serde_json::to_string(&p_rules)?);
+    m.insert("p", serde_json::Value::from(p_rules));
 
     let mut g_rules = Vec::new();
     if let Some(assertions) = model.get_model().get("g") {
@@ -34,7 +34,7 @@ pub fn casbin_js_get_permission_for_user(
             }
         }
     }
-    m.insert("g", serde_json::to_string(&g_rules)?);
+    m.insert("g", serde_json::Value::from(g_rules));
 
     let result = serde_json::to_string(&m)?;
     Ok(result)
@@ -61,7 +61,7 @@ mod tests {
 
         let model_path = "examples/rbac_model.conf";
         let policy_path = "examples/rbac_with_hierarchy_policy.csv";
-        let e = Enforcer::new(model_path, ()).await.unwrap();
+        let e = Enforcer::new(model_path, policy_path).await.unwrap();
 
         let received_string =
             casbin_js_get_permission_for_user(&e, "alice").unwrap();
