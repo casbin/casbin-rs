@@ -72,7 +72,8 @@ mod tests {
             .unwrap()
             .read_to_string(&mut expected_model)
             .unwrap();
-        let expected_model_str = expected_model.replace("\n\n", "\n");
+        let expected_model_str =
+            expected_model.replace("\r\n", "\n").replace("\n\n", "\n");
 
         assert_eq!(
             received["m"].as_str().unwrap().trim(),
