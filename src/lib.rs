@@ -29,6 +29,7 @@ mod util;
 mod watcher;
 
 pub mod error;
+pub mod frontend;
 pub mod prelude;
 
 #[cfg(not(target_arch = "wasm32"))]

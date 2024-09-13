@@ -384,6 +384,66 @@ impl Model for DefaultModel {
         }
         (res, rules_removed)
     }
+
+    fn to_text(&self) -> String {
+        let mut token_patterns = HashMap::new();
+        let p_pattern = regex::Regex::new(r"^p_").unwrap();
+        let r_pattern = regex::Regex::new(r"^r_").unwrap();
+
+        for ptype in ["r", "p"] {
+            if let Some(assertion) = self.model.get(ptype) {
+                for token in &assertion[ptype].tokens {
+                    let new_token = p_pattern.replace_all(token, "p.");
+                    let new_token = r_pattern.replace_all(&new_token, "r.");
+                    token_patterns.insert(token.clone(), new_token.to_string());
+                }
+            }
+        }
+
+        if let Some(assertions) = self.model.get("e") {
+            if let Some(assertion) = assertions.get("e") {
+                if assertion.value.contains("p_eft") {
+                    token_patterns
+                        .insert("p_eft".to_string(), "p.eft".to_string());
+                }
+            }
+        }
+
+        let mut s = String::new();
+
+        let write_string = |sec: &str, s: &mut String| {
+            if let Some(assertions) = self.model.get(sec) {
+                for (_ptype, assertion) in assertions {
+                    let mut value = assertion.value.clone();
+                    for (token_pattern, new_token) in &token_patterns {
+                        value = value.replace(token_pattern, new_token);
+                    }
+                    s.push_str(&format!("{} = {}\n", sec, value));
+                }
+            }
+        };
+
+        s.push_str("[request_definition]\n");
+        write_string("r", &mut s);
+        s.push_str("[policy_definition]\n");
+        write_string("p", &mut s);
+
+        if self.model.contains_key("g") {
+            s.push_str("[role_definition]\n");
+            if let Some(assertions) = self.model.get("g") {
+                for (ptype, assertion) in assertions {
+                    s.push_str(&format!("{} = {}\n", ptype, assertion.value));
+                }
+            }
+        }
+
+        s.push_str("[policy_effect]\n");
+        write_string("e", &mut s);
+        s.push_str("[matchers]\n");
+        write_string("m", &mut s);
+
+        s
+    }
 }
 
 #[cfg(test)]
