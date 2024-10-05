@@ -32,9 +32,9 @@ pub mod error;
 pub mod frontend;
 pub mod prelude;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub use adapter::FileAdapter;
 pub use adapter::{Adapter, Filter, MemoryAdapter, NullAdapter};
+#[cfg(not(target_arch = "wasm32"))]
+pub use adapter::{FileAdapter, StringAdapter};
 
 #[cfg(feature = "cached")]
 pub use cache::{Cache, DefaultCache};
