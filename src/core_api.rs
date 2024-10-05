@@ -1,9 +1,8 @@
 use crate::{
     enforcer::EnforceContext, model::OperatorFunction, Adapter, Effector,
     EnforceArgs, Event, EventEmitter, Filter, Model, Result, RoleManager,
-    TryIntoAdapter, TryIntoModel,
+    TryIntoAdapter, TryIntoModel,convert::TryIntoModelFromStr
 };
-
 #[cfg(feature = "watcher")]
 use crate::Watcher;
 
@@ -26,7 +25,19 @@ pub trait CoreApi: Send + Sync {
     ) -> Result<Self>
     where
         Self: Sized;
+    async fn new_raw_from_str<M: TryIntoModelFromStr, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self>
+    where
+        Self: Sized;
     async fn new<M: TryIntoModel, A: TryIntoAdapter>(
+        m: M,
+        a: A,
+    ) -> Result<Self>
+    where
+        Self: Sized;
+    async fn new_from_str<M: TryIntoModelFromStr, A: TryIntoAdapter>(
         m: M,
         a: A,
     ) -> Result<Self>

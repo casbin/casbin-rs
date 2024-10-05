@@ -17,6 +17,10 @@ use std::{
 pub trait TryIntoModel: Send + Sync {
     async fn try_into_model(self) -> Result<Box<dyn Model>>;
 }
+#[async_trait]
+pub trait TryIntoModelFromStr:Send + Sync {
+    async fn try_into_model_from_str(self) -> Result<Box<dyn Model>>;
+}
 
 #[async_trait]
 pub trait TryIntoAdapter: Send + Sync {
@@ -34,6 +38,12 @@ impl TryIntoModel for &'static str {
         {
             Ok(Box::new(DefaultModel::from_str(self).await?))
         }
+    }
+}
+#[async_trait]
+impl TryIntoModelFromStr for &'static str {
+    async fn try_into_model_from_str(self)->Result<Box<dyn Model>>{
+        Ok(Box::new(DefaultModel::from_str(self).await?))
     }
 }
 
