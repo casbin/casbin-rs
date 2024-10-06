@@ -1,3 +1,27 @@
+use crate::{
+    adapter::{Adapter, Filter},
+    error::{AdapterError, ModelError},
+    model::Model,
+    util::parse_csv_line,
+    Result,
+};
+use async_trait::async_trait;
+use std::fmt::Write;
+
+#[cfg(feature = "runtime-async-std")]
+use async_std::{
+    fs::File as file,
+    io::prelude::*,
+    io::{
+        BufReader as ioBufReader, Error as ioError, ErrorKind as ioErrorKind,
+    },
+    path::Path as ioPath,
+    prelude::*,
+};
+type LoadPolicyFileHandler = fn(String, &mut dyn Model);
+type LoadFilteredPolicyFileHandler<'a> =
+    fn(String, &mut dyn Model, f: &Filter<'a>) -> bool;
+
 pub struct StringAdapter {
     policy_string: String,
     is_filtered: bool,
@@ -152,5 +176,66 @@ impl Adapter for StringAdapter {
 
     fn is_filtered(&self) -> bool {
         self.is_filtered
+    }
+}
+
+fn load_policy_line(line: String, m: &mut dyn Model) {
+    if line.is_empty() || line.starts_with('#') {
+        return;
+    }
+
+    if let Some(tokens) = parse_csv_line(line) {
+        let key = &tokens[0];
+
+        if let Some(ref sec) = key.chars().next().map(|x| x.to_string()) {
+            if let Some(ast_map) = m.get_mut_model().get_mut(sec) {
+                if let Some(ast) = ast_map.get_mut(key) {
+                    ast.policy.insert(tokens[1..].to_vec());
+                }
+            }
+        }
+    }
+}
+
+fn load_filtered_policy_line(
+    line: String,
+    m: &mut dyn Model,
+    f: &Filter<'_>,
+) -> bool {
+    if line.is_empty() || line.starts_with('#') {
+        return false;
+    }
+
+    if let Some(tokens) = parse_csv_line(line) {
+        let key = &tokens[0];
+
+        let mut is_filtered = false;
+        if let Some(ref sec) = key.chars().next().map(|x| x.to_string()) {
+            if sec == "p" {
+                for (i, rule) in f.p.iter().enumerate() {
+                    if !rule.is_empty() && rule != &tokens[i + 1] {
+                        is_filtered = true;
+                    }
+                }
+            }
+            if sec == "g" {
+                for (i, rule) in f.g.iter().enumerate() {
+                    if !rule.is_empty() && rule != &tokens[i + 1] {
+                        is_filtered = true;
+                    }
+                }
+            }
+            if !is_filtered {
+                if let Some(ast_map) = m.get_mut_model().get_mut(sec) {
+                    if let Some(ast) = ast_map.get_mut(key) {
+                        ast.policy.insert(tokens[1..].to_vec());
+                    }
+                }
+            }
+        }
+
+        is_filtered
+    } else {
+        false
     }
 }

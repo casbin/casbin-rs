@@ -1583,4 +1583,37 @@ mod tests {
             true
         );
     }
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_string_adapter() {
+        use crate::StringAdapter;
+
+        let m1 = DefaultModel::from_file("examples/basic_model.conf")
+            .await
+            .unwrap();
+        let basic_policy_str = r#"
+                p, alice, data1, read
+                p, bob, data2, write
+                "#;
+        let adapter1 = StringAdapter::new(basic_policy_str.to_string());
+        let mut e = Enforcer::new(m1, adapter1).await.unwrap();
+
+        assert_eq!(false, e.enforce(("root", "data1", "read")).unwrap());
+
+        let m2 = DefaultModel::from_file("examples/basic_with_root_model.conf")
+            .await
+            .unwrap();
+        let adapter2 = StringAdapter::new(basic_policy_str.to_string());
+        let e2 = Enforcer::new(m2, adapter2).await.unwrap();
+
+        e.model = e2.model;
+        assert_eq!(true, e.enforce(("root", "data1", "read")).unwrap());
+    }
 }
