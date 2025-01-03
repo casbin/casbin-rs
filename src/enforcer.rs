@@ -628,7 +628,6 @@ impl CoreApi for Enforcer {
     /// #[cfg(all(not(feature = "runtime-async-std"), not(feature = "runtime-tokio")))]
     /// fn main() {}
     /// ```
-
     fn enforce_with_context<ARGS: EnforceArgs>(
         &self,
         ctx: EnforceContext,
