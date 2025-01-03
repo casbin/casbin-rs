@@ -319,8 +319,7 @@ where
         let mut q: Vec<String> = vec![name.to_owned()];
         while !q.is_empty() {
             let name = q.swap_remove(0);
-            let roles =
-                self.get_role_manager().read().get_roles(&name, domain);
+            let roles = self.get_role_manager().read().get_roles(&name, domain);
             for r in roles.into_iter() {
                 if res.insert(r.to_owned()) {
                     q.push(r);
