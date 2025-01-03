@@ -66,7 +66,7 @@ pub trait RbacApi: MgmtApi {
     }
 
     fn get_roles_for_user(
-        &mut self,
+        &self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<String>;
@@ -76,7 +76,7 @@ pub trait RbacApi: MgmtApi {
         domain: Option<&str>,
     ) -> Vec<String>;
     fn has_role_for_user(
-        &mut self,
+        &self,
         name: &str,
         role: &str,
         domain: Option<&str>,
@@ -92,12 +92,12 @@ pub trait RbacApi: MgmtApi {
         permission: Vec<String>,
     ) -> bool;
     fn get_implicit_roles_for_user(
-        &mut self,
+        &self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<String>;
     fn get_implicit_permissions_for_user(
-        &mut self,
+        &self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<Vec<String>>;
@@ -212,14 +212,14 @@ where
     }
 
     fn get_roles_for_user(
-        &mut self,
+        &self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<String> {
         let mut roles = vec![];
-        if let Some(t1) = self.get_mut_model().get_mut_model().get_mut("g") {
-            if let Some(t2) = t1.get_mut("g") {
-                roles = t2.rm.write().get_roles(name, domain);
+        if let Some(t1) = self.get_model().get_model().get("g") {
+            if let Some(t2) = t1.get("g") {
+                roles = t2.rm.read().get_roles(name, domain);
             }
         }
 
@@ -240,7 +240,7 @@ where
     }
 
     fn has_role_for_user(
-        &mut self,
+        &self,
         name: &str,
         role: &str,
         domain: Option<&str>,
@@ -311,7 +311,7 @@ where
     }
 
     fn get_implicit_roles_for_user(
-        &mut self,
+        &self,
         name: &str,
         domain: Option<&str>,
     ) -> Vec<String> {
@@ -320,7 +320,7 @@ where
         while !q.is_empty() {
             let name = q.swap_remove(0);
             let roles =
-                self.get_role_manager().write().get_roles(&name, domain);
+                self.get_role_manager().read().get_roles(&name, domain);
             for r in roles.into_iter() {
                 if res.insert(r.to_owned()) {
                     q.push(r);
@@ -331,7 +331,7 @@ where
     }
 
     fn get_implicit_permissions_for_user(
-        &mut self,
+        &self,
         user: &str,
         domain: Option<&str>,
     ) -> Vec<Vec<String>> {
