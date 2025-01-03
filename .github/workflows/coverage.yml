@@ -29,7 +29,7 @@ jobs:
 
       - name: Run cargo-tarpaulin
         run: |
-          cargo tarpaulin --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
+          cargo tarpaulin --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
