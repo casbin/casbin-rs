@@ -22,11 +22,14 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+      - name: Install cargo-tarpaulin
+        uses: baptiste0928/cargo-install@v3
         with:
-          version: '0.22.0'
-          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
+          crate: cargo-tarpaulin
+
+      - name: Run cargo-tarpaulin
+        run: |
+          cargo tarpaulin --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v1
