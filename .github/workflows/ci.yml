@@ -78,6 +78,7 @@ jobs:
           command: check
           args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
       - name: Cargo Test For WASM
+        if: ${{ matrix.os != 'windows-latest' }}
         run: wasm-pack test --node --no-default-features --features runtime-async-std
       - name: Clippy warnings
         uses: actions-rs/cargo@v1
