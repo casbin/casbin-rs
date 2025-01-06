@@ -20,7 +20,7 @@ impl Adapter for MemoryAdapter {
         for line in self.policy.iter() {
             let sec = &line[0];
             let ptype = &line[1];
-            let rule = line[1..].to_vec().clone();
+            let rule = line[2..].to_vec().clone();
 
             if let Some(t1) = m.get_mut_model().get_mut(sec) {
                 if let Some(t2) = t1.get_mut(ptype) {
