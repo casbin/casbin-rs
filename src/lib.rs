@@ -34,7 +34,7 @@ pub mod prelude;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use adapter::FileAdapter;
-pub use adapter::{Adapter, Filter, MemoryAdapter, NullAdapter};
+pub use adapter::{Adapter, Filter, MemoryAdapter, NullAdapter, StringAdapter};
 
 #[cfg(feature = "cached")]
 pub use cache::{Cache, DefaultCache};

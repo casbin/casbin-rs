@@ -1,14 +1,18 @@
 use async_trait::async_trait;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod file_adapter;
 pub mod memory_adapter;
 pub mod null_adapter;
+pub mod string_adapter;
+
+#[cfg(not(target_arch = "wasm32"))]
+pub mod file_adapter;
+
+pub use memory_adapter::MemoryAdapter;
+pub use null_adapter::NullAdapter;
+pub use string_adapter::StringAdapter;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use file_adapter::FileAdapter;
-pub use memory_adapter::MemoryAdapter;
-pub use null_adapter::NullAdapter;
 
 use crate::{model::Model, Result};
 
