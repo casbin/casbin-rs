@@ -26,9 +26,7 @@ impl From<StringAdapter> for MemoryAdapter {
         for line in string_policies {
             if let Some(tokens) = parse_csv_line(line) {
                 let ptype = tokens[0].clone();
-                if let Some(sec) =
-                    ptype.chars().into_iter().next().map(|x| x.to_string())
-                {
+                if let Some(sec) = ptype.chars().next().map(|x| x.to_string()) {
                     let mut rule = tokens[1..].to_vec();
                     rule.insert(0, ptype);
                     rule.insert(0, sec);
@@ -40,6 +38,7 @@ impl From<StringAdapter> for MemoryAdapter {
     }
 }
 
+#[allow(clippy::should_implement_trait)]
 impl MemoryAdapter {
     pub fn from_str(s: impl ToString) -> Self {
         let s = s.to_string();
