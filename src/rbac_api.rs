@@ -380,26 +380,32 @@ where
 mod tests {
     use crate::prelude::*;
 
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::*;
+
     fn sort_unstable<T: Ord>(mut v: Vec<T>) -> Vec<T> {
         v.sort_unstable();
         v
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_role_api() {
-        let m = DefaultModel::from_file("examples/rbac_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_str(include_str!("../examples/rbac_model.conf"))
+                .await
+                .unwrap();
 
-        let adapter = FileAdapter::new("examples/rbac_policy.csv");
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_policy.csv"
+        ));
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(vec!["data2_admin"], e.get_roles_for_user("alice", None));
@@ -769,24 +775,25 @@ mod tests {
         assert_eq!(true, e.write().enforce(("bob", "data2", "write")).unwrap());
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_permission_api() {
-        let m = DefaultModel::from_file(
-            "examples/basic_without_resources_model.conf",
-        )
+        let m = DefaultModel::from_str(include_str!(
+            "../examples/basic_without_resources_model.conf",
+        ))
         .await
         .unwrap();
 
-        let adapter =
-            FileAdapter::new("examples/basic_without_resources_policy.csv");
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/basic_without_resources_policy.csv"
+        ));
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(true, e.enforce(("alice", "read")).unwrap());
@@ -891,23 +898,25 @@ mod tests {
         assert_eq!(false, e.enforce(("eve", "write")).unwrap());
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_implicit_role_api() {
-        let m = DefaultModel::from_file("examples/rbac_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_str(include_str!("../examples/rbac_model.conf"))
+                .await
+                .unwrap();
 
-        let adapter =
-            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_hierarchy_policy.csv"
+        ));
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -928,23 +937,25 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_implicit_permission_api() {
-        let m = DefaultModel::from_file("examples/rbac_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_str(include_str!("../examples/rbac_model.conf"))
+                .await
+                .unwrap();
 
-        let adapter =
-            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_hierarchy_policy.csv"
+        ));
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -971,22 +982,24 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_implicit_user_api() {
-        let m = DefaultModel::from_file("examples/rbac_model.conf")
-            .await
-            .unwrap();
+        let m =
+            DefaultModel::from_str(include_str!("../examples/rbac_model.conf"))
+                .await
+                .unwrap();
 
-        let adapter =
-            FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_hierarchy_policy.csv"
+        ));
         let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
@@ -1033,25 +1046,26 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_implicit_permission_api_with_domain() {
-        let m =
-            DefaultModel::from_file("examples/rbac_with_domains_model.conf")
-                .await
-                .unwrap();
+        let m = DefaultModel::from_str(include_str!(
+            "../examples/rbac_with_domains_model.conf"
+        ))
+        .await
+        .unwrap();
 
-        let adapter = FileAdapter::new(
-            "examples/rbac_with_hierarchy_with_domains_policy.csv",
-        );
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_hierarchy_with_domains_policy.csv",
+        ));
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![
@@ -1065,22 +1079,25 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_pattern_matching_fn() {
-        let mut e = Enforcer::new(
-            "examples/rbac_with_pattern_model.conf",
-            "examples/rbac_with_pattern_policy.csv",
-        )
+        let model = DefaultModel::from_str(include_str!(
+            "../examples/rbac_with_pattern_model.conf"
+        ))
         .await
         .unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_pattern_policy.csv"
+        ));
+        let e = Enforcer::new(model, adapter).await.unwrap();
 
         use crate::model::key_match2;
 
@@ -1110,22 +1127,25 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_pattern_matching_fn_with_domain() {
-        let mut e = Enforcer::new(
-            "examples/rbac_with_pattern_domain_model.conf",
-            "examples/rbac_with_pattern_domain_policy.csv",
-        )
+        let model = DefaultModel::from_str(include_str!(
+            "../examples/rbac_with_pattern_domain_model.conf"
+        ))
         .await
         .unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_with_pattern_domain_policy.csv"
+        ));
+        let e = Enforcer::new(model, adapter).await.unwrap();
 
         use crate::function_map::key_match;
 
@@ -1154,22 +1174,25 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_pattern_matching_basic_role() {
-        let mut e = Enforcer::new(
-            "examples/rbac_basic_role_model.conf",
-            "examples/rbac_basic_role_policy.csv",
-        )
+        let model = DefaultModel::from_str(include_str!(
+            "../examples/rbac_basic_role_model.conf"
+        ))
         .await
         .unwrap();
+        let adapter = MemoryAdapter::from_str(include_str!(
+            "../examples/rbac_basic_role_policy.csv"
+        ));
+        let e = Enforcer::new(model, adapter).await.unwrap();
 
         use crate::model::key_match;
 
@@ -1197,15 +1220,15 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_implicit_users_for_permission() {
         let mut m = DefaultModel::default();
         m.add_def("r", "r", "sub, obj, act");
