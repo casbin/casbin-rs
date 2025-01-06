@@ -242,6 +242,9 @@ impl Config {
 mod tests {
     use super::*;
 
+    #[cfg(target_arch = "wasm32")]
+    use wasm_bindgen_test::*;
+
     #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
         all(feature = "runtime-async-std", not(target_arch = "wasm32")),
@@ -294,15 +297,15 @@ mod tests {
         );
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     #[cfg_attr(
-        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-async-std"),
         async_std::test
     )]
     #[cfg_attr(
-        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        all(not(target_arch = "wasm32"), feature = "runtime-tokio"),
         tokio::test
     )]
+    #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
     async fn test_from_text() {
         let text: &str = r#"
                 # test config
