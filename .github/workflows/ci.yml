@@ -28,6 +28,9 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: wasm32-unknown-unknown
           override: true
+      - uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: 'latest'
       # Work around https://github.com/actions/cache/issues/403 by using GNU tar
       # instead of BSD tar.
       - name: Install GNU tar
@@ -75,6 +78,8 @@ jobs:
         with:
           command: check
           args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
+      - name: Cargo Test For WASM
+        run: wasm-pack test --node --target wasm32-unknown-unknown --no-default-features --features runtime-async-std
       - name: Clippy warnings
         uses: actions-rs/cargo@v1
         with:
