@@ -669,6 +669,31 @@ impl CoreApi for Enforcer {
         self.enforce(rvals)
     }
 
+    #[cfg(feature = "explain")]
+    fn enforce_explain<ARGS: EnforceArgs>(
+        &self,
+        rvals: ARGS,
+    ) -> Result<(bool, Vec<Vec<String>>)> {
+        let rvals = rvals.try_into_vec()?;
+        #[allow(unused_variables)]
+        let (authorized, indices) = self.private_enforce(&rvals)?;
+
+        let rules = match indices {
+            Some(indices) => {
+                let all_rules = get_or_err!(self, "p", ModelError::P, "policy")
+                    .get_policy();
+
+                indices
+                    .into_iter()
+                    .filter_map(|y| all_rules.iter().nth(y).cloned())
+                    .collect::<Vec<_>>()
+            }
+            None => vec![],
+        };
+
+        Ok((authorized, rules))
+    }
+
     fn build_role_links(&mut self) -> Result<()> {
         self.rm.write().clear();
         self.model.build_role_links(Arc::clone(&self.rm))?;
