@@ -282,7 +282,7 @@ impl CoreApi for CachedEnforcer {
     }
 
     #[cfg(feature = "explain")]
-    fn enforce_explain<ARGS: EnforceArgs>(
+    fn enforce_ex<ARGS: EnforceArgs>(
         &self,
         rvals: ARGS,
     ) -> Result<(bool, Vec<Vec<String>>)> {

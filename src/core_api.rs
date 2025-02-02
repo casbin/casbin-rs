@@ -73,7 +73,7 @@ pub trait CoreApi: Send + Sync {
     where
         Self: Sized;
     #[cfg(feature = "explain")]
-    fn enforce_explain<ARGS: EnforceArgs>(
+    fn enforce_ex<ARGS: EnforceArgs>(
         &self,
         rvals: ARGS,
     ) -> Result<(bool, Vec<Vec<String>>)>
