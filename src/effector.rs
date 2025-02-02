@@ -108,6 +108,8 @@ impl EffectorStream for DefaultEffectStream {
             self.res = eft == EffectKind::Allow;
 
             self.done = true;
+
+            push_index_if_explain!(self)
         }
 
         if self.idx + 1 == self.cap {

@@ -72,6 +72,13 @@ pub trait CoreApi: Send + Sync {
     fn enforce_mut<ARGS: EnforceArgs>(&mut self, rvals: ARGS) -> Result<bool>
     where
         Self: Sized;
+    #[cfg(feature = "explain")]
+    fn enforce_ex<ARGS: EnforceArgs>(
+        &self,
+        rvals: ARGS,
+    ) -> Result<(bool, Vec<Vec<String>>)>
+    where
+        Self: Sized;
     fn build_role_links(&mut self) -> Result<()>;
     #[cfg(feature = "incremental")]
     fn build_incremental_role_links(&mut self, d: EventData) -> Result<()>;
