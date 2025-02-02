@@ -1607,4 +1607,209 @@ mod tests {
             true
         );
     }
+
+    #[cfg(feature = "explain")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_enforce_ex() {
+        use crate::adapter;
+
+        let model = DefaultModel::from_file("examples/basic_model.conf")
+            .await
+            .unwrap();
+
+        let adapter = adapter::FileAdapter::new("examples/basic_policy.csv");
+
+        let e = Enforcer::new(model, adapter).await.unwrap();
+
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "read")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "alice".to_string(),
+                    "data1".to_string(),
+                    "read".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data1", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data1", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "write")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "bob".to_string(),
+                    "data2".to_string(),
+                    "write".to_string()
+                ]]
+            )
+        );
+
+        let e = Enforcer::new(
+            "examples/rbac_model.conf",
+            "examples/rbac_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "read")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "alice".to_string(),
+                    "data1".to_string(),
+                    "read".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "read")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "data2_admin".to_string(),
+                    "data2".to_string(),
+                    "read".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "write")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "data2_admin".to_string(),
+                    "data2".to_string(),
+                    "write".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data1", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data1", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "write")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "bob".to_string(),
+                    "data2".to_string(),
+                    "write".to_string()
+                ]]
+            )
+        );
+
+        let e = Enforcer::new(
+            "examples/priority_model.conf",
+            "examples/priority_policy.csv",
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "read")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "alice".to_string(),
+                    "data1".to_string(),
+                    "read".to_string(),
+                    "allow".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data1", "write")).unwrap(),
+            (
+                false,
+                vec![vec![
+                    "data1_deny_group".to_string(),
+                    "data1".to_string(),
+                    "write".to_string(),
+                    "deny".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "read")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("alice", "data2", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data1", "write")).unwrap(),
+            (false, vec![])
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "read")).unwrap(),
+            (
+                true,
+                vec![vec![
+                    "data2_allow_group".to_string(),
+                    "data2".to_string(),
+                    "read".to_string(),
+                    "allow".to_string()
+                ]]
+            )
+        );
+        assert_eq!(
+            e.enforce_ex(("bob", "data2", "write")).unwrap(),
+            (
+                false,
+                vec![vec![
+                    "bob".to_string(),
+                    "data2".to_string(),
+                    "write".to_string(),
+                    "deny".to_string()
+                ]]
+            )
+        );
+    }
 }
