@@ -23,6 +23,33 @@ pub enum OperatorFunction {
     Arg1(fn(ImmutableString) -> Dynamic),
     Arg2(fn(ImmutableString, ImmutableString) -> Dynamic),
     Arg3(fn(ImmutableString, ImmutableString, ImmutableString) -> Dynamic),
+    Arg4(
+        fn(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -> Dynamic,
+    ),
+    Arg5(
+        fn(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -> Dynamic,
+    ),
+    Arg6(
+        fn(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -> Dynamic,
+    ),
 }
 
 pub struct FunctionMap {
@@ -85,6 +112,22 @@ impl Default for FunctionMap {
             ),
         );
         fm.insert(
+            "keyMatch4".to_owned(),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match4(&s1, &s2).into()
+                },
+            ),
+        );
+        fm.insert(
+            "keyMatch5".to_owned(),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match5(&s1, &s2).into()
+                },
+            ),
+        );
+        fm.insert(
             "regexMatch".to_owned(),
             OperatorFunction::Arg2(
                 |s1: ImmutableString, s2: ImmutableString| {
@@ -131,8 +174,8 @@ impl FunctionMap {
     }
 }
 
-// key_match determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain *
-// For example, "/foo/bar" matches "/foo/*"
+/// key_match determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain *  
+/// For example, "/foo/bar" matches "/foo/*"
 pub fn key_match(key1: &str, key2: &str) -> bool {
     if let Some(i) = key2.find('*') {
         if key1.len() > i {
@@ -144,9 +187,9 @@ pub fn key_match(key1: &str, key2: &str) -> bool {
     }
 }
 
-// key_get returns the matched part
-// For example, "/foo/bar/foo" matches "/foo/*"
-// "bar/foo" will be returned.
+/// key_get returns the matched part  
+/// For example, "/foo/bar/foo" matches "/foo/*"  
+/// "bar/foo" will be returned.
 pub fn key_get(key1: &str, key2: &str) -> String {
     if let Some(i) = key2.find('*') {
         if key1.len() > i && key1[..i] == key2[..i] {
@@ -156,8 +199,8 @@ pub fn key_get(key1: &str, key2: &str) -> String {
     "".to_string()
 }
 
-// key_match2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
-// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
+/// key_match2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
 pub fn key_match2(key1: &str, key2: &str) -> bool {
     let mut key2: Cow<str> = if key2.contains("/*") {
         key2.replace("/*", "/.*").into()
@@ -170,9 +213,9 @@ pub fn key_match2(key1: &str, key2: &str) -> bool {
     regex_match(key1, &format!("^{}$", key2))
 }
 
-// key_get2 returns value matched pattern
-// For example, "/resource1" matches "/:resource"
-// if the pathVar == "resource", then "resource1" will be returned.
+/// key_get2 returns value matched pattern  
+/// For example, "/resource1" matches "/:resource"  
+/// if the pathVar == "resource", then "resource1" will be returned.
 pub fn key_get2(key1: &str, key2: &str, path_var: &str) -> String {
     let key2: Cow<str> = if key2.contains("/*") {
         key2.replace("/*", "/.*").into()
@@ -199,8 +242,8 @@ pub fn key_get2(key1: &str, key2: &str, path_var: &str) -> String {
     "".to_string()
 }
 
-// key_match3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
-// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
+/// key_match3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
 pub fn key_match3(key1: &str, key2: &str) -> bool {
     let mut key2: Cow<str> = if key2.contains("/*") {
         key2.replace("/*", "/.*").into()
@@ -213,9 +256,9 @@ pub fn key_match3(key1: &str, key2: &str) -> bool {
     regex_match(key1, &format!("^{}$", key2))
 }
 
-// key_get3 returns value matched pattern
-// For example, "project/proj_project1_admin/" matches "project/proj_{project}_admin/"
-// if the pathVar == "project", then "project1" will be returned.
+/// key_get3 returns value matched pattern  
+/// For example, "project/proj_project1_admin/" matches "project/proj_{project}_admin/"  
+/// if the pathVar == "project", then "project1" will be returned.
 pub fn key_get3(key1: &str, key2: &str, path_var: &str) -> String {
     let key2: Cow<str> = if key2.contains("/*") {
         key2.replace("/*", "/.*").into()
@@ -243,6 +286,73 @@ pub fn key_get3(key1: &str, key2: &str, path_var: &str) -> String {
         }
     }
     "".to_string()
+}
+
+/// KeyMatch4 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.  
+/// Besides what KeyMatch3 does, KeyMatch4 can also match repeated patterns:  
+///   - "/parent/123/child/123" matches "/parent/{id}/child/{id}"
+///   - "/parent/123/child/456" does not match "/parent/{id}/child/{id}"
+///
+/// But KeyMatch3 will match both.
+pub fn key_match4(key1: &str, key2: &str) -> bool {
+    let mut key2 = key2.replace("/*", "/.*");
+    let mut tokens = Vec::new();
+
+    let re = Regex::new(r"\{[^/]+?\}").unwrap();
+    key2 = re
+        .replace_all(&key2, |caps: &regex::Captures| {
+            tokens.push(caps[0][1..caps[0].len() - 1].to_string());
+            "([^/]+)".to_string()
+        })
+        .to_string();
+
+    let re = match Regex::new(&format!("^{}$", key2)) {
+        Ok(re) => re,
+        Err(_) => return false,
+    };
+    if let Some(caps) = re.captures(key1) {
+        let matches: Vec<_> =
+            caps.iter().skip(1).map(|m| m.unwrap().as_str()).collect();
+        if tokens.len() != matches.len() {
+            panic!(
+                "KeyMatch4: number of tokens is not equal to number of values"
+            );
+        }
+
+        let mut values = HashMap::new();
+        for (token, value) in tokens.iter().zip(matches.iter()) {
+            if let Some(existing_value) = values.get(token) {
+                if *existing_value != value {
+                    return false;
+                }
+            } else {
+                values.insert(token, value);
+            }
+        }
+        true
+    } else {
+        false
+    }
+}
+
+/// KeyMatch5 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example,  
+///   - "/foo/bar?status=1&type=2" matches "/foo/bar"
+///   - "/parent/child1" and "/parent/child1" matches "/parent/*"
+///   - "/parent/child1?status=1" matches "/parent/*".
+pub fn key_match5(key1: &str, key2: &str) -> bool {
+    let key1 = if let Some(i) = key1.find('?') {
+        &key1[..i]
+    } else {
+        key1
+    };
+
+    let key2 = key2.replace("/*", "/.*");
+    let key2 = Regex::new(r"(\{[^/]+?\})")
+        .unwrap()
+        .replace_all(&key2, "[^/]+");
+
+    regex_match(key1, &format!("^{}$", key2))
 }
 
 // regex_match determines whether key1 matches the pattern of key2 in regular expression.
@@ -512,6 +622,70 @@ mod tests {
             ),
             "project1"
         );
+    }
+
+    #[test]
+    fn test_key_match4() {
+        assert!(key_match4(
+            "/parent/123/child/123",
+            "/parent/{id}/child/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/456",
+            "/parent/{id}/child/{id}"
+        ));
+        assert!(key_match4(
+            "/parent/123/child/123",
+            "/parent/{id}/child/{another_id}"
+        ));
+        assert!(key_match4(
+            "/parent/123/child/456",
+            "/parent/{id}/child/{another_id}"
+        ));
+        assert!(key_match4(
+            "/parent/123/child/123",
+            "/parent/{id}/child/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/456",
+            "/parent/{id}/child/{id}"
+        ));
+        assert!(key_match4(
+            "/parent/123/child/123",
+            "/parent/{id}/child/{another_id}"
+        ));
+        assert!(key_match4(
+            "/parent/123/child/123/book/123",
+            "/parent/{id}/child/{id}/book/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/123/book/456",
+            "/parent/{id}/child/{id}/book/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/456/book/123",
+            "/parent/{id}/child/{id}/book/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/456/book/",
+            "/parent/{id}/child/{id}/book/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/456",
+            "/parent/{id}/child/{id}/book/{id}"
+        ));
+        assert!(!key_match4(
+            "/parent/123/child/123",
+            "/parent/{i/d}/child/{i/d}"
+        ));
+    }
+
+    #[test]
+    fn test_key_match5() {
+        assert!(key_match5("/foo/bar?status=1&type=2", "/foo/bar"));
+        assert!(key_match5("/parent/child1", "/parent/*"));
+        assert!(key_match5("/parent/child1?status=1", "/parent/*"));
+        assert!(key_match5("/parent/child1?status=1", "/parent/child1"));
     }
 
     #[cfg(feature = "ip")]

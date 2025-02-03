@@ -365,6 +365,15 @@ impl Enforcer {
             OperatorFunction::Arg3(func) => {
                 engine.register_fn(key, func);
             }
+            OperatorFunction::Arg4(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg5(func) => {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg6(func) => {
+                engine.register_fn(key, func);
+            }
         }
     }
 
