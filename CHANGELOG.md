@@ -1,3 +1,10 @@
+## [2.10.1](https://github.com/casbin/casbin-rs/compare/v2.10.0...v2.10.1) (2025-02-04)
+
+
+### Bug Fixes
+
+* fix wrong range in push_index_if_explain marco ([#370](https://github.com/casbin/casbin-rs/issues/370)) ([89f9467](https://github.com/casbin/casbin-rs/commit/89f94679a98c7da316f280186f85de2e59959774))
+
 # [2.10.0](https://github.com/casbin/casbin-rs/compare/v2.9.0...v2.10.0) (2025-02-04)
 
 
