@@ -547,7 +547,181 @@
 <a href="#546" id="546">546</a>
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(all(feature = <span class="string">"runtime-async-std"</span>, feature = <span class="string">"ip"</span>))]
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
+<a href="#555" id="555">555</a>
+<a href="#556" id="556">556</a>
+<a href="#557" id="557">557</a>
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a>
+<a href="#565" id="565">565</a>
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a>
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a>
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a>
+<a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
+<a href="#595" id="595">595</a>
+<a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(all(feature = <span class="string">"runtime-async-std"</span>, feature = <span class="string">"ip"</span>))]
 </span><span class="kw">use </span>async_std::net::IpAddr;
 
 <span class="attr">#[cfg(all(feature = <span class="string">"runtime-tokio"</span>, feature = <span class="string">"ip"</span>))]
@@ -572,6 +746,33 @@
     Arg1(<span class="kw">fn</span>(ImmutableString) -&gt; Dynamic),
     Arg2(<span class="kw">fn</span>(ImmutableString, ImmutableString) -&gt; Dynamic),
     Arg3(<span class="kw">fn</span>(ImmutableString, ImmutableString, ImmutableString) -&gt; Dynamic),
+    Arg4(
+        <span class="kw">fn</span>(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -&gt; Dynamic,
+    ),
+    Arg5(
+        <span class="kw">fn</span>(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -&gt; Dynamic,
+    ),
+    Arg6(
+        <span class="kw">fn</span>(
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+            ImmutableString,
+        ) -&gt; Dynamic,
+    ),
 }
 
 <span class="kw">pub struct </span>FunctionMap {
@@ -634,6 +835,22 @@
             ),
         );
         fm.insert(
+            <span class="string">"keyMatch4"</span>.to_owned(),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match4(<span class="kw-2">&amp;</span>s1, <span class="kw-2">&amp;</span>s2).into()
+                },
+            ),
+        );
+        fm.insert(
+            <span class="string">"keyMatch5"</span>.to_owned(),
+            OperatorFunction::Arg2(
+                |s1: ImmutableString, s2: ImmutableString| {
+                    key_match5(<span class="kw-2">&amp;</span>s1, <span class="kw-2">&amp;</span>s2).into()
+                },
+            ),
+        );
+        fm.insert(
             <span class="string">"regexMatch"</span>.to_owned(),
             OperatorFunction::Arg2(
                 |s1: ImmutableString, s2: ImmutableString| {
@@ -680,8 +897,8 @@
     }
 }
 
-<span class="comment">// key_match determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain *
-// For example, "/foo/bar" matches "/foo/*"
+<span class="doccomment">/// key_match determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain *  
+/// For example, "/foo/bar" matches "/foo/*"
 </span><span class="kw">pub fn </span>key_match(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; bool {
     <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = key2.find(<span class="string">'*'</span>) {
         <span class="kw">if </span>key1.len() &gt; i {
@@ -693,9 +910,9 @@
     }
 }
 
-<span class="comment">// key_get returns the matched part
-// For example, "/foo/bar/foo" matches "/foo/*"
-// "bar/foo" will be returned.
+<span class="doccomment">/// key_get returns the matched part  
+/// For example, "/foo/bar/foo" matches "/foo/*"  
+/// "bar/foo" will be returned.
 </span><span class="kw">pub fn </span>key_get(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; String {
     <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = key2.find(<span class="string">'*'</span>) {
         <span class="kw">if </span>key1.len() &gt; i &amp;&amp; key1[..i] == key2[..i] {
@@ -705,8 +922,8 @@
     <span class="string">""</span>.to_string()
 }
 
-<span class="comment">// key_match2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
-// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
+<span class="doccomment">/// key_match2 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/:resource"
 </span><span class="kw">pub fn </span>key_match2(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; bool {
     <span class="kw">let </span><span class="kw-2">mut </span>key2: Cow&lt;str&gt; = <span class="kw">if </span>key2.contains(<span class="string">"/*"</span>) {
         key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>).into()
@@ -719,9 +936,9 @@
     regex_match(key1, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"^{}$"</span>, key2))
 }
 
-<span class="comment">// key_get2 returns value matched pattern
-// For example, "/resource1" matches "/:resource"
-// if the pathVar == "resource", then "resource1" will be returned.
+<span class="doccomment">/// key_get2 returns value matched pattern  
+/// For example, "/resource1" matches "/:resource"  
+/// if the pathVar == "resource", then "resource1" will be returned.
 </span><span class="kw">pub fn </span>key_get2(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str, path_var: <span class="kw-2">&amp;</span>str) -&gt; String {
     <span class="kw">let </span>key2: Cow&lt;str&gt; = <span class="kw">if </span>key2.contains(<span class="string">"/*"</span>) {
         key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>).into()
@@ -748,8 +965,8 @@
     <span class="string">""</span>.to_string()
 }
 
-<span class="comment">// key_match3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *
-// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
+<span class="doccomment">/// key_match3 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example, "/foo/bar" matches "/foo/*", "/resource1" matches "/{resource}"
 </span><span class="kw">pub fn </span>key_match3(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; bool {
     <span class="kw">let </span><span class="kw-2">mut </span>key2: Cow&lt;str&gt; = <span class="kw">if </span>key2.contains(<span class="string">"/*"</span>) {
         key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>).into()
@@ -762,9 +979,9 @@
     regex_match(key1, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"^{}$"</span>, key2))
 }
 
-<span class="comment">// key_get3 returns value matched pattern
-// For example, "project/proj_project1_admin/" matches "project/proj_{project}_admin/"
-// if the pathVar == "project", then "project1" will be returned.
+<span class="doccomment">/// key_get3 returns value matched pattern  
+/// For example, "project/proj_project1_admin/" matches "project/proj_{project}_admin/"  
+/// if the pathVar == "project", then "project1" will be returned.
 </span><span class="kw">pub fn </span>key_get3(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str, path_var: <span class="kw-2">&amp;</span>str) -&gt; String {
     <span class="kw">let </span>key2: Cow&lt;str&gt; = <span class="kw">if </span>key2.contains(<span class="string">"/*"</span>) {
         key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>).into()
@@ -792,6 +1009,73 @@
         }
     }
     <span class="string">""</span>.to_string()
+}
+
+<span class="doccomment">/// KeyMatch4 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *.  
+/// Besides what KeyMatch3 does, KeyMatch4 can also match repeated patterns:  
+///   - "/parent/123/child/123" matches "/parent/{id}/child/{id}"
+///   - "/parent/123/child/456" does not match "/parent/{id}/child/{id}"
+///
+/// But KeyMatch3 will match both.
+</span><span class="kw">pub fn </span>key_match4(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; bool {
+    <span class="kw">let </span><span class="kw-2">mut </span>key2 = key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>tokens = Vec::new();
+
+    <span class="kw">let </span>re = Regex::new(<span class="string">r"\{[^/]+?\}"</span>).unwrap();
+    key2 = re
+        .replace_all(<span class="kw-2">&amp;</span>key2, |caps: <span class="kw-2">&amp;</span>regex::Captures| {
+            tokens.push(caps[<span class="number">0</span>][<span class="number">1</span>..caps[<span class="number">0</span>].len() - <span class="number">1</span>].to_string());
+            <span class="string">"([^/]+)"</span>.to_string()
+        })
+        .to_string();
+
+    <span class="kw">let </span>re = <span class="kw">match </span>Regex::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"^{}$"</span>, key2)) {
+        <span class="prelude-val">Ok</span>(re) =&gt; re,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return </span><span class="bool-val">false</span>,
+    };
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(caps) = re.captures(key1) {
+        <span class="kw">let </span>matches: Vec&lt;<span class="kw">_</span>&gt; =
+            caps.iter().skip(<span class="number">1</span>).map(|m| m.unwrap().as_str()).collect();
+        <span class="kw">if </span>tokens.len() != matches.len() {
+            <span class="macro">panic!</span>(
+                <span class="string">"KeyMatch4: number of tokens is not equal to number of values"
+            </span>);
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>values = HashMap::new();
+        <span class="kw">for </span>(token, value) <span class="kw">in </span>tokens.iter().zip(matches.iter()) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(existing_value) = values.get(token) {
+                <span class="kw">if </span><span class="kw-2">*</span>existing_value != value {
+                    <span class="kw">return </span><span class="bool-val">false</span>;
+                }
+            } <span class="kw">else </span>{
+                values.insert(token, value);
+            }
+        }
+        <span class="bool-val">true
+    </span>} <span class="kw">else </span>{
+        <span class="bool-val">false
+    </span>}
+}
+
+<span class="doccomment">/// KeyMatch5 determines whether key1 matches the pattern of key2 (similar to RESTful path), key2 can contain a *  
+/// For example,  
+///   - "/foo/bar?status=1&amp;type=2" matches "/foo/bar"
+///   - "/parent/child1" and "/parent/child1" matches "/parent/*"
+///   - "/parent/child1?status=1" matches "/parent/*".
+</span><span class="kw">pub fn </span>key_match5(key1: <span class="kw-2">&amp;</span>str, key2: <span class="kw-2">&amp;</span>str) -&gt; bool {
+    <span class="kw">let </span>key1 = <span class="kw">if let </span><span class="prelude-val">Some</span>(i) = key1.find(<span class="string">'?'</span>) {
+        <span class="kw-2">&amp;</span>key1[..i]
+    } <span class="kw">else </span>{
+        key1
+    };
+
+    <span class="kw">let </span>key2 = key2.replace(<span class="string">"/*"</span>, <span class="string">"/.*"</span>);
+    <span class="kw">let </span>key2 = Regex::new(<span class="string">r"(\{[^/]+?\})"</span>)
+        .unwrap()
+        .replace_all(<span class="kw-2">&amp;</span>key2, <span class="string">"[^/]+"</span>);
+
+    regex_match(key1, <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"^{}$"</span>, key2))
 }
 
 <span class="comment">// regex_match determines whether key1 matches the pattern of key2 in regular expression.
@@ -1061,6 +1345,70 @@
             </span>),
             <span class="string">"project1"
         </span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_key_match4() {
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/123"</span>,
+            <span class="string">"/parent/{id}/child/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/456"</span>,
+            <span class="string">"/parent/{id}/child/{id}"
+        </span>));
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/123"</span>,
+            <span class="string">"/parent/{id}/child/{another_id}"
+        </span>));
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/456"</span>,
+            <span class="string">"/parent/{id}/child/{another_id}"
+        </span>));
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/123"</span>,
+            <span class="string">"/parent/{id}/child/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/456"</span>,
+            <span class="string">"/parent/{id}/child/{id}"
+        </span>));
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/123"</span>,
+            <span class="string">"/parent/{id}/child/{another_id}"
+        </span>));
+        <span class="macro">assert!</span>(key_match4(
+            <span class="string">"/parent/123/child/123/book/123"</span>,
+            <span class="string">"/parent/{id}/child/{id}/book/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/123/book/456"</span>,
+            <span class="string">"/parent/{id}/child/{id}/book/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/456/book/123"</span>,
+            <span class="string">"/parent/{id}/child/{id}/book/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/456/book/"</span>,
+            <span class="string">"/parent/{id}/child/{id}/book/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/456"</span>,
+            <span class="string">"/parent/{id}/child/{id}/book/{id}"
+        </span>));
+        <span class="macro">assert!</span>(!key_match4(
+            <span class="string">"/parent/123/child/123"</span>,
+            <span class="string">"/parent/{i/d}/child/{i/d}"
+        </span>));
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_key_match5() {
+        <span class="macro">assert!</span>(key_match5(<span class="string">"/foo/bar?status=1&amp;type=2"</span>, <span class="string">"/foo/bar"</span>));
+        <span class="macro">assert!</span>(key_match5(<span class="string">"/parent/child1"</span>, <span class="string">"/parent/*"</span>));
+        <span class="macro">assert!</span>(key_match5(<span class="string">"/parent/child1?status=1"</span>, <span class="string">"/parent/*"</span>));
+        <span class="macro">assert!</span>(key_match5(<span class="string">"/parent/child1?status=1"</span>, <span class="string">"/parent/child1"</span>));
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"ip"</span>)]

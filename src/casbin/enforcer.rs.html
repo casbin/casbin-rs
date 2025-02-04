@@ -1813,7 +1813,16 @@
 <a href="#1812" id="1812">1812</a>
 <a href="#1813" id="1813">1813</a>
 <a href="#1814" id="1814">1814</a>
-<a href="#1815" id="1815">1815</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+<a href="#1815" id="1815">1815</a>
+<a href="#1816" id="1816">1816</a>
+<a href="#1817" id="1817">1817</a>
+<a href="#1818" id="1818">1818</a>
+<a href="#1819" id="1819">1819</a>
+<a href="#1820" id="1820">1820</a>
+<a href="#1821" id="1821">1821</a>
+<a href="#1822" id="1822">1822</a>
+<a href="#1823" id="1823">1823</a>
+<a href="#1824" id="1824">1824</a></pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     adapter::{Adapter, Filter},
     convert::{EnforceArgs, TryIntoAdapter, TryIntoModel},
     core_api::CoreApi,
@@ -2178,6 +2187,15 @@
                 engine.register_fn(key, func);
             }
             OperatorFunction::Arg3(func) =&gt; {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg4(func) =&gt; {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg5(func) =&gt; {
+                engine.register_fn(key, func);
+            }
+            OperatorFunction::Arg6(func) =&gt; {
                 engine.register_fn(key, func);
             }
         }
