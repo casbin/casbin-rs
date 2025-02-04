@@ -167,7 +167,7 @@
 </span><span class="macro">macro_rules!</span> push_index_if_explain {
     (<span class="macro-nonterminal">$this</span>:ident) =&gt; {{
         <span class="attr">#[cfg(feature = <span class="string">"explain"</span>)]
-        </span><span class="kw">if </span><span class="macro-nonterminal">$this</span>.cap &gt; <span class="number">1 </span>{
+        </span><span class="kw">if </span><span class="macro-nonterminal">$this</span>.cap &gt; <span class="number">0 </span>{
             <span class="macro-nonterminal">$this</span>.expl.push(<span class="macro-nonterminal">$this</span>.idx);
         }
     }};
