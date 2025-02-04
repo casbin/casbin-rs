@@ -1,19 +1,13 @@
 name: Auto Release
 
 on:
-  push:
-    branches:
-      - master
-      - next
-      - next-major
-      - beta
-      - alpha
-      - "[0-9]+.[0-9]+.x"
-      - "[0-9]+.x"
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
 
 jobs:
   release:
-    if: github.repository == 'casbin/casbin-rs'
+    if: ${{ github.repository == 'casbin/casbin-rs' &&  github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'}}
     uses: casbin-rs/semantic-release-action-rust/.github/workflows/release-library.yml@master
     secrets:
       cargo-registry-token: ${{ secrets.CARGO_TOKEN }}
