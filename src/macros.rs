@@ -80,7 +80,7 @@ macro_rules! register_g_function {
 macro_rules! push_index_if_explain {
     ($this:ident) => {{
         #[cfg(feature = "explain")]
-        if $this.cap > 1 {
+        if $this.cap > 0 {
             $this.expl.push($this.idx);
         }
     }};
