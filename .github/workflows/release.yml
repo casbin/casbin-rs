@@ -2,44 +2,18 @@ name: Auto Release
 
 on:
   push:
-    # Sequence of patterns matched against refs/tags
-    tags:
-      - "v*" # Push events to matching v*, i.e. v1.0, v20.15.10
+    branches:
+      - master
+      - next
+      - next-major
+      - beta
+      - alpha
+      - "[0-9]+.[0-9]+.x"
+      - "[0-9]+.x"
 
 jobs:
   release:
-    name: Auto Release by Tags
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@master
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          default: true
-
-      - name: Cargo Login
-        uses: actions-rs/cargo@v1
-        with:
-          command: login
-          args: ${{ secrets.CARGO_TOKEN }}
-
-      - name: Cargo Publish
-        uses: actions-rs/cargo@v1
-        with:
-          command: publish
-
-      - name: GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
+    if: github.repository == 'casbin/casbin-rs'
+    uses: casbin-rs/semantic-release-action-rust/.github/workflows/release-library.yml@master
+    secrets:
+      cargo-registry-token: ${{ secrets.CARGO_TOKEN }}
