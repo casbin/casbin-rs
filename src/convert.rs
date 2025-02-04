@@ -114,9 +114,12 @@ pub trait EnforceArgs {
     fn cache_key(&self) -> u64;
 }
 
-impl EnforceArgs for Vec<String> {
+impl<T> EnforceArgs for Vec<T>
+where
+    T: Into<Dynamic> + Hash + Clone,
+{
     fn try_into_vec(self) -> Result<Vec<Dynamic>> {
-        Ok(self.into_iter().map(Dynamic::from).collect())
+        Ok(self.into_iter().map(|x| x.into()).collect())
     }
 
     fn cache_key(&self) -> u64 {
