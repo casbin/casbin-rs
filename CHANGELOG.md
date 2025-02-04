@@ -1,3 +1,10 @@
+# [2.10.0](https://github.com/casbin/casbin-rs/compare/v2.9.0...v2.10.0) (2025-02-04)
+
+
+### Features
+
+* add condition to CI for auto release ([#369](https://github.com/casbin/casbin-rs/issues/369)) ([d692358](https://github.com/casbin/casbin-rs/commit/d6923586cbb998d26fba40fbc2c30fa8d02bf4b8))
+
 # Changelog
 
 ## [Unreleased](https://github.com/casbin/casbin-rs/tree/HEAD)
