@@ -7,7 +7,7 @@ jobs:
     name: run benchmark
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
         with:
           ref: ${{github.event.pull_request.head.ref}}
           repository: ${{github.event.pull_request.head.repo.full_name}}
@@ -17,13 +17,13 @@ jobs:
           override: true
           profile: minimal
       - name: Cache cargo
-        uses: actions/cache@v2.1.4
+        uses: actions/cache@v3
         with:
           path: |
             target
             ~/.cargo/git
             ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-v1
       - uses: smrpn/criterion-compare-action@move_to_actions 
         with:
           cwd: benches

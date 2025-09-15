@@ -9,21 +9,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Setup ruby
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: 2.7
-        
-    - name: Install github_changelog_generator
-      run: gem install github_changelog_generator
-      
-    - name: Gen changelog
-      run: github_changelog_generator -t ${{ secrets.GITHUB_TOKEN }} -u casbin -p casbin-rs
-      
-    - name: Commit changes
-      uses: stefanzweifel/git-auto-commit-action@v4
-      with:
-        commit_message: 'changelog: auto update by ci'
-        file_pattern: CHANGELOG.md
+      - name: Setup ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.7
+
+      - name: Install github_changelog_generator
+        run: gem install github_changelog_generator
+
+      - name: Gen changelog
+        run: github_changelog_generator -t ${{ secrets.GITHUB_TOKEN }} -u casbin -p casbin-rs
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'changelog: auto update by ci'
+          file_pattern: CHANGELOG.md

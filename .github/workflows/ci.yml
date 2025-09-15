@@ -9,12 +9,13 @@ jobs:
     name: Auto Build CI
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         rust: [beta, stable]
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
       - name: Install Rust toolchain ${{ matrix.rust }}
         uses: actions-rs/toolchain@v1
         with:
@@ -28,28 +29,43 @@ jobs:
           toolchain: ${{ matrix.rust }}
           target: wasm32-unknown-unknown
           override: true
+
+      - name: Setup wasm tools on Windows
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Ensure the wasm target is added and install wasm-pack/wasm-bindgen on Windows
+          rustup target add wasm32-unknown-unknown --toolchain ${{ matrix.rust }}
+          # Try to install wasm-pack and wasm-bindgen-cli via cargo; if running as non-admin this should work
+          cargo install wasm-pack --force || Write-Host "wasm-pack install failed"
+          cargo install wasm-bindgen-cli --force || Write-Host "wasm-bindgen-cli install failed"
       # Work around https://github.com/actions/cache/issues/403 by using GNU tar
       # instead of BSD tar.
-      - name: Install GNU tar
-        if: matrix.os == 'macOS-latest'
+      - name: Install GNU tar (macOS)
+        if: matrix.os == 'macos-latest'
         run: |
-          brew install gnu-tar
-          echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          # Install gnu-tar for both Intel and Apple Silicon and add to PATH
+          brew install gnu-tar || brew reinstall gnu-tar
+          if [ -d "/usr/local/opt/gnu-tar/libexec/gnubin" ]; then
+            echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          elif [ -d "/opt/homebrew/opt/gnu-tar/libexec/gnubin" ]; then
+            echo PATH="/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          fi
       - name: Cache cargo registry
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}-v1
       - name: Cache cargo index
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/git
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}-v1
       - name: Cache cargo build
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: target
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-v1
       - name: Release build async-std
         uses: actions-rs/cargo@v1
         with:
