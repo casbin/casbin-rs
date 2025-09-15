@@ -88,6 +88,8 @@ jobs:
           args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Check Wasm
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: --cfg=wasm_js
         with:
           command: check
           args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
