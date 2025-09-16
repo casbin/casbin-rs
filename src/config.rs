@@ -124,12 +124,7 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    // Use std::io::Error::other to satisfy clippy's `io-other-error` lint.
-                    return Err(std::io::Error::other(std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("parse content error, line={}", line),
-                    ))
-                    .into());
+                    return Err(std::io::Error::other(format!("parse content error, line={}", line)).into());
                 }
 
                 self.add_config(
