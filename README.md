@@ -1,7 +1,5 @@
 # casbin-rs
 
-# test-ci
-
 [![GitHub last commit](https://img.shields.io/github/last-commit/casbin/casbin-rs)](https://github.com/casbin/casbin-rs/commits/master)
 [![Crates.io](https://img.shields.io/crates/v/casbin.svg)](https://crates.io/crates/casbin)
 [![crates.io](https://img.shields.io/crates/d/casbin)](https://crates.io/crates/casbin)
