@@ -18,9 +18,7 @@ use async_std::{
 };
 
 #[cfg(feature = "runtime-tokio")]
-use std::{
-    path::Path as ioPath,
-};
+use std::path::Path as ioPath;
 #[cfg(feature = "runtime-tokio")]
 use tokio::{
     fs::File as file,
@@ -136,7 +134,10 @@ where
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(std::io::Error::other("save policy failed, file path is empty").into());
+            return Err(std::io::Error::other(
+                "save policy failed, file path is empty",
+            )
+            .into());
         }
 
         let mut policies = String::new();

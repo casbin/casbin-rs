@@ -124,7 +124,11 @@ impl Config {
                     .collect();
 
                 if option_val.len() != 2 {
-                    return Err(std::io::Error::other(format!("parse content error, line={}", line)).into());
+                    return Err(std::io::Error::other(format!(
+                        "parse content error, line={}",
+                        line
+                    ))
+                    .into());
                 }
 
                 self.add_config(
