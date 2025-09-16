@@ -63,26 +63,36 @@ jobs:
           key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION || github.run_id }}
       - name: Release build async-std
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: build
           args: --release --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
       - name: Release build tokio
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: build
           args: --release --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Test For All Features Using async-std
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: test
           args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Test For All Features Using tokio
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: test
           args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Check Wasm
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: check
           args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
