@@ -21,8 +21,7 @@ jobs:
           profile: minimal
           toolchain: ${{ matrix.rust }}
           override: true
-      - name: Install rustfmt and clippy on stable
-        if: matrix.rust == 'stable'
+      - name: Install rustfmt and clippy
         run: |
           rustup component add rustfmt clippy || true
       - name: Install wasm32-unknown-unknown for ${{ matrix.rust }}
