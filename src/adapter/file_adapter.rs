@@ -8,20 +8,12 @@ use crate::{
 
 #[cfg(feature = "runtime-async-std")]
 use async_std::{
-    fs::File as file,
-    io::prelude::*,
-    io::{
-        BufReader as ioBufReader, Error as ioError, ErrorKind as ioErrorKind,
-    },
-    path::Path as ioPath,
-    prelude::*,
+    fs::File as file, io::prelude::*, io::BufReader as ioBufReader,
+    path::Path as ioPath, prelude::*,
 };
 
 #[cfg(feature = "runtime-tokio")]
-use std::{
-    io::{Error as ioError, ErrorKind as ioErrorKind},
-    path::Path as ioPath,
-};
+use std::path::Path as ioPath;
 #[cfg(feature = "runtime-tokio")]
 use tokio::{
     fs::File as file,
@@ -137,10 +129,10 @@ where
 
     async fn save_policy(&mut self, m: &mut dyn Model) -> Result<()> {
         if self.file_path.as_ref().as_os_str().is_empty() {
-            return Err(ioError::new(
-                ioErrorKind::Other,
+            return Err(std::io::Error::other(std::io::Error::new(
+                std::io::ErrorKind::Other,
                 "save policy failed, file path is empty",
-            )
+            ))
             .into());
         }
 
