@@ -24,7 +24,7 @@ jobs:
             ~/.cargo/git
             ~/.cargo/registry
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: smrpn/criterion-compare-action@move_to_actions 
+      - uses: smrpn/criterion-compare-action@v1
         with:
           cwd: benches
           token: ${{ secrets.GITHUB_TOKEN }}
