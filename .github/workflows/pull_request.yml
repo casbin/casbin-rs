@@ -28,7 +28,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
-      - uses: smrpn/criterion-compare-action@v1
+      - uses: smrpn/criterion-compare-action@master 
         with:
           cwd: benches
           token: ${{ secrets.GITHUB_TOKEN }}
