@@ -30,6 +30,8 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
+      - name: Install critcmp with force
+        run: cargo install critcmp --force
       - uses: smrpn/criterion-compare-action@master 
         with:
           cwd: benches
