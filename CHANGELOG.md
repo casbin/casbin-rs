@@ -1,3 +1,10 @@
+# [2.11.0](https://github.com/casbin/casbin-rs/compare/v2.10.1...v2.11.0) (2025-09-17)
+
+
+### Features
+
+* **ci:** update GitHub Actions and optimize CI configuration with code quality improvements ([#391](https://github.com/casbin/casbin-rs/issues/391)) ([33c165a](https://github.com/casbin/casbin-rs/commit/33c165a3d30727dfd87c8c5363c7133c8e5d3ca2))
+
 ## [2.10.1](https://github.com/casbin/casbin-rs/compare/v2.10.0...v2.10.1) (2025-02-04)
 
 
