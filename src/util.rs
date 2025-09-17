@@ -32,7 +32,7 @@ pub fn remove_comment(s: &str) -> String {
     s.trim_end().to_owned()
 }
 
-pub fn escape_eval(m: &str) -> Cow<str> {
+pub fn escape_eval(m: &str) -> Cow<'_, str> {
     ESC_E.replace_all(m, "eval(escape_assertion(${1}))")
 }
 
