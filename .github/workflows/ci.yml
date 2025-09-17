@@ -10,18 +10,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         rust: [beta, stable]
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v4
       - name: Install Rust toolchain ${{ matrix.rust }}
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: ${{ matrix.rust }}
-          components: rustfmt, clippy
           override: true
+      - name: Install rustfmt and clippy
+        run: |
+          rustup component add rustfmt clippy || true
       - name: Install wasm32-unknown-unknown for ${{ matrix.rust }}
         uses: actions-rs/toolchain@v1
         with:
@@ -31,25 +33,33 @@ jobs:
       # Work around https://github.com/actions/cache/issues/403 by using GNU tar
       # instead of BSD tar.
       - name: Install GNU tar
-        if: matrix.os == 'macOS-latest'
+        if: matrix.os == 'macos-latest'
         run: |
-          brew install gnu-tar
-          echo PATH="/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          # Install GNU tar if not present, on macOS Homebrew may be in different locations
+          if ! command -v gtar >/dev/null 2>&1; then
+            brew install gnu-tar || true
+          fi
+          # Add GNU tar to PATH via GITHUB_ENV for actions that rely on gnu-tar
+          if [ -d "/usr/local/opt/gnu-tar/libexec/gnubin" ]; then
+            echo "PATH=/usr/local/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          elif [ -d "/opt/homebrew/opt/gnu-tar/libexec/gnubin" ]; then
+            echo "PATH=/opt/homebrew/opt/gnu-tar/libexec/gnubin:$PATH" >> $GITHUB_ENV
+          fi
       - name: Cache cargo registry
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-registry-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION || github.run_id }}
       - name: Cache cargo index
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/git
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-index-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION || github.run_id }}
       - name: Cache cargo build
-        uses: actions/cache@v1
+        uses: actions/cache@v4
         with:
           path: target
-          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION }}
+          key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION || github.run_id }}
       - name: Release build async-std
         uses: actions-rs/cargo@v1
         with:
@@ -72,6 +82,8 @@ jobs:
           args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Check Wasm
         uses: actions-rs/cargo@v1
+        env:
+          RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
         with:
           command: check
           args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
