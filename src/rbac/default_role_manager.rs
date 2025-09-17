@@ -135,7 +135,6 @@ impl DefaultRoleManager {
             let g = self.all_domains.get_mut(&d).unwrap();
             let idx_map =
                 self.all_domains_indices.entry(d.clone()).or_default();
-                
             let idx1 = Self::ensure_node_in_graph(g, idx_map, &name1_owned);
             let idx2 = Self::ensure_node_in_graph(g, idx_map, &name2_owned);
 
