@@ -36,7 +36,7 @@
 <a href=#36 id=36 data-nosnippet>36</a>    ESC_E.replace_all(m, <span class="string">"eval(escape_assertion(${1}))"</span>)
 <a href=#37 id=37 data-nosnippet>37</a>}
 <a href=#38 id=38 data-nosnippet>38</a>
-<a href=#39 id=39 data-nosnippet>39</a><span class="kw">pub fn </span>parse_csv_line&lt;S: AsRef&lt;str&gt;&gt;(line: S) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt; {
+<a href=#39 id=39 data-nosnippet>39</a><span class="kw">pub fn </span>parse_csv_line&lt;<span class="lifetime">'a</span>, S: AsRef&lt;str&gt; + <span class="lifetime">'a</span>&gt;(line: S) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt; {
 <a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">let </span>line = line.as_ref().trim();
 <a href=#41 id=41 data-nosnippet>41</a>    <span class="kw">if </span>line.is_empty() || line.starts_with(<span class="string">'#'</span>) {
 <a href=#42 id=42 data-nosnippet>42</a>        <span class="kw">return </span><span class="prelude-val">None</span>;

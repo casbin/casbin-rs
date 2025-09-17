@@ -907,7 +907,7 @@
 <a href=#907 id=907 data-nosnippet>907</a>
 <a href=#908 id=908 data-nosnippet>908</a>        <span class="kw">let </span>adapter =
 <a href=#909 id=909 data-nosnippet>909</a>            FileAdapter::new(<span class="string">"examples/rbac_with_hierarchy_policy.csv"</span>);
-<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
+<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw">let </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
 <a href=#911 id=911 data-nosnippet>911</a>
 <a href=#912 id=912 data-nosnippet>912</a>        <span class="macro">assert_eq!</span>(
 <a href=#913 id=913 data-nosnippet>913</a>            <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="string">"alice"</span>, <span class="string">"data1"</span>, <span class="string">"read"</span>]],
@@ -944,7 +944,7 @@
 <a href=#944 id=944 data-nosnippet>944</a>
 <a href=#945 id=945 data-nosnippet>945</a>        <span class="kw">let </span>adapter =
 <a href=#946 id=946 data-nosnippet>946</a>            FileAdapter::new(<span class="string">"examples/rbac_with_hierarchy_policy.csv"</span>);
-<a href=#947 id=947 data-nosnippet>947</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
+<a href=#947 id=947 data-nosnippet>947</a>        <span class="kw">let </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
 <a href=#948 id=948 data-nosnippet>948</a>
 <a href=#949 id=949 data-nosnippet>949</a>        <span class="macro">assert_eq!</span>(
 <a href=#950 id=950 data-nosnippet>950</a>            <span class="macro">vec!</span>[<span class="macro">vec!</span>[<span class="string">"alice"</span>, <span class="string">"data1"</span>, <span class="string">"read"</span>]],
@@ -1051,7 +1051,7 @@
 <a href=#1051 id=1051 data-nosnippet>1051</a>        <span class="kw">let </span>adapter = FileAdapter::new(
 <a href=#1052 id=1052 data-nosnippet>1052</a>            <span class="string">"examples/rbac_with_hierarchy_with_domains_policy.csv"</span>,
 <a href=#1053 id=1053 data-nosnippet>1053</a>        );
-<a href=#1054 id=1054 data-nosnippet>1054</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
+<a href=#1054 id=1054 data-nosnippet>1054</a>        <span class="kw">let </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
 <a href=#1055 id=1055 data-nosnippet>1055</a>
 <a href=#1056 id=1056 data-nosnippet>1056</a>        <span class="macro">assert_eq!</span>(
 <a href=#1057 id=1057 data-nosnippet>1057</a>            <span class="macro">vec!</span>[
@@ -1075,7 +1075,7 @@
 <a href=#1075 id=1075 data-nosnippet>1075</a>        tokio::test
 <a href=#1076 id=1076 data-nosnippet>1076</a>    )]
 <a href=#1077 id=1077 data-nosnippet>1077</a>    </span><span class="kw">async fn </span>test_pattern_matching_fn() {
-<a href=#1078 id=1078 data-nosnippet>1078</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(
+<a href=#1078 id=1078 data-nosnippet>1078</a>        <span class="kw">let </span>e = Enforcer::new(
 <a href=#1079 id=1079 data-nosnippet>1079</a>            <span class="string">"examples/rbac_with_pattern_model.conf"</span>,
 <a href=#1080 id=1080 data-nosnippet>1080</a>            <span class="string">"examples/rbac_with_pattern_policy.csv"</span>,
 <a href=#1081 id=1081 data-nosnippet>1081</a>        )
@@ -1120,7 +1120,7 @@
 <a href=#1120 id=1120 data-nosnippet>1120</a>        tokio::test
 <a href=#1121 id=1121 data-nosnippet>1121</a>    )]
 <a href=#1122 id=1122 data-nosnippet>1122</a>    </span><span class="kw">async fn </span>test_pattern_matching_fn_with_domain() {
-<a href=#1123 id=1123 data-nosnippet>1123</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(
+<a href=#1123 id=1123 data-nosnippet>1123</a>        <span class="kw">let </span>e = Enforcer::new(
 <a href=#1124 id=1124 data-nosnippet>1124</a>            <span class="string">"examples/rbac_with_pattern_domain_model.conf"</span>,
 <a href=#1125 id=1125 data-nosnippet>1125</a>            <span class="string">"examples/rbac_with_pattern_domain_policy.csv"</span>,
 <a href=#1126 id=1126 data-nosnippet>1126</a>        )
@@ -1164,7 +1164,7 @@
 <a href=#1164 id=1164 data-nosnippet>1164</a>        tokio::test
 <a href=#1165 id=1165 data-nosnippet>1165</a>    )]
 <a href=#1166 id=1166 data-nosnippet>1166</a>    </span><span class="kw">async fn </span>test_pattern_matching_basic_role() {
-<a href=#1167 id=1167 data-nosnippet>1167</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(
+<a href=#1167 id=1167 data-nosnippet>1167</a>        <span class="kw">let </span>e = Enforcer::new(
 <a href=#1168 id=1168 data-nosnippet>1168</a>            <span class="string">"examples/rbac_basic_role_model.conf"</span>,
 <a href=#1169 id=1169 data-nosnippet>1169</a>            <span class="string">"examples/rbac_basic_role_policy.csv"</span>,
 <a href=#1170 id=1170 data-nosnippet>1170</a>        )
