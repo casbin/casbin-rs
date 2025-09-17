@@ -27,7 +27,7 @@ pub struct DefaultRoleManager {
     domain_matching_fn: Option<MatchingFn>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 enum EdgeVariant {
     Link,
     Match,
@@ -52,6 +52,9 @@ impl DefaultRoleManager {
         domain: Option<&str>,
     ) -> NodeIndex<u32> {
         let domain = domain.unwrap_or(DEFAULT_DOMAIN);
+
+        // detect whether this is a new domain creation
+        let is_new_domain = !self.all_domains.contains_key(domain);
 
         let graph = self.all_domains.entry(domain.into()).or_default();
 
@@ -97,7 +100,155 @@ impl DefaultRoleManager {
             }
         }
 
+        // If domain matching function exists and this was a new domain, copy
+        // role links from matching domains into the newly created domain so
+        // that BFS will see inherited links in this domain's graph.
+        if is_new_domain {
+            if let Some(domain_matching_fn) = self.domain_matching_fn {
+                let keys: Vec<String> =
+                    self.all_domains.keys().cloned().collect();
+                for d in keys {
+                    if d != domain && (domain_matching_fn)(domain, &d) {
+                        self.copy_from_domain(&d, domain);
+                    }
+                }
+            }
+        }
+
         new_role_id
+    }
+
+    // propagate a Link addition (name1 -> name2) from `domain` into all
+    // affected/matching domains. This extracts the inline logic from
+    // `add_link` so the code is clearer and avoids nested borrows.
+    fn propagate_link_to_affected_domains(
+        &mut self,
+        name1: &str,
+        name2: &str,
+        domain: &str,
+    ) {
+        let name1_owned = name1.to_string();
+        let name2_owned = name2.to_string();
+        let affected = self.affected_domain_names(domain);
+        for d in affected {
+            // obtain mutable graph and index map for the affected domain
+            let g = self.all_domains.get_mut(&d).unwrap();
+            let idx_map =
+                self.all_domains_indices.entry(d.clone()).or_default();
+            let idx1 = Self::ensure_node_in_graph(g, idx_map, &name1_owned);
+            let idx2 = Self::ensure_node_in_graph(g, idx_map, &name2_owned);
+
+            // add Link edge if missing
+            let has_link = g
+                .edges_connecting(idx1, idx2)
+                .any(|e| matches!(*e.weight(), EdgeVariant::Link));
+            if !has_link {
+                g.add_edge(idx1, idx2, EdgeVariant::Link);
+            }
+        }
+
+        #[cfg(feature = "cached")]
+        self.cache.clear();
+    }
+
+    // ensure a node with `name` exists in graph `g` and in the provided
+    // `idx_map`. Returns the NodeIndex for the node.
+    fn ensure_node_in_graph(
+        g: &mut StableDiGraph<String, EdgeVariant>,
+        idx_map: &mut HashMap<String, NodeIndex<u32>>,
+        name: &str,
+    ) -> NodeIndex<u32> {
+        if let Some(idx) = idx_map.get(name) {
+            *idx
+        } else if let Some(idx) = g.node_indices().find(|&i| g[i] == name) {
+            idx_map.insert(name.to_string(), idx);
+            idx
+        } else {
+            let ni = g.add_node(name.to_string());
+            idx_map.insert(name.to_string(), ni);
+            ni
+        }
+    }
+
+    // return the list of affected domain names (immutable) to avoid nested
+    // mutable borrows when performing operations across domains
+    fn affected_domain_names(&self, domain: &str) -> Vec<String> {
+        let mut res = Vec::new();
+        if let Some(domain_matching_fn) = self.domain_matching_fn {
+            let keys: Vec<String> = self.all_domains.keys().cloned().collect();
+            for d in keys {
+                if d != domain && (domain_matching_fn)(&d, domain) {
+                    res.push(d);
+                }
+            }
+        }
+        res
+    }
+
+    // copy all role links and nodes from `src_domain` graph into `dst_domain` graph
+    fn copy_from_domain(&mut self, src_domain: &str, dst_domain: &str) {
+        if src_domain == dst_domain {
+            return;
+        }
+
+        // ensure both graphs exist
+        if !self.all_domains.contains_key(src_domain) {
+            return;
+        }
+
+        let src_graph = match self.all_domains.get(src_domain) {
+            Some(g) => g.clone(),
+            None => return,
+        };
+
+        // ensure dst indices map exists
+        let dst_indices = self
+            .all_domains_indices
+            .entry(dst_domain.into())
+            .or_default();
+
+        let dst_graph = self.all_domains.entry(dst_domain.into()).or_default();
+
+        // copy nodes: ensure names exist in dst and capture mapping
+        let mut id_map: HashMap<NodeIndex<u32>, NodeIndex<u32>> =
+            HashMap::new();
+        for src_idx in src_graph.node_indices() {
+            let name = &src_graph[src_idx];
+            let dst_idx = if let Some(idx) = dst_indices.get(name) {
+                *idx
+            } else {
+                let new_idx = dst_graph.add_node(name.clone());
+                dst_indices.insert(name.clone(), new_idx);
+                new_idx
+            };
+            id_map.insert(src_idx, dst_idx);
+        }
+
+        // copy edges: for each edge in src_graph, add equivalent edge in dst if missing
+        for edge_idx in src_graph.edge_indices() {
+            if let Some((src_s, src_t)) = src_graph.edge_endpoints(edge_idx) {
+                if let Some(weight) = src_graph.edge_weight(edge_idx) {
+                    let dst_s = id_map.get(&src_s).unwrap();
+                    let dst_t = id_map.get(&src_t).unwrap();
+
+                    let need_add = match dst_graph.find_edge(*dst_s, *dst_t) {
+                        Some(idx) => {
+                            // if existing edge is Match but source weight is Link, allow adding Link
+                            !matches!(dst_graph[idx], EdgeVariant::Match)
+                                || !matches!(weight, &EdgeVariant::Match)
+                        }
+                        None => true,
+                    };
+
+                    if need_add {
+                        dst_graph.add_edge(*dst_s, *dst_t, weight.clone());
+                    }
+                }
+            }
+        }
+
+        #[cfg(feature = "cached")]
+        self.cache.clear();
     }
 
     fn matched_domains(&self, domain: Option<&str>) -> Vec<String> {
@@ -203,8 +354,14 @@ impl RoleManager for DefaultRoleManager {
         if add_link {
             graph.add_edge(role1, role2, EdgeVariant::Link);
 
+            if let Some(domain_str) = domain {
+                self.propagate_link_to_affected_domains(
+                    name1, name2, domain_str,
+                );
+            }
+
             #[cfg(feature = "cached")]
-            self.cache.clear()
+            self.cache.clear();
         }
     }
 
@@ -786,5 +943,29 @@ mod tests {
         );
 
         assert_eq!(vec!["alice"], sort_unstable(rm.get_users("*", None)));
+    }
+
+    #[test]
+    fn test_cross_domain_role_inheritance_complex() {
+        use crate::model::key_match;
+        let mut rm = DefaultRoleManager::new(10);
+        rm.matching_fn(None, Some(key_match));
+
+        rm.add_link("editor", "admin", Some("*"));
+        rm.add_link("viewer", "editor", Some("*"));
+
+        rm.add_link("alice", "editor", Some("domain1"));
+        rm.add_link("bob", "viewer", Some("domain2"));
+
+        assert!(rm.has_link("alice", "admin", Some("domain1")));
+        assert!(rm.has_link("bob", "editor", Some("domain2")));
+        assert!(rm.has_link("bob", "admin", Some("domain2")));
+
+        rm.add_link("charlie", "viewer", Some("domain3"));
+        assert!(rm.has_link("charlie", "editor", Some("domain3")));
+        assert!(rm.has_link("charlie", "admin", Some("domain3")));
+
+        rm.add_link("super_admin", "admin", Some("domain1"));
+        assert!(rm.has_link("super_admin", "admin", Some("domain1")));
     }
 }

@@ -36,7 +36,7 @@ pub fn escape_eval(m: &str) -> Cow<'_, str> {
     ESC_E.replace_all(m, "eval(escape_assertion(${1}))")
 }
 
-pub fn parse_csv_line<S: AsRef<str>>(line: S) -> Option<Vec<String>> {
+pub fn parse_csv_line<'a, S: AsRef<str> + 'a>(line: S) -> Option<Vec<String>> {
     let line = line.as_ref().trim();
     if line.is_empty() || line.starts_with('#') {
         return None;
