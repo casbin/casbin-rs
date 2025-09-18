@@ -907,7 +907,7 @@ mod tests {
 
         let adapter =
             FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -944,7 +944,7 @@ mod tests {
 
         let adapter =
             FileAdapter::new("examples/rbac_with_hierarchy_policy.csv");
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![vec!["alice", "data1", "read"]],
@@ -1051,7 +1051,7 @@ mod tests {
         let adapter = FileAdapter::new(
             "examples/rbac_with_hierarchy_with_domains_policy.csv",
         );
-        let mut e = Enforcer::new(m, adapter).await.unwrap();
+        let e = Enforcer::new(m, adapter).await.unwrap();
 
         assert_eq!(
             vec![
@@ -1075,7 +1075,7 @@ mod tests {
         tokio::test
     )]
     async fn test_pattern_matching_fn() {
-        let mut e = Enforcer::new(
+        let e = Enforcer::new(
             "examples/rbac_with_pattern_model.conf",
             "examples/rbac_with_pattern_policy.csv",
         )
@@ -1120,7 +1120,7 @@ mod tests {
         tokio::test
     )]
     async fn test_pattern_matching_fn_with_domain() {
-        let mut e = Enforcer::new(
+        let e = Enforcer::new(
             "examples/rbac_with_pattern_domain_model.conf",
             "examples/rbac_with_pattern_domain_policy.csv",
         )
@@ -1164,7 +1164,7 @@ mod tests {
         tokio::test
     )]
     async fn test_pattern_matching_basic_role() {
-        let mut e = Enforcer::new(
+        let e = Enforcer::new(
             "examples/rbac_basic_role_model.conf",
             "examples/rbac_basic_role_policy.csv",
         )

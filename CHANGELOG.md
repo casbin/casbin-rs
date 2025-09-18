@@ -1,3 +1,10 @@
+# [2.12.0](https://github.com/casbin/casbin-rs/compare/v2.11.0...v2.12.0) (2025-09-17)
+
+
+### Features
+
+* **rbac:** preload and propagate wildcard/pattern domain role links ([#387](https://github.com/casbin/casbin-rs/issues/387)) ([0d8b9db](https://github.com/casbin/casbin-rs/commit/0d8b9dbb4fdd3b3bb0ffa9cd30208ea20217869b))
+
 # [2.11.0](https://github.com/casbin/casbin-rs/compare/v2.10.1...v2.11.0) (2025-09-17)
 
 
