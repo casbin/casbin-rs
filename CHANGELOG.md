@@ -1,3 +1,10 @@
+# [2.13.0](https://github.com/casbin/casbin-rs/compare/v2.12.0...v2.13.0) (2025-09-24)
+
+
+### Features
+
+* **watcher:** Add notification payload to watcher callback signature ([#392](https://github.com/casbin/casbin-rs/issues/392)) ([ba57d3b](https://github.com/casbin/casbin-rs/commit/ba57d3b9630bd4c30e40d7f30af2d28c264c62b3))
+
 # [2.12.0](https://github.com/casbin/casbin-rs/compare/v2.11.0...v2.12.0) (2025-09-17)
 
 
