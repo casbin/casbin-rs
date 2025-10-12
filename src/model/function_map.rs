@@ -18,7 +18,7 @@ static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 use std::{borrow::Cow, collections::HashMap};
 
 /// Represents a custom operator function that can be registered with Casbin.
-/// 
+///
 /// Custom functions accept Rhai's `Dynamic` type, which can hold any value:
 /// - Strings (as `ImmutableString`)
 /// - Integers (i32 or i64)
@@ -27,22 +27,22 @@ use std::{borrow::Cow, collections::HashMap};
 /// - Arrays
 /// - Maps
 /// - And more...
-/// 
+///
 /// This allows for flexible custom functions that can work with different types.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,ignore
 /// use casbin::{CoreApi, OperatorFunction};
 /// use rhai::Dynamic;
-/// 
+///
 /// // Function that works with integers
 /// let int_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
 ///     let a_int = a.as_int().unwrap_or(0);
 ///     let b_int = b.as_int().unwrap_or(0);
 ///     (a_int > b_int).into()
 /// });
-/// 
+///
 /// // Function that works with strings
 /// let str_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
 ///     use casbin::model::function_map::dynamic_to_str;
@@ -90,7 +90,12 @@ impl Default for FunctionMap {
         fm.insert(
             "keyGet2".to_owned(),
             OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
-                key_get2(&dynamic_to_str(&s1), &dynamic_to_str(&s2), &dynamic_to_str(&s3)).into()
+                key_get2(
+                    &dynamic_to_str(&s1),
+                    &dynamic_to_str(&s2),
+                    &dynamic_to_str(&s3),
+                )
+                .into()
             }),
         );
         fm.insert(
@@ -102,7 +107,12 @@ impl Default for FunctionMap {
         fm.insert(
             "keyGet3".to_owned(),
             OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
-                key_get3(&dynamic_to_str(&s1), &dynamic_to_str(&s2), &dynamic_to_str(&s3)).into()
+                key_get3(
+                    &dynamic_to_str(&s1),
+                    &dynamic_to_str(&s2),
+                    &dynamic_to_str(&s3),
+                )
+                .into()
             }),
         );
         fm.insert(
@@ -159,17 +169,17 @@ impl FunctionMap {
 }
 
 /// Helper function to convert Dynamic to string reference
-/// 
+///
 /// This is useful for custom functions that need string arguments.
 /// The function accepts Rhai's Dynamic type and converts it to a string.
-/// 
+///
 /// # Example
-/// 
+///
 /// ```rust,ignore
 /// use casbin::{CoreApi, OperatorFunction, Enforcer};
 /// use casbin::model::function_map::dynamic_to_str;
 /// use rhai::Dynamic;
-/// 
+///
 /// // Create a custom function that takes Dynamic arguments
 /// let custom_fn = OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
 ///     let str1 = dynamic_to_str(&s1);

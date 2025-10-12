@@ -1891,22 +1891,28 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         // Test 4: Custom function with 3 arguments
         e.add_function(
             "between",
-            OperatorFunction::Arg3(|val: Dynamic, min: Dynamic, max: Dynamic| {
-                // Check if val is between min and max (inclusive)
-                let val_int = val.as_int().unwrap_or(0);
-                let min_int = min.as_int().unwrap_or(0);
-                let max_int = max.as_int().unwrap_or(0);
-                (val_int >= min_int && val_int <= max_int).into()
-            }),
+            OperatorFunction::Arg3(
+                |val: Dynamic, min: Dynamic, max: Dynamic| {
+                    // Check if val is between min and max (inclusive)
+                    let val_int = val.as_int().unwrap_or(0);
+                    let min_int = min.as_int().unwrap_or(0);
+                    let max_int = max.as_int().unwrap_or(0);
+                    (val_int >= min_int && val_int <= max_int).into()
+                },
+            ),
         );
 
         // Verify that custom functions are registered without errors
         // In real usage, these would be called from policy matchers
-        
+
         // Test basic enforcement still works with Dynamic-based functions
-        e.add_policy(vec!["alice".to_owned(), "data1".to_owned(), "read".to_owned()])
-            .await
-            .unwrap();
+        e.add_policy(vec![
+            "alice".to_owned(),
+            "data1".to_owned(),
+            "read".to_owned(),
+        ])
+        .await
+        .unwrap();
 
         assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
