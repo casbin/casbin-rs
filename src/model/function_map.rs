@@ -10,46 +10,56 @@ use globset::GlobBuilder;
 use ip_network::IpNetwork;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use rhai::{Dynamic, ImmutableString};
+use rhai::Dynamic;
 
 static MAT_B: Lazy<Regex> = Lazy::new(|| Regex::new(r":[^/]*").unwrap());
 static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 
 use std::{borrow::Cow, collections::HashMap};
 
+/// Represents a custom operator function that can be registered with Casbin.
+/// 
+/// Custom functions accept Rhai's `Dynamic` type, which can hold any value:
+/// - Strings (as `ImmutableString`)
+/// - Integers (i32 or i64)
+/// - Booleans
+/// - Floats (f32 or f64)
+/// - Arrays
+/// - Maps
+/// - And more...
+/// 
+/// This allows for flexible custom functions that can work with different types.
+/// 
+/// # Example
+/// 
+/// ```rust,ignore
+/// use casbin::{CoreApi, OperatorFunction};
+/// use rhai::Dynamic;
+/// 
+/// // Function that works with integers
+/// let int_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+///     let a_int = a.as_int().unwrap_or(0);
+///     let b_int = b.as_int().unwrap_or(0);
+///     (a_int > b_int).into()
+/// });
+/// 
+/// // Function that works with strings
+/// let str_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+///     use casbin::model::function_map::dynamic_to_str;
+///     let a_str = dynamic_to_str(&a);
+///     let b_str = dynamic_to_str(&b);
+///     a_str.contains(b_str.as_ref()).into()
+/// });
+/// ```
 #[derive(Clone, Copy)]
 pub enum OperatorFunction {
     Arg0(fn() -> Dynamic),
-    Arg1(fn(ImmutableString) -> Dynamic),
-    Arg2(fn(ImmutableString, ImmutableString) -> Dynamic),
-    Arg3(fn(ImmutableString, ImmutableString, ImmutableString) -> Dynamic),
-    Arg4(
-        fn(
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-        ) -> Dynamic,
-    ),
-    Arg5(
-        fn(
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-        ) -> Dynamic,
-    ),
-    Arg6(
-        fn(
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-            ImmutableString,
-        ) -> Dynamic,
-    ),
+    Arg1(fn(Dynamic) -> Dynamic),
+    Arg2(fn(Dynamic, Dynamic) -> Dynamic),
+    Arg3(fn(Dynamic, Dynamic, Dynamic) -> Dynamic),
+    Arg4(fn(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
+    Arg5(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
+    Arg6(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
 }
 
 pub struct FunctionMap {
@@ -61,99 +71,73 @@ impl Default for FunctionMap {
         let mut fm: HashMap<String, OperatorFunction> = HashMap::new();
         fm.insert(
             "keyMatch".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_match(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "keyGet".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_get(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_get(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "keyMatch2".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_match2(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_match2(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "keyGet2".to_owned(),
-            OperatorFunction::Arg3(
-                |s1: ImmutableString,
-                 s2: ImmutableString,
-                 s3: ImmutableString| {
-                    key_get2(&s1, &s2, &s3).into()
-                },
-            ),
+            OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
+                key_get2(&dynamic_to_str(&s1), &dynamic_to_str(&s2), &dynamic_to_str(&s3)).into()
+            }),
         );
         fm.insert(
             "keyMatch3".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_match3(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_match3(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "keyGet3".to_owned(),
-            OperatorFunction::Arg3(
-                |s1: ImmutableString,
-                 s2: ImmutableString,
-                 s3: ImmutableString| {
-                    key_get3(&s1, &s2, &s3).into()
-                },
-            ),
+            OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
+                key_get3(&dynamic_to_str(&s1), &dynamic_to_str(&s2), &dynamic_to_str(&s3)).into()
+            }),
         );
         fm.insert(
             "keyMatch4".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_match4(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_match4(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "keyMatch5".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    key_match5(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                key_match5(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
         fm.insert(
             "regexMatch".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    regex_match(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                regex_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
 
         #[cfg(feature = "glob")]
         fm.insert(
             "globMatch".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    glob_match(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                glob_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
 
         #[cfg(feature = "ip")]
         fm.insert(
             "ipMatch".to_owned(),
-            OperatorFunction::Arg2(
-                |s1: ImmutableString, s2: ImmutableString| {
-                    ip_match(&s1, &s2).into()
-                },
-            ),
+            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+                ip_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
+            }),
         );
 
         FunctionMap { fm }
@@ -171,6 +155,37 @@ impl FunctionMap {
         &self,
     ) -> impl Iterator<Item = (&String, &OperatorFunction)> {
         self.fm.iter()
+    }
+}
+
+/// Helper function to convert Dynamic to string reference
+/// 
+/// This is useful for custom functions that need string arguments.
+/// The function accepts Rhai's Dynamic type and converts it to a string.
+/// 
+/// # Example
+/// 
+/// ```rust,ignore
+/// use casbin::{CoreApi, OperatorFunction, Enforcer};
+/// use casbin::model::function_map::dynamic_to_str;
+/// use rhai::Dynamic;
+/// 
+/// // Create a custom function that takes Dynamic arguments
+/// let custom_fn = OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+///     let str1 = dynamic_to_str(&s1);
+///     let str2 = dynamic_to_str(&s2);
+///     // Your custom logic here
+///     (str1 == str2).into()
+/// });
+/// ```
+pub fn dynamic_to_str(d: &Dynamic) -> Cow<'_, str> {
+    if d.is_string() {
+        match d.clone().into_immutable_string() {
+            Ok(s) => Cow::Owned(s.to_string()),
+            Err(_) => Cow::Owned(d.to_string()),
+        }
+    } else {
+        Cow::Owned(d.to_string())
     }
 }
 
