@@ -1855,40 +1855,53 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         let adapter = MemoryAdapter::default();
         let mut e = Enforcer::new(m, adapter).await.unwrap();
 
-        // Add a custom function that takes integer arguments and returns boolean
+        // Test 1: Custom function that takes integer arguments
         e.add_function(
             "greaterThan",
             OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
-                // Convert to integers and compare
+                // Dynamic can hold integers - extract and compare
                 let a_int = a.as_int().unwrap_or(0);
                 let b_int = b.as_int().unwrap_or(0);
                 (a_int > b_int).into()
             }),
         );
 
-        // Add a custom function that works with booleans
+        // Test 2: Custom function that works with booleans
         e.add_function(
             "customAnd",
             OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+                // Dynamic can hold booleans - extract and perform logic
                 let a_bool = a.as_bool().unwrap_or(false);
                 let b_bool = b.as_bool().unwrap_or(false);
                 (a_bool && b_bool).into()
             }),
         );
 
-        // Add a custom function that works with strings (using Dynamic)
+        // Test 3: Custom function that works with strings
         e.add_function(
             "stringContains",
             OperatorFunction::Arg2(|haystack: Dynamic, needle: Dynamic| {
+                // Dynamic can hold strings - convert and check
                 let haystack_str = haystack.to_string();
                 let needle_str = needle.to_string();
                 haystack_str.contains(&needle_str).into()
             }),
         );
 
-        // Test that the functions are registered and can be called
-        // Note: These functions would normally be used in matchers, 
-        // but for this test we're just verifying they can be added without type errors
+        // Test 4: Custom function with 3 arguments
+        e.add_function(
+            "between",
+            OperatorFunction::Arg3(|val: Dynamic, min: Dynamic, max: Dynamic| {
+                // Check if val is between min and max (inclusive)
+                let val_int = val.as_int().unwrap_or(0);
+                let min_int = min.as_int().unwrap_or(0);
+                let max_int = max.as_int().unwrap_or(0);
+                (val_int >= min_int && val_int <= max_int).into()
+            }),
+        );
+
+        // Verify that custom functions are registered without errors
+        // In real usage, these would be called from policy matchers
         
         // Test basic enforcement still works with Dynamic-based functions
         e.add_policy(vec!["alice".to_owned(), "data1".to_owned(), "read".to_owned()])
