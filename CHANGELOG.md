@@ -1,3 +1,10 @@
+# [2.14.0](https://github.com/casbin/casbin-rs/compare/v2.13.0...v2.14.0) (2025-10-12)
+
+
+### Features
+
+* improve badges in README.md ([35126d0](https://github.com/casbin/casbin-rs/commit/35126d060bcb7ecf252804a49e7f1cb0db1e2fef))
+
 # [2.13.0](https://github.com/casbin/casbin-rs/compare/v2.12.0...v2.13.0) (2025-09-24)
 
 
