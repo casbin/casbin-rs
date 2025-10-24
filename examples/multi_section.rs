@@ -34,23 +34,23 @@ async fn run_example() -> Result<()> {
     println!("Testing Section 1 (default) - with object:");
     println!("-------------------------------------------");
 
-    // Test Section 1: alice has 'admin' action on project1, and 'admin' has 'read' permission
-    // Policy: p, alice, admin, project1 -> alice is assigned 'admin' on project1  
-    // Role: g, admin, read -> 'admin' role has 'read' permission
+    // Test Section 1: alice has 'admin' permission on project1
+    // Policy: p, alice, admin, project1 -> alice is assigned 'admin' permission on project1  
+    // Role: g, admin, read -> 'admin' permission grants 'read' action
     // Matcher checks: alice == alice && g(admin, read) && project1 == project1
     let result = e.enforce(("alice", "read", "project1"))?;
     println!("alice can read project1: {}", result);
     assert_eq!(true, result);
 
-    // alice has 'admin' action which also has 'write' permission
-    // Role: g, admin, write -> 'admin' role has 'write' permission
+    // alice has 'admin' permission which also grants 'write' action
+    // Role: g, admin, write -> 'admin' permission grants 'write' action
     let result = e.enforce(("alice", "write", "project1"))?;
     println!("alice can write project1: {}", result);
     assert_eq!(true, result);
 
-    // bob has 'user' action which only has 'read' permission, not 'write'
+    // bob has 'user' permission which only grants 'read' action, not 'write'
     // Policy: p, bob, user, project2
-    // Role: g, user, read -> 'user' role has 'read' permission only
+    // Role: g, user, read -> 'user' permission grants 'read' action only
     let result = e.enforce(("bob", "read", "project2"))?;
     println!("bob can read project2: {}", result);
     assert_eq!(true, result);
