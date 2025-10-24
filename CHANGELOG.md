@@ -1,3 +1,10 @@
+# [2.15.0](https://github.com/casbin/casbin-rs/compare/v2.14.0...v2.15.0) (2025-10-24)
+
+
+### Features
+
+* improve custom function support to accept Dynamic types instead of only ImmutableString ([#395](https://github.com/casbin/casbin-rs/issues/395)) ([52bc1ad](https://github.com/casbin/casbin-rs/commit/52bc1ad57371aef1b16399cc0b5f338c4b484539))
+
 # [2.14.0](https://github.com/casbin/casbin-rs/compare/v2.13.0...v2.14.0) (2025-10-12)
 
 
