@@ -1386,11 +1386,11 @@
 <a href=#1386 id=1386 data-nosnippet>1386</a>
 <a href=#1387 id=1387 data-nosnippet>1387</a>        e.add_function(
 <a href=#1388 id=1388 data-nosnippet>1388</a>            <span class="string">"keyMatchCustom"</span>,
-<a href=#1389 id=1389 data-nosnippet>1389</a>            OperatorFunction::Arg2(
-<a href=#1390 id=1390 data-nosnippet>1390</a>                |s1: ImmutableString, s2: ImmutableString| {
-<a href=#1391 id=1391 data-nosnippet>1391</a>                    key_match(<span class="kw-2">&amp;</span>s1, <span class="kw-2">&amp;</span>s2).into()
-<a href=#1392 id=1392 data-nosnippet>1392</a>                },
-<a href=#1393 id=1393 data-nosnippet>1393</a>            ),
+<a href=#1389 id=1389 data-nosnippet>1389</a>            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+<a href=#1390 id=1390 data-nosnippet>1390</a>                <span class="kw">let </span>s1_str = s1.to_string();
+<a href=#1391 id=1391 data-nosnippet>1391</a>                <span class="kw">let </span>s2_str = s2.to_string();
+<a href=#1392 id=1392 data-nosnippet>1392</a>                key_match(<span class="kw-2">&amp;</span>s1_str, <span class="kw-2">&amp;</span>s2_str).into()
+<a href=#1393 id=1393 data-nosnippet>1393</a>            }),
 <a href=#1394 id=1394 data-nosnippet>1394</a>        );
 <a href=#1395 id=1395 data-nosnippet>1395</a>
 <a href=#1396 id=1396 data-nosnippet>1396</a>        <span class="macro">assert_eq!</span>(
@@ -1821,4 +1821,101 @@
 <a href=#1821 id=1821 data-nosnippet>1821</a>            )
 <a href=#1822 id=1822 data-nosnippet>1822</a>        );
 <a href=#1823 id=1823 data-nosnippet>1823</a>    }
-<a href=#1824 id=1824 data-nosnippet>1824</a>}</code></pre></div></section></main></body></html>
+<a href=#1824 id=1824 data-nosnippet>1824</a>
+<a href=#1825 id=1825 data-nosnippet>1825</a>    <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+<a href=#1826 id=1826 data-nosnippet>1826</a>    #[cfg_attr(
+<a href=#1827 id=1827 data-nosnippet>1827</a>        all(feature = <span class="string">"runtime-async-std"</span>, not(target_arch = <span class="string">"wasm32"</span>)),
+<a href=#1828 id=1828 data-nosnippet>1828</a>        async_std::test
+<a href=#1829 id=1829 data-nosnippet>1829</a>    )]
+<a href=#1830 id=1830 data-nosnippet>1830</a>    #[cfg_attr(
+<a href=#1831 id=1831 data-nosnippet>1831</a>        all(feature = <span class="string">"runtime-tokio"</span>, not(target_arch = <span class="string">"wasm32"</span>)),
+<a href=#1832 id=1832 data-nosnippet>1832</a>        tokio::test
+<a href=#1833 id=1833 data-nosnippet>1833</a>    )]
+<a href=#1834 id=1834 data-nosnippet>1834</a>    </span><span class="kw">async fn </span>test_custom_function_with_dynamic_types() {
+<a href=#1835 id=1835 data-nosnippet>1835</a>        <span class="kw">use </span><span class="kw">crate</span>::prelude::<span class="kw-2">*</span>;
+<a href=#1836 id=1836 data-nosnippet>1836</a>
+<a href=#1837 id=1837 data-nosnippet>1837</a>        <span class="kw">let </span>m = DefaultModel::from_str(
+<a href=#1838 id=1838 data-nosnippet>1838</a>            <span class="string">r#"
+<a href=#1839 id=1839 data-nosnippet>1839</a>[request_definition]
+<a href=#1840 id=1840 data-nosnippet>1840</a>r = sub, obj, act
+<a href=#1841 id=1841 data-nosnippet>1841</a>
+<a href=#1842 id=1842 data-nosnippet>1842</a>[policy_definition]
+<a href=#1843 id=1843 data-nosnippet>1843</a>p = sub, obj, act
+<a href=#1844 id=1844 data-nosnippet>1844</a>
+<a href=#1845 id=1845 data-nosnippet>1845</a>[policy_effect]
+<a href=#1846 id=1846 data-nosnippet>1846</a>e = some(where (p.eft == allow))
+<a href=#1847 id=1847 data-nosnippet>1847</a>
+<a href=#1848 id=1848 data-nosnippet>1848</a>[matchers]
+<a href=#1849 id=1849 data-nosnippet>1849</a>m = r.sub == p.sub &amp;&amp; r.obj == p.obj &amp;&amp; r.act == p.act
+<a href=#1850 id=1850 data-nosnippet>1850</a>"#</span>,
+<a href=#1851 id=1851 data-nosnippet>1851</a>        )
+<a href=#1852 id=1852 data-nosnippet>1852</a>        .<span class="kw">await
+<a href=#1853 id=1853 data-nosnippet>1853</a>        </span>.unwrap();
+<a href=#1854 id=1854 data-nosnippet>1854</a>
+<a href=#1855 id=1855 data-nosnippet>1855</a>        <span class="kw">let </span>adapter = MemoryAdapter::default();
+<a href=#1856 id=1856 data-nosnippet>1856</a>        <span class="kw">let </span><span class="kw-2">mut </span>e = Enforcer::new(m, adapter).<span class="kw">await</span>.unwrap();
+<a href=#1857 id=1857 data-nosnippet>1857</a>
+<a href=#1858 id=1858 data-nosnippet>1858</a>        <span class="comment">// Test 1: Custom function that takes integer arguments
+<a href=#1859 id=1859 data-nosnippet>1859</a>        </span>e.add_function(
+<a href=#1860 id=1860 data-nosnippet>1860</a>            <span class="string">"greaterThan"</span>,
+<a href=#1861 id=1861 data-nosnippet>1861</a>            OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+<a href=#1862 id=1862 data-nosnippet>1862</a>                <span class="comment">// Dynamic can hold integers - extract and compare
+<a href=#1863 id=1863 data-nosnippet>1863</a>                </span><span class="kw">let </span>a_int = a.as_int().unwrap_or(<span class="number">0</span>);
+<a href=#1864 id=1864 data-nosnippet>1864</a>                <span class="kw">let </span>b_int = b.as_int().unwrap_or(<span class="number">0</span>);
+<a href=#1865 id=1865 data-nosnippet>1865</a>                (a_int &gt; b_int).into()
+<a href=#1866 id=1866 data-nosnippet>1866</a>            }),
+<a href=#1867 id=1867 data-nosnippet>1867</a>        );
+<a href=#1868 id=1868 data-nosnippet>1868</a>
+<a href=#1869 id=1869 data-nosnippet>1869</a>        <span class="comment">// Test 2: Custom function that works with booleans
+<a href=#1870 id=1870 data-nosnippet>1870</a>        </span>e.add_function(
+<a href=#1871 id=1871 data-nosnippet>1871</a>            <span class="string">"customAnd"</span>,
+<a href=#1872 id=1872 data-nosnippet>1872</a>            OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+<a href=#1873 id=1873 data-nosnippet>1873</a>                <span class="comment">// Dynamic can hold booleans - extract and perform logic
+<a href=#1874 id=1874 data-nosnippet>1874</a>                </span><span class="kw">let </span>a_bool = a.as_bool().unwrap_or(<span class="bool-val">false</span>);
+<a href=#1875 id=1875 data-nosnippet>1875</a>                <span class="kw">let </span>b_bool = b.as_bool().unwrap_or(<span class="bool-val">false</span>);
+<a href=#1876 id=1876 data-nosnippet>1876</a>                (a_bool &amp;&amp; b_bool).into()
+<a href=#1877 id=1877 data-nosnippet>1877</a>            }),
+<a href=#1878 id=1878 data-nosnippet>1878</a>        );
+<a href=#1879 id=1879 data-nosnippet>1879</a>
+<a href=#1880 id=1880 data-nosnippet>1880</a>        <span class="comment">// Test 3: Custom function that works with strings
+<a href=#1881 id=1881 data-nosnippet>1881</a>        </span>e.add_function(
+<a href=#1882 id=1882 data-nosnippet>1882</a>            <span class="string">"stringContains"</span>,
+<a href=#1883 id=1883 data-nosnippet>1883</a>            OperatorFunction::Arg2(|haystack: Dynamic, needle: Dynamic| {
+<a href=#1884 id=1884 data-nosnippet>1884</a>                <span class="comment">// Dynamic can hold strings - convert and check
+<a href=#1885 id=1885 data-nosnippet>1885</a>                </span><span class="kw">let </span>haystack_str = haystack.to_string();
+<a href=#1886 id=1886 data-nosnippet>1886</a>                <span class="kw">let </span>needle_str = needle.to_string();
+<a href=#1887 id=1887 data-nosnippet>1887</a>                haystack_str.contains(<span class="kw-2">&amp;</span>needle_str).into()
+<a href=#1888 id=1888 data-nosnippet>1888</a>            }),
+<a href=#1889 id=1889 data-nosnippet>1889</a>        );
+<a href=#1890 id=1890 data-nosnippet>1890</a>
+<a href=#1891 id=1891 data-nosnippet>1891</a>        <span class="comment">// Test 4: Custom function with 3 arguments
+<a href=#1892 id=1892 data-nosnippet>1892</a>        </span>e.add_function(
+<a href=#1893 id=1893 data-nosnippet>1893</a>            <span class="string">"between"</span>,
+<a href=#1894 id=1894 data-nosnippet>1894</a>            OperatorFunction::Arg3(
+<a href=#1895 id=1895 data-nosnippet>1895</a>                |val: Dynamic, min: Dynamic, max: Dynamic| {
+<a href=#1896 id=1896 data-nosnippet>1896</a>                    <span class="comment">// Check if val is between min and max (inclusive)
+<a href=#1897 id=1897 data-nosnippet>1897</a>                    </span><span class="kw">let </span>val_int = val.as_int().unwrap_or(<span class="number">0</span>);
+<a href=#1898 id=1898 data-nosnippet>1898</a>                    <span class="kw">let </span>min_int = min.as_int().unwrap_or(<span class="number">0</span>);
+<a href=#1899 id=1899 data-nosnippet>1899</a>                    <span class="kw">let </span>max_int = max.as_int().unwrap_or(<span class="number">0</span>);
+<a href=#1900 id=1900 data-nosnippet>1900</a>                    (val_int &gt;= min_int &amp;&amp; val_int &lt;= max_int).into()
+<a href=#1901 id=1901 data-nosnippet>1901</a>                },
+<a href=#1902 id=1902 data-nosnippet>1902</a>            ),
+<a href=#1903 id=1903 data-nosnippet>1903</a>        );
+<a href=#1904 id=1904 data-nosnippet>1904</a>
+<a href=#1905 id=1905 data-nosnippet>1905</a>        <span class="comment">// Verify that custom functions are registered without errors
+<a href=#1906 id=1906 data-nosnippet>1906</a>        // In real usage, these would be called from policy matchers
+<a href=#1907 id=1907 data-nosnippet>1907</a>
+<a href=#1908 id=1908 data-nosnippet>1908</a>        // Test basic enforcement still works with Dynamic-based functions
+<a href=#1909 id=1909 data-nosnippet>1909</a>        </span>e.add_policy(<span class="macro">vec!</span>[
+<a href=#1910 id=1910 data-nosnippet>1910</a>            <span class="string">"alice"</span>.to_owned(),
+<a href=#1911 id=1911 data-nosnippet>1911</a>            <span class="string">"data1"</span>.to_owned(),
+<a href=#1912 id=1912 data-nosnippet>1912</a>            <span class="string">"read"</span>.to_owned(),
+<a href=#1913 id=1913 data-nosnippet>1913</a>        ])
+<a href=#1914 id=1914 data-nosnippet>1914</a>        .<span class="kw">await
+<a href=#1915 id=1915 data-nosnippet>1915</a>        </span>.unwrap();
+<a href=#1916 id=1916 data-nosnippet>1916</a>
+<a href=#1917 id=1917 data-nosnippet>1917</a>        <span class="macro">assert_eq!</span>(<span class="bool-val">true</span>, e.enforce((<span class="string">"alice"</span>, <span class="string">"data1"</span>, <span class="string">"read"</span>)).unwrap());
+<a href=#1918 id=1918 data-nosnippet>1918</a>        <span class="macro">assert_eq!</span>(<span class="bool-val">false</span>, e.enforce((<span class="string">"alice"</span>, <span class="string">"data1"</span>, <span class="string">"write"</span>)).unwrap());
+<a href=#1919 id=1919 data-nosnippet>1919</a>        <span class="macro">assert_eq!</span>(<span class="bool-val">false</span>, e.enforce((<span class="string">"bob"</span>, <span class="string">"data1"</span>, <span class="string">"read"</span>)).unwrap());
+<a href=#1920 id=1920 data-nosnippet>1920</a>    }
+<a href=#1921 id=1921 data-nosnippet>1921</a>}</code></pre></div></section></main></body></html>
