@@ -1,3 +1,10 @@
+# [2.16.0](https://github.com/casbin/casbin-rs/compare/v2.15.0...v2.16.0) (2025-11-04)
+
+
+### Features
+
+* enhance performance by checking before allocation in default role manager ([#398](https://github.com/casbin/casbin-rs/issues/398)) ([b27b9d1](https://github.com/casbin/casbin-rs/commit/b27b9d15019972b8fd5197e23b1f7caadeaaa1f8))
+
 # [2.15.0](https://github.com/casbin/casbin-rs/compare/v2.14.0...v2.15.0) (2025-10-24)
 
 
