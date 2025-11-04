@@ -173,16 +173,15 @@ impl DefaultRoleManager {
     // return the list of affected domain names (immutable) to avoid nested
     // mutable borrows when performing operations across domains
     fn affected_domain_names(&self, domain: &str) -> Vec<String> {
-        let mut res = Vec::new();
-        if let Some(domain_matching_fn) = self.domain_matching_fn {
-            let keys: Vec<String> = self.all_domains.keys().cloned().collect();
-            for d in keys {
-                if d != domain && (domain_matching_fn)(&d, domain) {
-                    res.push(d);
-                }
-            }
+        if let Some(matcher) = self.domain_matching_fn {
+            self.all_domains
+                .keys()
+                .filter(|d| *d != domain && matcher(d, domain))
+                .cloned()
+                .collect()
+        } else {
+            Vec::new()
         }
-        res
     }
 
     // copy all role links and nodes from `src_domain` graph into `dst_domain` graph
