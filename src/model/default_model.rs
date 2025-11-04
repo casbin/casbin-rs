@@ -25,18 +25,18 @@ use std::{collections::HashMap, sync::Arc};
 #[derive(Clone, Default)]
 pub struct DefaultModel {
     pub(crate) model: HashMap<String, AssertionMap>,
-    /// 预编译的matcher表达式 - 在Model初始化时编译
-    /// 键是完整的matcher名称（如\"m\", \"m2\", \"m3\"）
+    // Precompiled matcher expressions - compiled during Model initialization
+    // Keys are full matcher names (e.g., "m", "m2", "m3")
     compiled_matchers: HashMap<String, AST>,
 }
 
 impl DefaultModel {
-    /// 在Model加载完成后编译所有matcher表达式
-    /// 在Enforcer使用前调用
+    // Compiles all matcher expressions after Model loading is complete
+    // Should be called before Enforcer is used
     pub fn compile_matchers(&mut self, engine: &Engine) -> Result<()> {
         self.compiled_matchers.clear();
 
-        // 只编译"m"段的matchers
+        // Only compile matchers from the 'm' section
         if let Some(assertions) = self.model.get("m") {
             for (key, assertion) in assertions {
                 let compiled = engine
@@ -52,14 +52,14 @@ impl DefaultModel {
                         )
                     })?;
 
-                // 直接使用完整的matcher key作为HashMap键
+                // Directly use the complete matcher key as HashMap key
                 self.compiled_matchers.insert(key.clone(), compiled);
             }
         }
         Ok(())
     }
 
-    /// 获取预编译的matcher - O(1)查找，简洁直接
+    // Gets the precompiled matcher - O(1) lookup, simple and direct
     #[inline]
     pub fn get_compiled_matcher(&self, key: &str) -> Option<&AST> {
         self.compiled_matchers.get(key)

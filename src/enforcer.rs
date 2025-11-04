@@ -462,7 +462,7 @@ impl CoreApi for Enforcer {
 
         e.register_g_functions()?;
 
-        // 如果使用DefaultModel，编译matcher表达式
+        // If using DefaultModel, compile matcher expressions
         if let Some(default_model) =
             e.model.as_any_mut().downcast_mut::<DefaultModel>()
         {
@@ -571,7 +571,7 @@ impl CoreApi for Enforcer {
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;
 
-        // 如果使用DefaultModel，重新编译matcher表达式
+        // If using DefaultModel, recompile matcher expressions
         if let Some(default_model) =
             self.model.as_any_mut().downcast_mut::<DefaultModel>()
         {
