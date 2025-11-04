@@ -73,4 +73,7 @@ pub trait Model: Send + Sync {
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>);
     fn to_text(&self) -> String;
+    // Downcast support for performance
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

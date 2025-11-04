@@ -14,6 +14,8 @@ use crate::{
     Result,
 };
 
+use crate::model::DefaultModel;
+
 #[cfg(any(feature = "logging", feature = "watcher"))]
 use crate::emitter::notify_logger_and_watcher;
 
@@ -149,10 +151,21 @@ impl Enforcer {
 
         let mut eft_stream =
             self.eft.new_stream(&e_ast.value, max(policy_len, 1));
-        let m_ast_compiled = self
-            .engine
-            .compile_expression(escape_eval(&m_ast.value))
-            .map_err(Into::<Box<EvalAltResult>>::into)?;
+        let m_ast_compiled = if let Some(default_model) =
+            self.model.as_any().downcast_ref::<DefaultModel>()
+        {
+            default_model.get_compiled_matcher("m").ok_or_else(|| {
+                crate::error::Error::ModelError(crate::error::ModelError::M(
+                    "Matcher 'm' not compiled".to_string(),
+                ))
+            })?
+        } else {
+            // Fallback to original compilation (for other Model implementations)
+            &self
+                .engine
+                .compile_expression(escape_eval(&m_ast.value))
+                .map_err(Into::<Box<EvalAltResult>>::into)?
+        };
 
         if policy_len == 0 {
             for token in p_ast.tokens.iter() {
@@ -161,7 +174,7 @@ impl Enforcer {
 
             let eval_result = self
                 .engine
-                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+                .eval_ast_with_scope::<bool>(&mut scope, m_ast_compiled)?;
             let eft = if eval_result {
                 EffectKind::Allow
             } else {
@@ -189,7 +202,7 @@ impl Enforcer {
 
             let eval_result = self
                 .engine
-                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+                .eval_ast_with_scope::<bool>(&mut scope, m_ast_compiled)?;
             let eft = match p_ast.tokens.iter().position(|x| x == "p_eft") {
                 Some(j) if eval_result => {
                     let p_eft = &pvals[j];
@@ -278,10 +291,26 @@ impl Enforcer {
 
         let mut eft_stream =
             self.eft.new_stream(&e_ast.value, max(policy_len, 1));
-        let m_ast_compiled = self
-            .engine
-            .compile_expression(escape_eval(&m_ast.value))
-            .map_err(Into::<Box<EvalAltResult>>::into)?;
+        let m_ast_compiled = if let Some(default_model) =
+            self.model.as_any().downcast_ref::<DefaultModel>()
+        {
+            default_model.get_compiled_matcher(&ctx.m_type).ok_or_else(
+                || {
+                    crate::error::Error::ModelError(
+                        crate::error::ModelError::M(format!(
+                            "Matcher '{}' not compiled",
+                            ctx.m_type
+                        )),
+                    )
+                },
+            )?
+        } else {
+            // Fallback to original compilation (for other Model implementations)
+            &self
+                .engine
+                .compile_expression(escape_eval(&m_ast.value))
+                .map_err(Into::<Box<EvalAltResult>>::into)?
+        };
 
         if policy_len == 0 {
             for token in p_ast.tokens.iter() {
@@ -290,7 +319,7 @@ impl Enforcer {
 
             let eval_result = self
                 .engine
-                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+                .eval_ast_with_scope::<bool>(&mut scope, m_ast_compiled)?;
             let eft = if eval_result {
                 EffectKind::Allow
             } else {
@@ -318,7 +347,7 @@ impl Enforcer {
 
             let eval_result = self
                 .engine
-                .eval_ast_with_scope::<bool>(&mut scope, &m_ast_compiled)?;
+                .eval_ast_with_scope::<bool>(&mut scope, m_ast_compiled)?;
             let eft = match p_ast.tokens.iter().position(|x| x == "p_eft") {
                 Some(j) if eval_result => {
                     let p_eft = &pvals[j];
@@ -433,6 +462,13 @@ impl CoreApi for Enforcer {
 
         e.register_g_functions()?;
 
+        // If using DefaultModel, compile matcher expressions
+        if let Some(default_model) =
+            e.model.as_any_mut().downcast_mut::<DefaultModel>()
+        {
+            default_model.compile_matchers(&e.engine)?;
+        }
+
         Ok(e)
     }
 
@@ -534,6 +570,14 @@ impl CoreApi for Enforcer {
 
     async fn set_model<M: TryIntoModel>(&mut self, m: M) -> Result<()> {
         self.model = m.try_into_model().await?;
+
+        // If using DefaultModel, recompile matcher expressions
+        if let Some(default_model) =
+            self.model.as_any_mut().downcast_mut::<DefaultModel>()
+        {
+            default_model.compile_matchers(&self.engine)?;
+        }
+
         self.load_policy().await?;
         Ok(())
     }

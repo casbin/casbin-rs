@@ -19,14 +19,51 @@ use async_std::path::Path as ioPath;
 #[cfg(feature = "runtime-tokio")]
 use std::path::Path as ioPath;
 
+use rhai::{Engine, AST};
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Default)]
 pub struct DefaultModel {
     pub(crate) model: HashMap<String, AssertionMap>,
+    // Precompiled matcher expressions - compiled during Model initialization
+    // Keys are full matcher names (e.g., "m", "m2", "m3")
+    compiled_matchers: HashMap<String, AST>,
 }
 
 impl DefaultModel {
+    // Compiles all matcher expressions after Model loading is complete
+    // Should be called before Enforcer is used
+    pub fn compile_matchers(&mut self, engine: &Engine) -> Result<()> {
+        self.compiled_matchers.clear();
+
+        // Only compile matchers from the 'm' section
+        if let Some(assertions) = self.model.get("m") {
+            for (key, assertion) in assertions {
+                let compiled = engine
+                    .compile_expression(crate::util::escape_eval(
+                        &assertion.value,
+                    ))
+                    .map_err(|e| {
+                        crate::error::Error::ModelError(
+                            crate::error::ModelError::M(format!(
+                                "Failed to compile matcher '{}': {}",
+                                key, e
+                            )),
+                        )
+                    })?;
+
+                // Directly use the complete matcher key as HashMap key
+                self.compiled_matchers.insert(key.clone(), compiled);
+            }
+        }
+        Ok(())
+    }
+
+    // Gets the precompiled matcher - O(1) lookup, simple and direct
+    #[inline]
+    pub fn get_compiled_matcher(&self, key: &str) -> Option<&AST> {
+        self.compiled_matchers.get(key)
+    }
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn from_file<P: AsRef<ioPath>>(p: P) -> Result<DefaultModel> {
         let cfg = Config::from_file(p).await?;
@@ -443,6 +480,14 @@ impl Model for DefaultModel {
         write_string("m", &mut s);
 
         s
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 
