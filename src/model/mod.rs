@@ -73,4 +73,7 @@ pub trait Model: Send + Sync {
         field_values: Vec<String>,
     ) -> (bool, Vec<Vec<String>>);
     fn to_text(&self) -> String;
+    // 向下转换支持 - 用于性能优化
+    fn as_any(&self) -> &dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }

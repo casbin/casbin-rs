@@ -19,14 +19,51 @@ use async_std::path::Path as ioPath;
 #[cfg(feature = "runtime-tokio")]
 use std::path::Path as ioPath;
 
+use rhai::{Engine, AST};
 use std::{collections::HashMap, sync::Arc};
 
 #[derive(Clone, Default)]
 pub struct DefaultModel {
     pub(crate) model: HashMap<String, AssertionMap>,
+    /// 预编译的matcher表达式 - 在Model初始化时编译
+    /// 键是完整的matcher名称（如\"m\", \"m2\", \"m3\"）
+    compiled_matchers: HashMap<String, AST>,
 }
 
 impl DefaultModel {
+    /// 在Model加载完成后编译所有matcher表达式
+    /// 在Enforcer使用前调用
+    pub fn compile_matchers(&mut self, engine: &Engine) -> Result<()> {
+        self.compiled_matchers.clear();
+
+        // 只编译"m"段的matchers
+        if let Some(assertions) = self.model.get("m") {
+            for (key, assertion) in assertions {
+                let compiled = engine
+                    .compile_expression(crate::util::escape_eval(
+                        &assertion.value,
+                    ))
+                    .map_err(|e| {
+                        crate::error::Error::ModelError(
+                            crate::error::ModelError::M(format!(
+                                "Failed to compile matcher '{}': {}",
+                                key, e
+                            )),
+                        )
+                    })?;
+
+                // 直接使用完整的matcher key作为HashMap键
+                self.compiled_matchers.insert(key.clone(), compiled);
+            }
+        }
+        Ok(())
+    }
+
+    /// 获取预编译的matcher - O(1)查找，简洁直接
+    #[inline]
+    pub fn get_compiled_matcher(&self, key: &str) -> Option<&AST> {
+        self.compiled_matchers.get(key)
+    }
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn from_file<P: AsRef<ioPath>>(p: P) -> Result<DefaultModel> {
         let cfg = Config::from_file(p).await?;
@@ -443,6 +480,14 @@ impl Model for DefaultModel {
         write_string("m", &mut s);
 
         s
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
 
