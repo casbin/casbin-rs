@@ -1,3 +1,10 @@
+# [2.17.0](https://github.com/casbin/casbin-rs/compare/v2.16.0...v2.17.0) (2025-11-04)
+
+
+### Features
+
+* use pre-compiled matchers to improve performance ([#399](https://github.com/casbin/casbin-rs/issues/399)) ([89524ae](https://github.com/casbin/casbin-rs/commit/89524ae83818600c6b09b77bfcfc1dc1c09e61e5))
+
 # [2.16.0](https://github.com/casbin/casbin-rs/compare/v2.15.0...v2.16.0) (2025-11-04)
 
 
