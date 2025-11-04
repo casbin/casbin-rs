@@ -209,6 +209,7 @@ ABAC | [abac_model.conf](https://github.com/casbin/casbin-rs/blob/master/example
 RESTful | [keymatch_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/keymatch_model.conf)  | [keymatch_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/keymatch_policy.csv)
 Deny-override | [rbac_model_with_deny.conf](https://github.com/casbin/casbin-rs/blob/master/examples/rbac_with_deny_model.conf)  | [rbac_policy_with_deny.csv](https://github.com/casbin/casbin-rs/blob/master/examples/rbac_with_deny_policy.csv)
 Priority | [priority_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/priority_model.conf)  | [priority_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/priority_policy.csv)
+Multiple section types | [multi_section_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/multi_section_model.conf) | [multi_section_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/multi_section_policy.csv)
 
 ## Middlewares
 
