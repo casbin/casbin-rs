@@ -15,7 +15,7 @@ use rhai::Dynamic;
 static MAT_B: Lazy<Regex> = Lazy::new(|| Regex::new(r":[^/]*").unwrap());
 static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 /// Represents a custom operator function that can be registered with Casbin.
 ///
@@ -30,29 +30,37 @@ use std::{borrow::Cow, collections::HashMap};
 ///
 /// This allows for flexible custom functions that can work with different types.
 ///
+/// There are two variants for each argument count:
+/// - `ArgN`: Uses a simple function pointer (for stateless functions)
+/// - `ArgNClosure`: Uses an `Arc<dyn Fn>` (for closures that capture state)
+///
 /// # Example
 ///
 /// ```rust,ignore
 /// use casbin::{CoreApi, OperatorFunction};
 /// use rhai::Dynamic;
+/// use std::sync::Arc;
 ///
-/// // Function that works with integers
+/// // Function pointer (stateless) - uses Arg2
 /// let int_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
 ///     let a_int = a.as_int().unwrap_or(0);
 ///     let b_int = b.as_int().unwrap_or(0);
 ///     (a_int > b_int).into()
 /// });
 ///
-/// // Function that works with strings
-/// let str_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
-///     use casbin::model::function_map::dynamic_to_str;
-///     let a_str = dynamic_to_str(&a);
-///     let b_str = dynamic_to_str(&b);
-///     a_str.contains(b_str.as_ref()).into()
-/// });
+/// // Closure that captures state - uses Arg2Closure
+/// let db_connection = Arc::new(some_database_connection);
+/// let db_conn_clone = db_connection.clone();
+/// let closure_fn = OperatorFunction::Arg2Closure(Arc::new(move |a: Dynamic, b: Dynamic| {
+///     // Access db_conn_clone here
+///     let a_str = a.to_string();
+///     let b_str = b.to_string();
+///     (a_str == b_str).into()
+/// }));
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum OperatorFunction {
+    // Function pointer variants (stateless)
     Arg0(fn() -> Dynamic),
     Arg1(fn(Dynamic) -> Dynamic),
     Arg2(fn(Dynamic, Dynamic) -> Dynamic),
@@ -60,6 +68,39 @@ pub enum OperatorFunction {
     Arg4(fn(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
     Arg5(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
     Arg6(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
+    // Closure variants (can capture state)
+    Arg0Closure(Arc<dyn Fn() -> Dynamic + Send + Sync>),
+    Arg1Closure(Arc<dyn Fn(Dynamic) -> Dynamic + Send + Sync>),
+    Arg2Closure(Arc<dyn Fn(Dynamic, Dynamic) -> Dynamic + Send + Sync>),
+    Arg3Closure(
+        Arc<dyn Fn(Dynamic, Dynamic, Dynamic) -> Dynamic + Send + Sync>,
+    ),
+    Arg4Closure(
+        Arc<
+            dyn Fn(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic + Send + Sync,
+        >,
+    ),
+    Arg5Closure(
+        Arc<
+            dyn Fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic
+                + Send
+                + Sync,
+        >,
+    ),
+    Arg6Closure(
+        Arc<
+            dyn Fn(
+                    Dynamic,
+                    Dynamic,
+                    Dynamic,
+                    Dynamic,
+                    Dynamic,
+                    Dynamic,
+                ) -> Dynamic
+                + Send
+                + Sync,
+        >,
+    ),
 }
 
 pub struct FunctionMap {

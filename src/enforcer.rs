@@ -403,6 +403,56 @@ impl Enforcer {
             OperatorFunction::Arg6(func) => {
                 engine.register_fn(key, func);
             }
+            // Closure variants
+            OperatorFunction::Arg0Closure(func) => {
+                engine.register_fn(key, move || func());
+            }
+            OperatorFunction::Arg1Closure(func) => {
+                engine.register_fn(key, move |a: Dynamic| func(a));
+            }
+            OperatorFunction::Arg2Closure(func) => {
+                engine
+                    .register_fn(key, move |a: Dynamic, b: Dynamic| func(a, b));
+            }
+            OperatorFunction::Arg3Closure(func) => {
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic, b: Dynamic, c: Dynamic| func(a, b, c),
+                );
+            }
+            OperatorFunction::Arg4Closure(func) => {
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic, b: Dynamic, c: Dynamic, d: Dynamic| {
+                        func(a, b, c, d)
+                    },
+                );
+            }
+            OperatorFunction::Arg5Closure(func) => {
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic,
+                          b: Dynamic,
+                          c: Dynamic,
+                          d: Dynamic,
+                          e: Dynamic| {
+                        func(a, b, c, d, e)
+                    },
+                );
+            }
+            OperatorFunction::Arg6Closure(func) => {
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic,
+                          b: Dynamic,
+                          c: Dynamic,
+                          d: Dynamic,
+                          e: Dynamic,
+                          g: Dynamic| {
+                        func(a, b, c, d, e, g)
+                    },
+                );
+            }
         }
     }
 
@@ -434,8 +484,8 @@ impl CoreApi for Enforcer {
 
         engine.register_global_module(CASBIN_PACKAGE.as_shared_module());
 
-        for (key, &func) in fm.get_functions() {
-            Self::register_function(&mut engine, key, func);
+        for (key, func) in fm.get_functions() {
+            Self::register_function(&mut engine, key, func.clone());
         }
 
         let mut e = Self {
@@ -488,7 +538,7 @@ impl CoreApi for Enforcer {
 
     #[inline]
     fn add_function(&mut self, fname: &str, f: OperatorFunction) {
-        self.fm.add_function(fname, f);
+        self.fm.add_function(fname, f.clone());
         Self::register_function(&mut self.engine, fname, f);
     }
 
@@ -1961,5 +2011,167 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
         assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_custom_function_with_closure_capturing_state() {
+        use crate::prelude::*;
+        use std::sync::Arc;
+
+        let m = DefaultModel::from_str(
+            r#"
+[request_definition]
+r = sub, obj, act
+
+[policy_definition]
+p = sub, obj, act
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = r.sub == p.sub && r.obj == p.obj && r.act == p.act && checkPermission(r.act)
+"#,
+        )
+        .await
+        .unwrap();
+
+        let adapter = MemoryAdapter::default();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+
+        // Simulate external state (like a database connection or app state)
+        // This is the key feature: closures can capture external state
+        let allowed_actions: Arc<Vec<String>> =
+            Arc::new(vec!["read".to_string(), "view".to_string()]);
+
+        // Create a closure that captures the allowed_actions
+        let allowed_clone = allowed_actions.clone();
+        e.add_function(
+            "checkPermission",
+            OperatorFunction::Arg1Closure(Arc::new(move |action: Dynamic| {
+                let action_str = action.to_string();
+                allowed_clone.contains(&action_str).into()
+            })),
+        );
+
+        e.add_policy(vec![
+            "alice".to_owned(),
+            "data1".to_owned(),
+            "read".to_owned(),
+        ])
+        .await
+        .unwrap();
+
+        e.add_policy(vec![
+            "alice".to_owned(),
+            "data1".to_owned(),
+            "write".to_owned(),
+        ])
+        .await
+        .unwrap();
+
+        // "read" is in allowed_actions and has a policy, so this should be allowed
+        assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
+
+        // "write" is NOT in allowed_actions, so this should be denied
+        // even though there's a policy for it
+        assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
+
+        // "view" is in allowed_actions but there's no policy for it
+        assert_eq!(false, e.enforce(("alice", "data1", "view")).unwrap());
+
+        // "delete" is not in allowed_actions and has no policy
+        assert_eq!(false, e.enforce(("alice", "data1", "delete")).unwrap());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_custom_function_with_closure_two_args() {
+        use crate::prelude::*;
+        use std::sync::Arc;
+
+        let m = DefaultModel::from_str(
+            r#"
+[request_definition]
+r = sub, obj, act
+
+[policy_definition]
+p = sub, obj, act
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = r.sub == p.sub && customCheck(r.obj, p.obj)
+"#,
+        )
+        .await
+        .unwrap();
+
+        let adapter = MemoryAdapter::default();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+
+        // Simulate external configuration that affects matching logic
+        let prefix_map: Arc<HashMap<String, String>> = Arc::new({
+            let mut m = HashMap::new();
+            m.insert("data1".to_string(), "/api/v1/".to_string());
+            m.insert("data2".to_string(), "/api/v2/".to_string());
+            m
+        });
+
+        // Create a closure that captures external state
+        let prefix_clone = prefix_map.clone();
+        e.add_function(
+            "customCheck",
+            OperatorFunction::Arg2Closure(Arc::new(
+                move |r_obj: Dynamic, p_obj: Dynamic| {
+                    let r_obj_str = r_obj.to_string();
+                    let p_obj_str = p_obj.to_string();
+
+                    // Check if r_obj starts with the prefix mapped from p_obj
+                    if let Some(prefix) = prefix_clone.get(&p_obj_str) {
+                        r_obj_str.starts_with(prefix).into()
+                    } else {
+                        (r_obj_str == p_obj_str).into()
+                    }
+                },
+            )),
+        );
+
+        e.add_policy(vec![
+            "alice".to_owned(),
+            "data1".to_owned(),
+            "read".to_owned(),
+        ])
+        .await
+        .unwrap();
+
+        // Request obj "/api/v1/users" should match policy obj "data1"
+        // because prefix_map["data1"] = "/api/v1/"
+        assert_eq!(
+            true,
+            e.enforce(("alice", "/api/v1/users", "read")).unwrap()
+        );
+
+        // Request obj "/api/v2/users" should NOT match policy obj "data1"
+        assert_eq!(
+            false,
+            e.enforce(("alice", "/api/v2/users", "read")).unwrap()
+        );
     }
 }
