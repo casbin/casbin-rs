@@ -2103,6 +2103,7 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act && checkPermission(r.act)
     )]
     async fn test_custom_function_with_closure_two_args() {
         use crate::prelude::*;
+        use std::collections::HashMap;
         use std::sync::Arc;
 
         let m = DefaultModel::from_str(
