@@ -171,7 +171,7 @@ e.add_function(
 ```rust
 use r2d2::{self, Pool};
 use r2d2_sqlite::SqliteConnectionManager;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 struct AppState {
@@ -203,8 +203,8 @@ impl AppState {
     }
 }
 
-// Usage:
-let app_state = AppState::new();
+// Usage (assuming app_state is already constructed):
+// let app_state: AppState = /* your initialization */;
 let check_fn = app_state.create_storage_check_function();
 enforcer.add_function("matchProductHasStorages", check_fn);
 ```
