@@ -1962,4 +1962,72 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
         assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
     }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_multi_section_model() {
+        let m = DefaultModel::from_file("examples/multi_section_model.conf")
+            .await
+            .unwrap();
+
+        let adapter =
+            FileAdapter::new("examples/multi_section_policy.csv");
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+
+        // Test the default section (p, r, m, e)
+        assert_eq!(true, e.enforce(("alice", "read", "project1")).unwrap());
+        assert_eq!(
+            true,
+            e.enforce(("alice", "write", "project1")).unwrap()
+        );
+        assert_eq!(false, e.enforce(("alice", "read", "project2")).unwrap());
+        assert_eq!(true, e.enforce(("bob", "read", "project2")).unwrap());
+        assert_eq!(false, e.enforce(("bob", "write", "project2")).unwrap());
+
+        // Test the second section (p2, r2, m2, e2) using EnforceContext
+        assert_eq!(
+            true,
+            e.enforce_with_context(
+                EnforceContext::new("2"),
+                ("james", "execute")
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            false,
+            e.enforce_with_context(
+                EnforceContext::new("2"),
+                ("james", "write")
+            )
+            .unwrap()
+        );
+
+        // Test that we can add policies to p2 section
+        e.add_named_policy(
+            "p2",
+            vec!["alice".to_string(), "write".to_string()],
+        )
+        .await
+        .unwrap();
+
+        // Rebuild role links after adding policies
+        e.build_role_links().unwrap();
+
+        // Verify the new p2 policy works
+        assert_eq!(
+            true,
+            e.enforce_with_context(
+                EnforceContext::new("2"),
+                ("alice", "write")
+            )
+            .unwrap()
+        );
+    }
 }

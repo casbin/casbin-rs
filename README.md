@@ -80,6 +80,51 @@ async fn main() -> Result<()> {
 in a environment where multiple threads might access it, you have to protect it
 using an RwLock like so: `let e = Arc::new(RwLock::new(e));`.
 
+## Multiple Section Types
+
+Casbin-rs supports models with multiple policy and request sections (e.g., `p2`, `r2`, `m2`, `e2`). This allows you to define different sets of policies and matchers for different types of authorization checks within the same model. See the [documentation](https://casbin.org/docs/syntax-for-models#multiple-section-types) for more details.
+
+To use multiple section types, define them in your model:
+
+```ini
+[request_definition]
+r = sub, act, obj
+r2 = sub, act
+
+[policy_definition]
+p = sub, act, obj
+p2 = sub, act
+
+[matchers]
+m = r.sub == p.sub && r.act == p.act && r.obj == p.obj
+m2 = r2.sub == p2.sub && r2.act == p2.act
+
+[policy_effect]
+e = some(where (p.eft == allow))
+e2 = some(where (p.eft == allow))
+```
+
+Then use `EnforceContext` to specify which section to enforce:
+
+```rust
+use casbin::prelude::*;
+use casbin::EnforceContext;
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let e = Enforcer::new("examples/multi_section_model.conf", "examples/multi_section_policy.csv").await?;
+    
+    // Use default section (p, r, m, e)
+    e.enforce(("alice", "read", "project1"))?;
+    
+    // Use second section (p2, r2, m2, e2)
+    let ctx2 = EnforceContext::new("2");
+    e.enforce_with_context(ctx2, ("james", "execute"))?;
+    
+    Ok(())
+}
+```
+
 ## Table of contents
 
 - [Supported models](#supported-models)
@@ -88,6 +133,7 @@ using an RwLock like so: `let e = Arc::new(RwLock::new(e));`.
 - [Documentation](#documentation)
 - [Online editor](#online-editor)
 - [Tutorials](#tutorials)
+- [Multiple Section Types](#multiple-section-types)
 - [Policy management](#policy-management)
 - [Policy persistence](#policy-persistence)
 - [Role manager](#role-manager)
@@ -209,6 +255,7 @@ ABAC | [abac_model.conf](https://github.com/casbin/casbin-rs/blob/master/example
 RESTful | [keymatch_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/keymatch_model.conf)  | [keymatch_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/keymatch_policy.csv)
 Deny-override | [rbac_model_with_deny.conf](https://github.com/casbin/casbin-rs/blob/master/examples/rbac_with_deny_model.conf)  | [rbac_policy_with_deny.csv](https://github.com/casbin/casbin-rs/blob/master/examples/rbac_with_deny_policy.csv)
 Priority | [priority_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/priority_model.conf)  | [priority_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/priority_policy.csv)
+Multiple Section Types | [multi_section_model.conf](https://github.com/casbin/casbin-rs/blob/master/examples/multi_section_model.conf)  | [multi_section_policy.csv](https://github.com/casbin/casbin-rs/blob/master/examples/multi_section_policy.csv)
 
 ## Middlewares
 
