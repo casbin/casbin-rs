@@ -147,7 +147,7 @@ where
 
         for (ptype, ast) in ast_map {
             for rule in ast.get_policy() {
-                writeln!(policies, "{}, {}", ptype, rule.join(","))
+                writeln!(policies, "{}, {}", ptype, rule.join(", "))
                     .map_err(|e| AdapterError(e.into()))?;
             }
         }
@@ -155,10 +155,15 @@ where
         if let Some(ast_map) = m.get_model().get("g") {
             for (ptype, ast) in ast_map {
                 for rule in ast.get_policy() {
-                    writeln!(policies, "{}, {}", ptype, rule.join(","))
+                    writeln!(policies, "{}, {}", ptype, rule.join(", "))
                         .map_err(|e| AdapterError(e.into()))?;
                 }
             }
+        }
+
+        // Remove trailing newline to match the original file format
+        if policies.ends_with('\n') {
+            policies.pop();
         }
 
         self.save_policy_file(policies).await?;
