@@ -1,3 +1,16 @@
+# [2.18.0](https://github.com/casbin/casbin-rs/compare/v2.17.0...v2.18.0) (2025-12-19)
+
+
+### Bug Fixes
+
+* remove beta Rust version from CI ([#409](https://github.com/casbin/casbin-rs/issues/409)) ([f22f84c](https://github.com/casbin/casbin-rs/commit/f22f84c9003e30af4a21e3eb5d8cac495894a159))
+* remove irrelevant links in README ([7272c2a](https://github.com/casbin/casbin-rs/commit/7272c2a7a1709b01b098b27bfcf0420a9e3d3ef9))
+
+
+### Features
+
+* fix FileAdapter CSV format to preserve spaces after commas ([#407](https://github.com/casbin/casbin-rs/issues/407)) ([5d0a915](https://github.com/casbin/casbin-rs/commit/5d0a9151136776648020fe1b68a568b5e6b282ac))
+
 # [2.17.0](https://github.com/casbin/casbin-rs/compare/v2.16.0...v2.17.0) (2025-11-04)
 
 
