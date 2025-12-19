@@ -1,3 +1,10 @@
+## [2.18.1](https://github.com/casbin/casbin-rs/compare/v2.18.0...v2.18.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* remove "Deploy Docs to GitHub Pages" CI script and gh-pages branch ([#411](https://github.com/casbin/casbin-rs/issues/411)) ([aeb7fe0](https://github.com/casbin/casbin-rs/commit/aeb7fe0ab1452b3b5adfcca7b0f8eeb8c33e95da))
+
 # [2.18.0](https://github.com/casbin/casbin-rs/compare/v2.17.0...v2.18.0) (2025-12-19)
 
 
