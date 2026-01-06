@@ -15,7 +15,7 @@ use rhai::Dynamic;
 static MAT_B: Lazy<Regex> = Lazy::new(|| Regex::new(r":[^/]*").unwrap());
 static MAT_P: Lazy<Regex> = Lazy::new(|| Regex::new(r"\{[^/]*\}").unwrap());
 
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 /// Represents a custom operator function that can be registered with Casbin.
 ///
@@ -29,6 +29,7 @@ use std::{borrow::Cow, collections::HashMap};
 /// - And more...
 ///
 /// This allows for flexible custom functions that can work with different types.
+/// Functions can also capture external state (like database connections) using closures.
 ///
 /// # Example
 ///
@@ -37,29 +38,45 @@ use std::{borrow::Cow, collections::HashMap};
 /// use rhai::Dynamic;
 ///
 /// // Function that works with integers
-/// let int_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+/// let int_fn = OperatorFunction::Arg2(Arc::new(|a: Dynamic, b: Dynamic| {
 ///     let a_int = a.as_int().unwrap_or(0);
 ///     let b_int = b.as_int().unwrap_or(0);
 ///     (a_int > b_int).into()
-/// });
+/// }));
 ///
 /// // Function that works with strings
-/// let str_fn = OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+/// let str_fn = OperatorFunction::Arg2(Arc::new(|a: Dynamic, b: Dynamic| {
 ///     use casbin::model::function_map::dynamic_to_str;
 ///     let a_str = dynamic_to_str(&a);
 ///     let b_str = dynamic_to_str(&b);
 ///     a_str.contains(b_str.as_ref()).into()
-/// });
+/// }));
+///
+/// // Function that captures external state
+/// let my_data = Arc::new(vec![1, 2, 3]);
+/// let data_clone = my_data.clone();
+/// let stateful_fn = OperatorFunction::Arg1(Arc::new(move |idx: Dynamic| {
+///     let idx = idx.as_int().unwrap_or(0) as usize;
+///     data_clone.get(idx).copied().unwrap_or(0).into()
+/// }));
 /// ```
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum OperatorFunction {
-    Arg0(fn() -> Dynamic),
-    Arg1(fn(Dynamic) -> Dynamic),
-    Arg2(fn(Dynamic, Dynamic) -> Dynamic),
-    Arg3(fn(Dynamic, Dynamic, Dynamic) -> Dynamic),
-    Arg4(fn(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
-    Arg5(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
-    Arg6(fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic),
+    Arg0(Arc<dyn Fn() -> Dynamic + Send + Sync>),
+    Arg1(Arc<dyn Fn(Dynamic) -> Dynamic + Send + Sync>),
+    Arg2(Arc<dyn Fn(Dynamic, Dynamic) -> Dynamic + Send + Sync>),
+    Arg3(Arc<dyn Fn(Dynamic, Dynamic, Dynamic) -> Dynamic + Send + Sync>),
+    Arg4(Arc<dyn Fn(Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic + Send + Sync>),
+    Arg5(
+        Arc<dyn Fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic + Send + Sync>,
+    ),
+    Arg6(
+        Arc<
+            dyn Fn(Dynamic, Dynamic, Dynamic, Dynamic, Dynamic, Dynamic) -> Dynamic
+                + Send
+                + Sync,
+        >,
+    ),
 }
 
 pub struct FunctionMap {
@@ -71,83 +88,87 @@ impl Default for FunctionMap {
         let mut fm: HashMap<String, OperatorFunction> = HashMap::new();
         fm.insert(
             "keyMatch".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "keyGet".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_get(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "keyMatch2".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_match2(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "keyGet2".to_owned(),
-            OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
-                key_get2(
-                    &dynamic_to_str(&s1),
-                    &dynamic_to_str(&s2),
-                    &dynamic_to_str(&s3),
-                )
-                .into()
-            }),
+            OperatorFunction::Arg3(Arc::new(
+                |s1: Dynamic, s2: Dynamic, s3: Dynamic| {
+                    key_get2(
+                        &dynamic_to_str(&s1),
+                        &dynamic_to_str(&s2),
+                        &dynamic_to_str(&s3),
+                    )
+                    .into()
+                },
+            )),
         );
         fm.insert(
             "keyMatch3".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_match3(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "keyGet3".to_owned(),
-            OperatorFunction::Arg3(|s1: Dynamic, s2: Dynamic, s3: Dynamic| {
-                key_get3(
-                    &dynamic_to_str(&s1),
-                    &dynamic_to_str(&s2),
-                    &dynamic_to_str(&s3),
-                )
-                .into()
-            }),
+            OperatorFunction::Arg3(Arc::new(
+                |s1: Dynamic, s2: Dynamic, s3: Dynamic| {
+                    key_get3(
+                        &dynamic_to_str(&s1),
+                        &dynamic_to_str(&s2),
+                        &dynamic_to_str(&s3),
+                    )
+                    .into()
+                },
+            )),
         );
         fm.insert(
             "keyMatch4".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_match4(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "keyMatch5".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 key_match5(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
         fm.insert(
             "regexMatch".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 regex_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
 
         #[cfg(feature = "glob")]
         fm.insert(
             "globMatch".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 glob_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
 
         #[cfg(feature = "ip")]
         fm.insert(
             "ipMatch".to_owned(),
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 ip_match(&dynamic_to_str(&s1), &dynamic_to_str(&s2)).into()
-            }),
+            })),
         );
 
         FunctionMap { fm }

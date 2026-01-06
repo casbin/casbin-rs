@@ -383,25 +383,48 @@ impl Enforcer {
     fn register_function(engine: &mut Engine, key: &str, f: OperatorFunction) {
         match f {
             OperatorFunction::Arg0(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(key, move || func());
             }
             OperatorFunction::Arg1(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(key, move |a: Dynamic| func(a));
             }
             OperatorFunction::Arg2(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(key, move |a: Dynamic, b: Dynamic| func(a, b));
             }
             OperatorFunction::Arg3(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic, b: Dynamic, c: Dynamic| func(a, b, c),
+                );
             }
             OperatorFunction::Arg4(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic, b: Dynamic, c: Dynamic, d: Dynamic| {
+                        func(a, b, c, d)
+                    },
+                );
             }
             OperatorFunction::Arg5(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic,
+                          b: Dynamic,
+                          c: Dynamic,
+                          d: Dynamic,
+                          e: Dynamic| { func(a, b, c, d, e) },
+                );
             }
             OperatorFunction::Arg6(func) => {
-                engine.register_fn(key, func);
+                engine.register_fn(
+                    key,
+                    move |a: Dynamic,
+                          b: Dynamic,
+                          c: Dynamic,
+                          d: Dynamic,
+                          e: Dynamic,
+                          g: Dynamic| { func(a, b, c, d, e, g) },
+                );
             }
         }
     }
@@ -434,8 +457,8 @@ impl CoreApi for Enforcer {
 
         engine.register_global_module(CASBIN_PACKAGE.as_shared_module());
 
-        for (key, &func) in fm.get_functions() {
-            Self::register_function(&mut engine, key, func);
+        for (key, func) in fm.get_functions() {
+            Self::register_function(&mut engine, key, func.clone());
         }
 
         let mut e = Self {
@@ -488,7 +511,7 @@ impl CoreApi for Enforcer {
 
     #[inline]
     fn add_function(&mut self, fname: &str, f: OperatorFunction) {
-        self.fm.add_function(fname, f);
+        self.fm.add_function(fname, f.clone());
         Self::register_function(&mut self.engine, fname, f);
     }
 
@@ -1421,6 +1444,7 @@ mod tests {
     )]
     async fn test_keymatch_custom_model() {
         use crate::model::key_match;
+        use std::sync::Arc;
 
         let m1 = DefaultModel::from_file("examples/keymatch_custom_model.conf")
             .await
@@ -1430,11 +1454,11 @@ mod tests {
 
         e.add_function(
             "keyMatchCustom",
-            OperatorFunction::Arg2(|s1: Dynamic, s2: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|s1: Dynamic, s2: Dynamic| {
                 let s1_str = s1.to_string();
                 let s2_str = s2.to_string();
                 key_match(&s1_str, &s2_str).into()
-            }),
+            })),
         );
 
         assert_eq!(
@@ -1877,6 +1901,7 @@ mod tests {
     )]
     async fn test_custom_function_with_dynamic_types() {
         use crate::prelude::*;
+        use std::sync::Arc;
 
         let m = DefaultModel::from_str(
             r#"
@@ -1902,40 +1927,42 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         // Test 1: Custom function that takes integer arguments
         e.add_function(
             "greaterThan",
-            OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|a: Dynamic, b: Dynamic| {
                 // Dynamic can hold integers - extract and compare
                 let a_int = a.as_int().unwrap_or(0);
                 let b_int = b.as_int().unwrap_or(0);
                 (a_int > b_int).into()
-            }),
+            })),
         );
 
         // Test 2: Custom function that works with booleans
         e.add_function(
             "customAnd",
-            OperatorFunction::Arg2(|a: Dynamic, b: Dynamic| {
+            OperatorFunction::Arg2(Arc::new(|a: Dynamic, b: Dynamic| {
                 // Dynamic can hold booleans - extract and perform logic
                 let a_bool = a.as_bool().unwrap_or(false);
                 let b_bool = b.as_bool().unwrap_or(false);
                 (a_bool && b_bool).into()
-            }),
+            })),
         );
 
         // Test 3: Custom function that works with strings
         e.add_function(
             "stringContains",
-            OperatorFunction::Arg2(|haystack: Dynamic, needle: Dynamic| {
-                // Dynamic can hold strings - convert and check
-                let haystack_str = haystack.to_string();
-                let needle_str = needle.to_string();
-                haystack_str.contains(&needle_str).into()
-            }),
+            OperatorFunction::Arg2(Arc::new(
+                |haystack: Dynamic, needle: Dynamic| {
+                    // Dynamic can hold strings - convert and check
+                    let haystack_str = haystack.to_string();
+                    let needle_str = needle.to_string();
+                    haystack_str.contains(&needle_str).into()
+                },
+            )),
         );
 
         // Test 4: Custom function with 3 arguments
         e.add_function(
             "between",
-            OperatorFunction::Arg3(
+            OperatorFunction::Arg3(Arc::new(
                 |val: Dynamic, min: Dynamic, max: Dynamic| {
                     // Check if val is between min and max (inclusive)
                     let val_int = val.as_int().unwrap_or(0);
@@ -1943,7 +1970,7 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
                     let max_int = max.as_int().unwrap_or(0);
                     (val_int >= min_int && val_int <= max_int).into()
                 },
-            ),
+            )),
         );
 
         // Verify that custom functions are registered without errors
@@ -1961,5 +1988,74 @@ m = r.sub == p.sub && r.obj == p.obj && r.act == p.act
         assert_eq!(true, e.enforce(("alice", "data1", "read")).unwrap());
         assert_eq!(false, e.enforce(("alice", "data1", "write")).unwrap());
         assert_eq!(false, e.enforce(("bob", "data1", "read")).unwrap());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg_attr(
+        all(feature = "runtime-async-std", not(target_arch = "wasm32")),
+        async_std::test
+    )]
+    #[cfg_attr(
+        all(feature = "runtime-tokio", not(target_arch = "wasm32")),
+        tokio::test
+    )]
+    async fn test_custom_function_with_captured_state() {
+        use crate::prelude::*;
+        use std::sync::Arc;
+
+        let m = DefaultModel::from_str(
+            r#"
+[request_definition]
+r = sub, resource_id
+
+[policy_definition]
+p = sub
+
+[policy_effect]
+e = some(where (p.eft == allow))
+
+[matchers]
+m = r.sub == p.sub && checkResourceAccess(r.resource_id)
+"#,
+        )
+        .await
+        .unwrap();
+
+        let adapter = MemoryAdapter::default();
+        let mut e = Enforcer::new(m, adapter).await.unwrap();
+
+        // Simulate an external data source (like a DB connection)
+        // This could be a connection pool, Arc<Mutex<Connection>>, etc.
+        let allowed_resources: Arc<Vec<i32>> = Arc::new(vec![1, 2, 3, 5, 8]);
+        let resources_clone = allowed_resources.clone();
+
+        // Create a custom function that captures external state
+        e.add_function(
+            "checkResourceAccess",
+            OperatorFunction::Arg1(Arc::new(move |resource_id: Dynamic| {
+                let id = resource_id.as_int().unwrap_or(0) as i32;
+                // Access the captured state to check if resource is allowed
+                resources_clone.contains(&id).into()
+            })),
+        );
+
+        // Add policy for alice
+        e.add_policy(vec!["alice".to_owned()])
+            .await
+            .unwrap();
+
+        // Test enforcement with captured state
+        // Resource IDs 1, 2, 3, 5, 8 are allowed
+        assert_eq!(true, e.enforce(("alice", 1)).unwrap());
+        assert_eq!(true, e.enforce(("alice", 2)).unwrap());
+        assert_eq!(true, e.enforce(("alice", 3)).unwrap());
+        assert_eq!(false, e.enforce(("alice", 4)).unwrap()); // Not in allowed list
+        assert_eq!(true, e.enforce(("alice", 5)).unwrap());
+        assert_eq!(false, e.enforce(("alice", 6)).unwrap()); // Not in allowed list
+        assert_eq!(false, e.enforce(("alice", 7)).unwrap()); // Not in allowed list
+        assert_eq!(true, e.enforce(("alice", 8)).unwrap());
+
+        // Bob is not in policy, so should fail regardless of resource
+        assert_eq!(false, e.enforce(("bob", 1)).unwrap());
     }
 }
