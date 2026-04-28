@@ -30,7 +30,6 @@ fixedbitset = "0.4"
 rhai = { version = "1.5.0", features = [
   "sync",
   "only_i64",
-  "no_function",
   "no_float",
   "no_optimize",
   "no_module",
