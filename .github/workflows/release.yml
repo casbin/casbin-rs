@@ -24,7 +24,7 @@ env:
 jobs:
   release:
     name: Release ${{ github.ref_name }}
-    if: github.repository == 'casbin/casbin-rs'
+    if: github.repository == 'apache/casbin-rs'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
