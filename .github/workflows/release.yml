@@ -1,15 +1,100 @@
-name: Auto Release
+name: Release
+
+# Releases are cut by hand: nothing here runs on a merge, only on a pushed tag.
+#
+#   v1.4.0-rc1  ->  GitHub pre-release (the candidate put up for the Apache vote)
+#   v1.4.0      ->  GitHub release + publish to crates.io
+#
+# Either way the release carries an Apache-style source tarball as its only
+# asset. The release manager downloads that tarball and signs / checksums it
+# locally before starting the vote; nothing is signed or uploaded here.
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  # Base name of the source release artifact, per Apache naming conventions.
+  ARTIFACT_BASENAME: apache-casbin-rust
 
 jobs:
   release:
-    if: ${{ github.repository == 'casbin/casbin-rs' &&  github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'}}
-    uses: casbin-rs/semantic-release-action-rust/.github/workflows/release-library.yml@master
-    with:
-      disable-semantic-release-git: true
-    secrets:
-      cargo-registry-token: ${{ secrets.CARGO_TOKEN }}
+    name: Release ${{ github.ref_name }}
+    if: github.repository == 'casbin/casbin-rs'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # v1.4.0-rc1 -> 1.4.0. The tarball the PPMC votes on is the exact tarball
+          # that ships, so the candidate counter is never part of its name.
+          BASE_VERSION="${VERSION%%-rc*}"
+          if [ "$VERSION" = "$BASE_VERSION" ]; then
+            PRERELEASE=false
+          else
+            PRERELEASE=true
+          fi
+          # Anything that is neither vX.Y.Z nor vX.Y.Z-rcN is a typo, and a typo
+          # must not reach crates.io.
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-rc[0-9]+)?$'; then
+            echo "::error::Tag $GITHUB_REF_NAME is not vX.Y.Z or vX.Y.Z-rcN."
+            exit 1
+          fi
+          {
+            echo "base_version=$BASE_VERSION"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+          echo "Tag $GITHUB_REF_NAME -> version $BASE_VERSION (pre-release: $PRERELEASE)"
+
+      - name: Verify Cargo.toml matches the tag
+        run: |
+          set -euo pipefail
+          # Read [package].version directly rather than via cargo, which would
+          # write a Cargo.lock and leave the tree dirty for cargo publish.
+          CARGO_VERSION="$(awk '/^\[package\]/{p=1;next} /^\[/{p=0} p && /^version *=/{gsub(/[" ]/,"");sub(/^version=/,"");print;exit}' Cargo.toml)"
+          EXPECTED="${{ steps.version.outputs.base_version }}"
+          if [ "$CARGO_VERSION" != "$EXPECTED" ]; then
+            echo "::error::Cargo.toml says $CARGO_VERSION but the tag asks for $EXPECTED. Bump Cargo.toml, commit, then re-tag."
+            exit 1
+          fi
+
+      - name: Build source release tarball
+        id: package
+        run: |
+          set -euo pipefail
+          NAME="${ARTIFACT_BASENAME}-${{ steps.version.outputs.base_version }}-incubating-src"
+          ASSET="${RUNNER_TEMP}/${NAME}.tar.gz"
+          # git archive gives us exactly the tracked sources at this tag, unpacking
+          # into a single top-level directory named after the release. It is written
+          # outside the checkout so cargo publish still sees a clean tree.
+          git archive --format=tar.gz --prefix="$NAME/" -o "$ASSET" HEAD
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
+          ls -l "$ASSET"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          ASSET: ${{ steps.package.outputs.asset }}
+        run: |
+          set -euo pipefail
+          FLAGS=(--title "$TAG" --generate-notes)
+          if [ "${{ steps.version.outputs.prerelease }}" = "true" ]; then
+            FLAGS+=(--prerelease)
+          fi
+          gh release create "$TAG" "$ASSET" "${FLAGS[@]}"
+
+      - name: Publish to crates.io
+        if: steps.version.outputs.prerelease == 'false'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_TOKEN }}
+        run: cargo publish
