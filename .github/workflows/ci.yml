@@ -12,24 +12,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         rust: [stable]
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Install Rust toolchain ${{ matrix.rust }}
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: ${{ matrix.rust }}
-          override: true
-      - name: Install rustfmt and clippy
         run: |
-          rustup component add rustfmt clippy || true
-      - name: Install wasm32-unknown-unknown for ${{ matrix.rust }}
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ matrix.rust }}
-          target: wasm32-unknown-unknown
-          override: true
+          rustup toolchain install ${{ matrix.rust }} --profile minimal --component rustfmt,clippy --target wasm32-unknown-unknown
+          rustup default ${{ matrix.rust }}
+          rustc --version
+          cargo --version
       # Work around https://github.com/actions/cache/issues/403 by using GNU tar
       # instead of BSD tar.
       - name: Install GNU tar
@@ -61,39 +55,18 @@ jobs:
           path: target
           key: ${{ matrix.os }}-${{ matrix.rust }}-cargo-build-target-${{ hashFiles('**/Cargo.toml') }}-${{ secrets.CACHE_VERSION || github.run_id }}
       - name: Release build async-std
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
+        run: cargo build --release --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
       - name: Release build tokio
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
+        run: cargo build --release --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Test For All Features Using async-std
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
+        run: cargo test --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Test For All Features Using tokio
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
+        run: cargo test --no-default-features --features runtime-tokio,cached,glob,ip,watcher,logging,incremental,explain
       - name: Cargo Check Wasm
-        uses: actions-rs/cargo@v1
         env:
           RUSTFLAGS: '--cfg getrandom_backend="wasm_js"'
-        with:
-          command: check
-          args: --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
+        run: cargo check --target wasm32-unknown-unknown --no-default-features --features runtime-async-std,cached,glob,ip,watcher,logging,incremental
       - name: Clippy warnings
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+        run: cargo clippy -- -D warnings
       - name: Cargo Fmt Check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
