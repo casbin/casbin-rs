@@ -95,7 +95,7 @@ impl EnforceContext {
     pub fn get_cache_key(&self) -> String {
         format!(
             "EnforceContext{{{}-{}-{}-{}}}",
-            &self.r_type, &self.p_type, &self.e_type, &self.m_type,
+            self.r_type, self.p_type, self.e_type, self.m_type,
         )
     }
 }
