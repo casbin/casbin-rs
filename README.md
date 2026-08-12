@@ -221,7 +221,7 @@ This project exists thanks to all the people who contribute.
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=apache/casbin-rs&type=Date)](https://star-history.com/#apache/casbin-rs&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=apache/casbin-rs&type=Date)](https://star-history.dera.page/#apache/casbin-rs&Date)
 
 ## License
 
