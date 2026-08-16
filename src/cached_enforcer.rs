@@ -41,7 +41,7 @@ pub struct CachedEnforcer {
 
 impl EventEmitter<Event> for CachedEnforcer {
     fn on(&mut self, e: Event, f: fn(&mut Self, EventData)) {
-        self.events.entry(e).or_insert_with(Vec::new).push(f)
+        self.events.entry(e).or_default().push(f)
     }
 
     fn off(&mut self, e: Event) {
@@ -66,8 +66,7 @@ impl CachedEnforcer {
         Ok(if let Some(authorized) = self.cache.get(&cache_key) {
             (authorized, true, None)
         } else {
-            let (authorized, indices) =
-                self.enforcer.private_enforce(&rvals)?;
+            let (authorized, indices) = self.enforcer.private_enforce(rvals)?;
             self.cache.set(cache_key, authorized);
             (authorized, false, indices)
         })
@@ -82,7 +81,7 @@ impl CachedEnforcer {
             (authorized, true, None)
         } else {
             let (authorized, indices) =
-                self.enforcer.private_enforce_with_context(ctx, &rvals)?;
+                self.enforcer.private_enforce_with_context(ctx, rvals)?;
             self.cache.set(cache_key, authorized);
             (authorized, false, indices)
         })
@@ -206,6 +205,12 @@ impl CoreApi for CachedEnforcer {
 
     fn enforce<ARGS: EnforceArgs>(&self, rvals: ARGS) -> Result<bool> {
         let cache_key = rvals.cache_key();
+
+        #[cfg(not(feature = "logging"))]
+        if let Some(authorized) = self.cache.get(&cache_key) {
+            return Ok(authorized);
+        }
+
         let rvals = rvals.try_into_vec()?;
         #[allow(unused_variables)]
         let (authorized, cached, indices) =
@@ -244,6 +249,12 @@ impl CoreApi for CachedEnforcer {
         rvals: ARGS,
     ) -> Result<bool> {
         let cache_key = rvals.cache_key();
+
+        #[cfg(not(feature = "logging"))]
+        if let Some(authorized) = self.cache.get(&cache_key) {
+            return Ok(authorized);
+        }
+
         let rvals = rvals.try_into_vec()?;
         #[allow(unused_variables)]
         let (authorized, cached, indices) =
