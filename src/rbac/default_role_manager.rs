@@ -908,7 +908,12 @@ mod matching_bfs {
             );
 
             // A reachable target must still be found through the fallback.
-            assert!(has_link(&graph, level[0][0], graph[level[5][3]].as_str(), 10));
+            assert!(has_link(
+                &graph,
+                level[0][0],
+                graph[level[5][3]].as_str(),
+                10
+            ));
         }
 
         #[test]
@@ -952,7 +957,12 @@ mod matching_bfs {
                 for (k, node) in nodes.iter().enumerate() {
                     let expected = k < max_depth;
                     assert_eq!(
-                        has_link(&graph, nodes[0], graph[*node].as_str(), max_depth),
+                        has_link(
+                            &graph,
+                            nodes[0],
+                            graph[*node].as_str(),
+                            max_depth
+                        ),
                         expected,
                         "max_depth = {}, target = n{}",
                         max_depth,
